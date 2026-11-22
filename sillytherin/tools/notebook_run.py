@@ -28,7 +28,10 @@ DECLINED = "User declined to run this code."
 def undescribed_named_in(code: str, views: list[dict]) -> list[dict]:
     """Rows with describe "write" whose /work path or name appears in the code (any case)."""
     lowered = code.lower()
-    return [v for v in views if v.get("describe") == "write" and (v["path"].lower() in lowered or v["name"].lower() in lowered)]
+    return [
+        view for view in views
+        if view.get("describe") == "write" and (view["path"].lower() in lowered or view["name"].lower() in lowered)
+    ]
 
 
 def _remember_looks(code: str, services: ToolServices) -> None:
@@ -81,13 +84,13 @@ async def notebook_run(code: str, runtime: ToolRuntime[ToolServices]) -> tuple[s
     """
     # TODO: Describe one step per cell and when it is safe to retry.
     services = runtime.context
-    reasons = risk.check(code)
-    needs_ok = (reasons and RISKY_CODE_NEEDS_APPROVAL) or not MODEL_AUTO_RUN
-    if needs_ok and not await services.approve_run(code, reasons):
+    risk_reasons = risk.check(code)
+    needs_user_approval = (risk_reasons and RISKY_CODE_NEEDS_APPROVAL) or not MODEL_AUTO_RUN
+    if needs_user_approval and not await services.approve_run(code, risk_reasons):
         return DECLINED, f"```python\n{code}\n```\n\nSkipped."
     try:
         result = await services.notebook.run_for_model(services.project_id, code)
-    except WorkspaceError as e:
-        raise ToolException(e.message) from e
+    except WorkspaceError as error:
+        raise ToolException(error.message) from error
     _remember_looks(code, services)
     return result, f"```python\n{code}\n```\n\n```\n{result}\n```"

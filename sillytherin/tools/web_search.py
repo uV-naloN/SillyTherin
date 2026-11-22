@@ -25,8 +25,8 @@ def search(query: str) -> list[dict]:
             query, max_results=SEARCH_MAX_RESULTS, backend="auto"
         )
     return [
-        {"title": r.get("title"), "url": r.get("href"), "snippet": r.get("body")}
-        for r in results
+        {"title": hit.get("title"), "url": hit.get("href"), "snippet": hit.get("body")}
+        for hit in results
     ]
 
 
@@ -50,5 +50,5 @@ async def web_search(query: str, runtime: ToolRuntime) -> tuple[str, str]:
     results to get the details.
     """
     results = await asyncio.to_thread(search, query)
-    shown = "\n".join(f"- [{r['title']}]({r['url']})" for r in results)
+    shown = "\n".join(f"- [{result['title']}]({result['url']})" for result in results)
     return json.dumps(results, ensure_ascii=False), shown or "No results."

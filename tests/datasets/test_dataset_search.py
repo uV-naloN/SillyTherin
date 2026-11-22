@@ -86,12 +86,12 @@ def test_datacite_item_survives_missing_fields():
 def test_merge_puts_best_keyword_match_first_and_drops_duplicates():
     a = [item("weather"), item("credit card fraud")]
     b = [item("Credit Card Fraud"), item("bank data", "fraud on a credit line")]
-    got = ds.merge([a, b], "credit card fraud", limit=10)
+    got = ds.rank_across_catalogs([a, b], "credit card fraud", limit=10)
     assert [r["name"] for r in got] == ["credit card fraud", "bank data", "weather"]
 
 
 def test_merge_respects_limit_and_hides_empty_fields():
-    got = ds.merge([[item("a", license=None), item("b")]], "a", limit=1)
+    got = ds.rank_across_catalogs([[item("a", license=None), item("b")]], "a", limit=1)
     assert got == [{"source": "X", "name": "a", "url": "https://example.com/a"}]
 
 

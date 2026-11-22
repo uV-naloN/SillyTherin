@@ -95,27 +95,27 @@ async def ask_retry(name: str, reason: str | None) -> bool:
 
 
 def undescribed_not_looked_at(
-    svc: UndescribedDatasets, project_id: str, session_id: str, ref: str, looked: "ChatLooks"
+    datasets: UndescribedDatasets, project_id: str, chat_id: str, ref: str, looked: "ChatLooks"
 ) -> list[dict]:
     """Ready rows with describe "write" the assistant hasn't looked at in this chat, so no download yet; none for a pasted link."""
     try:
         if links.parse_dataset_ref(ref)[0] == links.LINK_SOURCE:
             return []  # the user pasted it: their explicit wish
-        views = svc.needs_description(project_id)
+        views = datasets.needs_description(project_id)
     except WorkspaceError:
         return []  # the request reports a bad ref or project
-    return [v for v in views if not looked.has_looked(session_id, project_id, v["dataset_id"])]
+    return [view for view in views if not looked.has_looked(chat_id, project_id, view["dataset_id"])]
 
 
-def broken_copy(svc: ProjectDatasetLookup, project_id: str, ref: str) -> dict | None:
+def broken_copy(datasets: ProjectDatasetLookup, project_id: str, ref: str) -> dict | None:
     """The project's own copy of this catalog entry when it is failed or missing; None otherwise (links too)."""
     try:
         source, source_id = links.parse_dataset_ref(ref)
     except WorkspaceError:
         return None  # the request reports the bad ref
     prefix = REF_PREFIXES.get(source)
-    own = svc.project_refs(project_id).get(f"{prefix}:{source_id}") if prefix else None
-    return own if own and own["status"] in BROKEN_STATUSES else None
+    project_copy = datasets.project_refs(project_id).get(f"{prefix}:{source_id}") if prefix else None
+    return project_copy if project_copy and project_copy["status"] in BROKEN_STATUSES else None
 
 
 def download_size_text(download_bytes: int) -> str:
@@ -123,9 +123,31 @@ def download_size_text(download_bytes: int) -> str:
     return human_size(download_bytes) if download_bytes else "size unknown"
 
 
-def error_json(err: WorkspaceError) -> str:
+def error_json(error: WorkspaceError) -> str:
     """A WorkspaceError as JSON for the model, with its structured details."""
-    return json.dumps({"error": err.code, "message": err.message, **(err.details or {})})
+    return json.dumps({"error": error.code, "message": error.message, **(error.details or {})})
+
+
+def look_first_error(not_looked_at: list[dict]) -> WorkspaceError:
+    """Undescribed data must be looked at before a new download."""
+    return WorkspaceError(
+        ErrorCode.LOOK_FIRST,
+        look_first_message([view["name"] for view in not_looked_at]),
+        {"datasets": [view["dataset_id"] for view in not_looked_at]},
+    )
+
+
+def started_line(started: dict) -> str:
+    """The step text for a download that was accepted: ready, queued or downloading."""
+    folder = f"`{started['path']}/`"
+    if started["from_pool"] and started["already_downloaded"]:
+        return f"Ready from the shared pool, nothing downloaded: {folder}"
+    if started["already_downloaded"]:
+        return f"Already downloaded: {folder}"
+    size = download_size_text(started["download_bytes"])
+    if started["status"] == "queued":
+        return f"Queued ({size}), {started['position_in_queue']} ahead → {folder}"
+    return f"Downloading in the background ({size}) → {folder}"
 
 
 class DatasetDownloadArguments(ToolArguments):
@@ -159,12 +181,7 @@ async def dataset_download(
     datasets, project_id, chat_id = services.datasets, services.project_id, services.chat_id
     not_looked_at = undescribed_not_looked_at(datasets, project_id, chat_id, ref, services.looked)
     if not_looked_at:
-        error = WorkspaceError(
-            ErrorCode.LOOK_FIRST,
-            look_first_message([v["name"] for v in not_looked_at]),
-            {"datasets": [v["dataset_id"] for v in not_looked_at]},
-        )
-        raise ToolException(error_json(error))
+        raise ToolException(error_json(look_first_error(not_looked_at)))
     broken = broken_copy(datasets, project_id, ref)
     if broken and not await services.confirm_retry(broken["name"], broken.get("error")):
         declined = WorkspaceError(
@@ -178,16 +195,8 @@ async def dataset_download(
             project_id, chat_id, ref, files, update, approve=services.approve_download,
             pasted_links=services.pasted_links,
         )
-    except WorkspaceError as e:
-        if e.code == ErrorCode.DECLINED:
-            return error_json(e), "Skipped: the user chose not to download it."
-        raise ToolException(error_json(e)) from e
-    if started["from_pool"] and started["already_downloaded"]:
-        shown = f"Ready from the shared pool, nothing downloaded: `{started['path']}/`"
-    elif started["already_downloaded"]:
-        shown = f"Already downloaded: `{started['path']}/`"
-    elif started["status"] == "queued":
-        shown = f"Queued ({download_size_text(started['download_bytes'])}), {started['position_in_queue']} ahead → `{started['path']}/`"
-    else:
-        shown = f"Downloading in the background ({download_size_text(started['download_bytes'])}) → `{started['path']}/`"
-    return json.dumps(started), shown
+    except WorkspaceError as error:
+        if error.code == ErrorCode.DECLINED:
+            return error_json(error), "Skipped: the user chose not to download it."
+        raise ToolException(error_json(error)) from error
+    return json.dumps(started), started_line(started)
