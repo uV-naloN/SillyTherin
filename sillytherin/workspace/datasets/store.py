@@ -41,7 +41,7 @@ PATH_MAX = 1024
 KERNEL_ROOT = "/work/datasets"  # how the kernel sees files/datasets/
 DRIVE_RE = re.compile(r"^[A-Za-z]:")
 
-Source = Literal["huggingface", "zenodo", "link"]  # link: a file link the user pasted
+Source = Literal["huggingface", "zenodo", "link", "kaggle"]
 StoredStatus = Literal["queued", "downloading", "ready", "failed"]
 ORIGIN_DOWNLOADED = "downloaded"  # project_datasets.origin of a catalog download
 DatasetStatus = Literal["queued", "downloading", "ready", "failed", "missing"]  # missing is computed on read

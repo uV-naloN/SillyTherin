@@ -3,7 +3,23 @@
 import { describe, expect, it } from "vitest";
 import type { ServerEvent, SessionReady } from "@/chat/events";
 import { RESTART_NOTICE, applyEvent, emptyChat, type AnswerView, type ChatState } from "@/chat/store";
-import { props } from "@/panel/test/fixtures";
+import { dataset, props } from "@/panel/test/fixtures";
+
+describe("Kaggle project snapshots", () => {
+  it("test_old_project_push_does_not_replace_current_picker_state", () => {
+    const initial = applyEvent(emptyChat(), ready());
+    const second = props({ project: { id: "p2", name: "P2" } });
+    const switched = applyEvent(initial, { type: "panel.project_changed", props: second });
+    expect(applyEvent(switched, { type: "panel.props", props: props() })).toBe(switched);
+  });
+
+  it("test_late_progress_cannot_regress_ready_row", () => {
+    const card = dataset({ source: "kaggle", kaggle_ref: "ana/sample" });
+    const initial = applyEvent(emptyChat(), ready({ panel: props({ datasets: [card], datasets_rev: 20 }) }));
+    const older = props({ datasets: [{ ...card, status: "downloading" }], datasets_rev: 19 });
+    expect(applyEvent(initial, { type: "panel.props", props: older }).panel?.datasets).toEqual([card]);
+  });
+});
 
 const ready = (overrides: Partial<SessionReady> = {}): SessionReady => ({
   type: "session.ready",

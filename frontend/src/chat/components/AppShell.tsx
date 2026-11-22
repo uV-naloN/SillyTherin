@@ -5,9 +5,11 @@ import { AppHeader } from "@/chat/components/AppHeader";
 import { Composer } from "@/chat/components/Composer";
 import { ConnectionBar } from "@/chat/components/ConnectionBar";
 import { KaggleDatasetsWindow } from "@/chat/components/KaggleDatasetsWindow";
+import { useKaggleDownloads } from "@/chat/components/useKaggleDownloads";
 import { KaggleSignInDialog } from "@/chat/components/KaggleSignInDialog";
 import { MessageList } from "@/chat/components/MessageList";
 import { PanelDivider } from "@/chat/components/PanelDivider";
+import { PromptCard } from "@/chat/components/PromptCard";
 import { KAGGLE_SWITCH_ID, SettingsDialog } from "@/chat/components/SettingsDialog";
 import { StartScreen } from "@/chat/components/StartScreen";
 import { Toasts } from "@/chat/components/Toasts";
@@ -15,7 +17,7 @@ import { useConnection } from "@/chat/connectionContext";
 import { clampChatWidth, isNotebookOpen, isToggleShortcut, readChatWidth, rememberChatWidth, rememberNotebookOpen } from "@/chat/lib/layout";
 import { applyTheme, readTheme, rememberTheme, type Theme } from "@/chat/lib/theme";
 import { slashCommandsFor } from "@/chat/lib/slashCommands";
-import { useChat } from "@/chat/store";
+import { useChat, type PromptView } from "@/chat/store";
 import { NotebookPanel } from "@/panel/NotebookPanel";
 
 const prefersDark = () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -28,6 +30,9 @@ export function AppShell(): JSX.Element {
   const status = useChat((s) => s.status);
   const settings = useChat((s) => s.settings);
   const kaggle = useChat((s) => s.kaggle);
+  const kagglePrompts = useChat((s) => s.kagglePrompts);
+  const kaggleGeneration = useChat((s) => s.kaggleGeneration);
+  const kaggleDownloads = useKaggleDownloads({ callAction, panel, generation: kaggleGeneration, isOnline: status === "open" });
   const picked = useChat((s) => s.picked);
   const [isOpen, setIsOpen] = useState(() => isNotebookOpen(window.localStorage));
   const [theme, setTheme] = useState<Theme>(() => readTheme(window.localStorage, prefersDark()));
@@ -116,6 +121,10 @@ export function AppShell(): JSX.Element {
       {isKaggleWindowOpen && (
         <KaggleDatasetsWindow
           callAction={callAction}
+          downloads={kaggleDownloads}
+          isPaused={kagglePrompts.length > 0}
+          connectionGeneration={kaggleGeneration}
+          isOnline={status === "open"}
           hasSignInFinished={hasKaggleSignInFinished}
           onConnect={() => changeSetting(KAGGLE_SWITCH_ID, true)}
           onClose={() => setIsKaggleWindowOpen(false)}
@@ -133,6 +142,7 @@ export function AppShell(): JSX.Element {
           ].join(" ")}
         >
           {hasStarted ? <MessageList /> : <StartScreen theme={theme} />}
+          {kagglePrompts.length > 0 && <KaggleChatPrompts prompts={kagglePrompts} />}
           <Composer isStreaming={isStreaming} onSend={sendMessage} onStop={() => send({ type: "chat.stop" })} commands={commands} />
         </main>
         {isOpen && (
@@ -170,5 +180,23 @@ export function AppShell(): JSX.Element {
       />
       <Toasts />
     </div>
+  );
+}
+
+function KaggleChatPrompts({ prompts }: { prompts: PromptView[] }): JSX.Element {
+  const { send } = useConnection();
+  const region = useRef<HTMLElement>(null);
+  const nextOpen = prompts.find((prompt) => prompt.outcome === "open")?.askId;
+  useEffect(() => {
+    if (!nextOpen) return;
+    const frame = window.requestAnimationFrame(() => region.current?.querySelector<HTMLButtonElement>("button:not([disabled])")?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [nextOpen]);
+  return (
+    <section ref={region} aria-label="Kaggle download approvals" className="max-h-[40vh] space-y-2 overflow-y-auto px-4 py-2">
+      {prompts.map((prompt) => (
+        <PromptCard key={prompt.askId} prompt={prompt} onAnswer={(askId, choice) => send({ type: "ask.answer", ask_id: askId, choice })} />
+      ))}
+    </section>
   );
 }

@@ -25,9 +25,279 @@ from sillytherin.workspace.datasets.pool import DatasetPool, PoolEntry, PoolFile
 from sillytherin.workspace.datasets.service import DatasetService, DatasetsSettings
 from sillytherin.workspace.datasets.sources import DatasetPlan, PlannedFile
 from sillytherin.workspace.datasets.views import VIEW_FAILED_MESSAGE, VIEWS_DIR
+from sillytherin.workspace.kaggle.dataset_downloads import (
+    KaggleApprovalOffer,
+    KaggleFileDownload,
+    KaggleImportSelection,
+)
 from sillytherin.workspace.service import NotebookService
 from tests.conftest import FakeChats, FakeFreeDisk, FakeKernels, fake_lookup
 from tests.tool_calls import call_tool, fake_services
+
+
+class KaggleServiceFake:
+    def __init__(self) -> None:
+        self.version = "2"
+        self.files = {"sample.csv": b"a,b"}
+        self.preflight_error: str | None = None
+        self.failed_file: str | None = None
+        self.blocked_file: str | None = None
+        self.generation = 1
+        self.transfers: list[KaggleFileDownload] = []
+        self.started = asyncio.Event()
+        self.release = asyncio.Event()
+
+    def require_generation(self, generation: int) -> None:
+        if generation != self.generation:
+            raise WorkspaceError(ErrorCode.KAGGLE_SIGNIN, "Reconnect.")
+
+    async def resolve_current(self, selection: KaggleImportSelection, *, max_files: int) -> DatasetPlan:
+        if self.preflight_error is not None:
+            raise WorkspaceError(ErrorCode.DOWNLOAD_FAILED, self.preflight_error)
+        if len(self.files) > max_files:
+            raise WorkspaceError(ErrorCode.TOO_MANY_FILES, "Too many files.")
+        files = [PlannedFile(name, len(body), None, "") for name, body in self.files.items()]
+        return DatasetPlan("kaggle", selection.ref, "Sample", self.version, "", "CC0", files)
+
+    async def stream_file(self, download: KaggleFileDownload, destination: Path, *, on_bytes, stall_timeout_seconds: float) -> None:
+        self.transfers.append(download)
+        if download.path == self.blocked_file:
+            self.started.set()
+            await self.release.wait()
+        if download.path == self.failed_file:
+            raise WorkspaceError(ErrorCode.DOWNLOAD_FAILED, "Kaggle is unavailable.")
+        body = self.files[download.path]
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(body)
+        await on_bytes(len(body))
+
+
+async def import_kaggle(svc: DatasetService, provider: KaggleServiceFake, project: str = "p1", *, ref: str = "ana/sample", approve=None) -> dict:
+    async def must_not_ask(_offer: KaggleApprovalOffer) -> bool:
+        pytest.fail("This selection should not need approval.")
+
+    return await svc.request_kaggle_import(
+        KaggleImportSelection(project, 0, provider.generation, ref), provider,
+        approve=approve or must_not_ask, is_selection_current=lambda: True,
+    )
+
+
+def only_kaggle_card(svc: DatasetService, project: str = "p1") -> dict:
+    row, = svc.panel_state(project)[0]
+    return row
+
+
+def test_picker_download_populates_card_and_project_paths(root: Path) -> None:
+    async def scenario() -> None:
+        env = Env(root)
+        svc = await env.start()
+        provider = KaggleServiceFake()
+        provider.blocked_file = "sample.csv"
+        result = await import_kaggle(svc, provider)
+        await asyncio.wait_for(provider.started.wait(), 2)
+        assert only_kaggle_card(svc)["status"] == "downloading"
+        provider.release.set()
+        await svc.wait_idle()
+        row = only_kaggle_card(svc)
+        assert row["status"] == "ready" and row["source"] == "kaggle" and row["license"] == "CC0"
+        assert row["id"] == result["dataset_id"] and row["size_bytes"] == 3
+        assert row["path"] == f"/work/datasets/{row['id']}"
+        assert svc.list_for_model("p1")[0]["files"] == [row["path"] + "/sample.csv"]
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("second_project,version_change,damage,expected_transfers", [
+    ("p1", False, False, 1),
+    ("p2", False, False, 1),
+    ("p2", True, False, 2),
+    ("p2", False, True, 2),
+], ids=["test_duplicate_start_does_not_create_card_or_job", "test_same_current_version_links_without_file_download",
+        "test_newer_current_version_never_reuses_old_bytes", "test_damaged_pool_file_is_not_linked_as_ready"])
+def test_kaggle_pool_reuse(root: Path, second_project: str, version_change: bool, damage: bool, expected_transfers: int) -> None:
+    async def scenario() -> None:
+        svc = await Env(root).start()
+        provider = KaggleServiceFake()
+        first = await import_kaggle(svc, provider)
+        await svc.wait_idle()
+        first_entry = svc.pool.find_entries("kaggle", "ana/sample")[0]
+        if damage:
+            svc.pool.pool_file_path(first_entry.id, "sample.csv").write_bytes(b"damaged")
+        if version_change:
+            provider.version = "3"
+            provider.files = {"sample.csv": b"new"}
+        second = await import_kaggle(svc, provider, second_project)
+        if expected_transfers == 1:
+            assert only_kaggle_card(svc, second_project)["status"] == "ready"
+        await svc.wait_idle()
+        assert only_kaggle_card(svc, second_project)["status"] == "ready"
+        assert len(provider.transfers) == expected_transfers
+        if second_project == "p1":
+            assert first == second
+        if version_change:
+            assert svc.pool.pool_file_path(first_entry.id, "sample.csv").read_bytes() == b"a,b"
+    asyncio.run(scenario())
+
+
+def test_distinct_pool_identities_do_not_collide() -> None:
+    assert DatasetPool.make_kaggle_entry_id("ana/a_b", "12345671") != DatasetPool.make_kaggle_entry_id("ana/a-b", "12345671")
+    assert DatasetPool.make_kaggle_entry_id("ana/a_b", "12345671") != DatasetPool.make_kaggle_entry_id("ana/a_b", "12345672")
+
+
+def test_second_project_can_join_same_version_job(root: Path) -> None:
+    async def scenario() -> None:
+        svc = await Env(root).start()
+        provider = KaggleServiceFake()
+        provider.blocked_file = "sample.csv"
+        await import_kaggle(svc, provider)
+        await asyncio.wait_for(provider.started.wait(), 2)
+        await import_kaggle(svc, provider, "p2")
+        assert len(svc.active_jobs()) == 1 and only_kaggle_card(svc, "p2")["status"] == "downloading"
+        provider.release.set()
+        await svc.wait_idle()
+        assert [only_kaggle_card(svc, project)["status"] for project in ("p1", "p2")] == ["ready", "ready"]
+        assert len(provider.transfers) == 1
+    asyncio.run(scenario())
+
+
+def test_failed_import_retries_to_ready_on_same_card(root: Path) -> None:
+    async def scenario() -> None:
+        svc = await Env(root).start()
+        provider = KaggleServiceFake()
+        provider.failed_file = "sample.csv"
+        first = await import_kaggle(svc, provider)
+        await svc.wait_idle()
+        assert only_kaggle_card(svc)["status"] == "failed"
+        assert not any((await svc.sync_view("p1")).iterdir())
+        provider.failed_file = None
+        assert await import_kaggle(svc, provider) == first
+        await svc.wait_idle()
+        assert only_kaggle_card(svc)["status"] == "ready"
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("reason", ["Kaggle is unavailable.", "Kaggle did not provide a valid file size."],
+                         ids=["test_metadata_outage_writes_only_failed_card", "test_unknown_file_size_cannot_bypass_approval"])
+def test_invalid_kaggle_preflight_only_writes_a_failed_card(root: Path, reason: str) -> None:
+    async def scenario() -> None:
+        svc = await Env(root).start()
+        provider = KaggleServiceFake()
+        provider.preflight_error = reason
+        with pytest.raises(WorkspaceError):
+            await import_kaggle(svc, provider)
+        row = only_kaggle_card(svc)
+        assert row["status"] == "failed" and row["error"] == reason and row["files"] == []
+        assert not svc.active_jobs() and not provider.transfers
+    asyncio.run(scenario())
+
+
+def test_restart_marks_interrupted_import_failed(root: Path) -> None:
+    async def scenario() -> None:
+        svc = await Env(root, parallel_downloads=0).start()
+        await import_kaggle(svc, KaggleServiceFake())
+        assert only_kaggle_card(svc)["status"] == "queued"
+        await svc.close()
+        restarted = await Env(root).start()
+        assert only_kaggle_card(restarted)["status"] == "failed"
+        assert not restarted.pool.partial_dir().exists()
+    asyncio.run(scenario())
+
+
+def test_explicit_cancel_does_not_publish_a_partial_import(root: Path) -> None:
+    async def scenario() -> None:
+        svc = await Env(root).start()
+        provider = KaggleServiceFake()
+        provider.files["second.csv"] = b"x"
+        provider.blocked_file = "second.csv"
+        result = await import_kaggle(svc, provider)
+        await asyncio.wait_for(provider.started.wait(), 2)
+        assert not any((await svc.sync_view("p1")).iterdir())
+        await svc.cancel("p1", result["dataset_id"])
+        assert svc.panel_state("p1")[0] == [] and not any((await svc.sync_view("p1")).iterdir())
+    asyncio.run(scenario())
+
+
+def test_exact_threshold_needs_no_prompt(root: Path) -> None:
+    async def scenario() -> None:
+        svc = await Env(root, ask_above_mb=1, parallel_downloads=0).start()
+        provider = KaggleServiceFake()
+        provider.files = {"sample.csv": b"0" * MB}
+        assert (await import_kaggle(svc, provider))["state"] == "accepted"
+        await svc.close()
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("changed", ["version", "size"],
+                         ids=["test_version_change_invalidates_offer", "test_increased_byte_count_invalidates_offer"])
+def test_changed_kaggle_offer_cannot_write(root: Path, changed: str) -> None:
+    async def scenario() -> None:
+        svc = await Env(root, ask_above_mb=0).start()
+        provider = KaggleServiceFake()
+
+        async def approve(offer: KaggleApprovalOffer) -> bool:
+            assert offer.download_bytes == 3 and svc.panel_state("p1")[0] == []
+            if changed == "version":
+                provider.version = "3"
+            else:
+                provider.files["sample.csv"] += b"c"
+            return True
+
+        with pytest.raises(WorkspaceError) as denied:
+            await import_kaggle(svc, provider, approve=approve)
+        assert denied.value.code == "STALE_APPROVAL"
+        assert not svc.panel_state("p1")[0] and not svc.pool.entries() and not provider.transfers
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("limit", [ErrorCode.NO_SPACE, ErrorCode.TOO_MANY_FILES, ErrorCode.NO_FILES],
+                         ids=["test_disk_reservation_rejects_without_queueing", "test_manifest_file_limit_rejects_before_writes",
+                              "test_empty_manifest_creates_no_job_or_card"])
+def test_kaggle_preflight_limit_does_not_write(root: Path, limit: str) -> None:
+    async def scenario() -> None:
+        svc = await Env(root, free=2 if limit == ErrorCode.NO_SPACE else GB,
+                        max_files=0 if limit == ErrorCode.TOO_MANY_FILES else 10).start()
+        provider = KaggleServiceFake()
+        if limit == ErrorCode.NO_FILES:
+            provider.files.clear()
+        with pytest.raises(WorkspaceError) as denied:
+            await import_kaggle(svc, provider)
+        assert denied.value.code == limit
+        assert not svc.panel_state("p1")[0] and not svc.pool.entries() and not provider.transfers
+    asyncio.run(scenario())
+
+
+def test_large_inflight_pool_job_requires_consent_to_join(root: Path) -> None:
+    async def scenario() -> None:
+        svc = await Env(root, ask_above_mb=0).start()
+        provider = KaggleServiceFake()
+        provider.blocked_file = "sample.csv"
+
+        async def approve(offer: KaggleApprovalOffer) -> bool:
+            assert offer.download_bytes == 3 and not svc.panel_state(offer.selection.project_id)[0]
+            return True
+
+        await import_kaggle(svc, provider, approve=approve)
+        await asyncio.wait_for(provider.started.wait(), 2)
+        await import_kaggle(svc, provider, "p2", approve=approve)
+        assert len(svc.active_jobs()) == 1
+        provider.release.set()
+        await svc.wait_idle()
+        assert len(provider.transfers) == 1 and only_kaggle_card(svc, "p2")["status"] == "ready"
+    asyncio.run(scenario())
+
+
+def test_second_row_queues_when_slots_are_full(root: Path) -> None:
+    async def scenario() -> None:
+        svc = await Env(root, parallel_downloads=1).start()
+        provider = KaggleServiceFake()
+        provider.blocked_file = "sample.csv"
+        await import_kaggle(svc, provider)
+        await asyncio.wait_for(provider.started.wait(), 2)
+        await import_kaggle(svc, provider, ref="ana/second")
+        assert sorted(row["status"] for row in svc.panel_state("p1")[0]) == ["downloading", "queued"]
+        provider.release.set()
+        await svc.wait_idle()
+        assert all(row["status"] == "ready" for row in svc.panel_state("p1")[0])
+    asyncio.run(scenario())
 
 GB = 1_000_000_000
 MB = 1_000_000

@@ -1,5 +1,5 @@
 // The "My Kaggle datasets" window opened by /kaggle
-import { act, fireEvent, screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell } from "@/chat/components/AppShell";
 import {
@@ -19,6 +19,106 @@ import {
 } from "@/chat/lib/kaggleDatasets";
 import { useChat } from "@/chat/store";
 import { fakeSender, renderWithChat, startChat } from "@/chat/test/renderChat";
+import { dataset as datasetCard, props as panelProps } from "@/panel/test/fixtures";
+import type { DatasetProps } from "@/panel/types";
+
+describe("Kaggle import", () => {
+  it("test_reopened_picker_recognizes_existing_ready_card", async () => {
+    setCards(card(1, "ready"));
+    const shell = openShell();
+    chooseKaggle();
+    await shell.answerNewest(listed([dataset(1)]));
+    expect(within(shownRows()[0]).getByText("In this project")).toBeTruthy();
+    closeWindow();
+    chooseKaggle();
+    await shell.answerNewest(listed([dataset(1)]));
+    expect(within(shownRows()[0]).queryByRole("button", { name: "Download" })).toBeNull();
+    expect(shell.sender.callAction.mock.calls.filter(([action]) => action.name === "kg_download_dataset")).toEqual([]);
+  });
+
+  it("test_missing_import_is_not_shown_as_ready", async () => {
+    setCards(card(1, "missing"));
+    const shell = openShell();
+    chooseKaggle();
+    await shell.answerNewest(listed([dataset(1)]));
+    expect(within(shownRows()[0]).getByRole("button", { name: "Download" })).toBeTruthy();
+    expect(within(shownRows()[0]).queryByText("In this project")).toBeNull();
+  });
+
+  it("test_large_import_waits_for_download_choice", async () => {
+    const shell = openShell();
+    chooseKaggle();
+    await shell.answerNewest(listed([dataset(1)]));
+    const search = within(windowEl() as HTMLElement).getByRole("searchbox");
+    fireEvent.change(search, { target: { value: "Dataset 1" } });
+    fireEvent.click(within(shownRows()[0]).getByRole("button", { name: "Download" }));
+    expect(shell.sender.callAction).toHaveBeenCalledWith({
+      name: "kg_download_dataset", payload: { project_id: "p1", ref: "ana/dataset-1" },
+    });
+    showOffer("one");
+    expect(windowEl()).toBeNull();
+    const chat = within(screen.getByRole("region", { name: "Kaggle download approvals" }));
+    const download = chat.getByRole("button", { name: "Download" });
+    await waitFor(() => expect(document.activeElement).toBe(download));
+    expect(chat.getByText(/250 MB/)).toBeTruthy();
+    expect(shell.sender.send).not.toHaveBeenCalled();
+    fireEvent.click(download);
+    expect(shell.sender.send).toHaveBeenCalledWith({ type: "ask.answer", ask_id: "one", choice: "download" });
+    settleOffer("one");
+    expect((within(windowEl() as HTMLElement).getByRole("searchbox") as HTMLInputElement).value).toBe("Dataset 1");
+  });
+
+  it("test_large_import_prompt_is_not_attached_to_streaming_answer", () => {
+    openShell();
+    act(() => useChat.getState().apply({ type: "reply.started", message_id: "streaming" }));
+    showOffer("one");
+    expect(screen.getByRole("region", { name: "Kaggle download approvals" })).toBeTruthy();
+    expect(useChat.getState().prompts).toEqual([]);
+    expect(useChat.getState().kagglePrompts[0].answerMessageId).toBeNull();
+  });
+
+  it("test_two_chat_prompts_restore_picker_after_both_resolve", async () => {
+    const shell = openShell();
+    chooseKaggle();
+    await shell.answerNewest(listed([dataset(1), dataset(2)]));
+    showOffer("one");
+    showOffer("two");
+    expect(screen.getAllByRole("button", { name: "Skip" })).toHaveLength(2);
+    settleOffer("one");
+    expect(windowEl()).toBeNull();
+    settleOffer("two");
+    expect(shownRows()).toHaveLength(2);
+  });
+
+  it("test_two_rows_report_independent_download_progress", async () => {
+    const shell = openShell();
+    chooseKaggle();
+    await shell.answerNewest(listed([dataset(1), dataset(2)]));
+    setCards(card(1, "downloading"), card(2, "queued"));
+    expect(screen.getAllByText("Downloading…")).toHaveLength(2);
+    setCards(card(1, "ready"), card(2, "downloading"));
+    expect(within(shownRows()[0]).getByText("In this project")).toBeTruthy();
+    expect(within(shownRows()[1]).getByText("Downloading…")).toBeTruthy();
+  });
+
+  it("test_failure_of_one_row_does_not_reset_another", async () => {
+    const shell = openShell();
+    chooseKaggle();
+    await shell.answerNewest(listed([dataset(1), dataset(2)]));
+    setCards(card(1, "failed", "Kaggle is unavailable."), card(2, "downloading"));
+    expect(within(shownRows()[0]).getByRole("alert").textContent).toBe("Kaggle is unavailable.");
+    expect(within(shownRows()[0]).getByRole("button", { name: "Download" })).toBeTruthy();
+    expect(within(shownRows()[1]).getByText("Downloading…")).toBeTruthy();
+  });
+
+  it("test_provider_title_is_plain_text_in_chat_prompt", () => {
+    openShell();
+    showOffer("one", "Download ` [sample](https://elsewhere.test) `?");
+    const chat = within(screen.getByRole("region", { name: "Kaggle download approvals" }));
+    expect(chat.queryByRole("link")).toBeNull();
+    expect(chat.getByText("[sample](https://elsewhere.test)")).toBeTruthy();
+  });
+});
 
 const dataset = (number: number, title = `Dataset ${number}`): OwnedKaggleDataset => ({
   title,
@@ -34,6 +134,25 @@ const manyDatasets = (count: number) => Array.from({ length: count }, (_, index)
 const box = () => screen.getByRole("textbox", { name: "Message SillyTherin", hidden: true });
 const windowEl = () => screen.queryByRole("dialog", { name: WINDOW_TITLE });
 const shownRows = () => within(windowEl() as HTMLElement).queryAllByRole("listitem");
+const card = (number: number, status: DatasetProps["status"], error: string | null = null) =>
+  datasetCard({ id: `kg-${number}`, kaggle_ref: dataset(number).ref, source: "kaggle", status, error });
+
+function setCards(...datasets: DatasetProps[]) {
+  const datasetsRev = (useChat.getState().panel?.datasets_rev ?? 0) + 1;
+  act(() => useChat.getState().apply({ type: "panel.props", props: panelProps({ datasets, datasets_rev: datasetsRev }) }));
+}
+
+function showOffer(id: string, markdown = "Download into Project one? 250 MB will be downloaded.") {
+  act(() => useChat.getState().apply({
+    type: "ask.opened", ask_id: id, purpose: "kaggle_download", request_id: `req-${id}`, markdown,
+    choices: [{ id: "download", label: "Download" }, { id: "skip", label: "Skip" }],
+  }));
+}
+
+function settleOffer(id: string) {
+  act(() => useChat.getState().apply({ type: "ask.closed", ask_id: id, choice: "skip" }));
+  act(() => useChat.getState().apply({ type: "panel.result", request_id: `req-${id}`, result: { state: "skipped" } }));
+}
 
 /** AppShell with a fake socket whose list actions wait until the test answers them */
 function openShell() {
@@ -84,8 +203,8 @@ describe("The window's states", () => {
     const view = within(windowEl() as HTMLElement);
     expect(view.getByText("Connected as ana")).toBeTruthy();
     expect(shownRows().map((row) => row.textContent)).toEqual([
-      "Vietnam air quality, dailyana/dataset-148 MBCC BY 4.012 Nov 2026",
-      "Dataset 2ana/dataset-248 MBCC BY 4.012 Nov 2026",
+      "Vietnam air quality, dailyana/dataset-148 MBCC BY 4.012 Nov 2026Download",
+      "Dataset 2ana/dataset-248 MBCC BY 4.012 Nov 2026Download",
     ]);
     expect(view.getByText(PRIVACY_NOTE)).toBeTruthy();
     expect(listCalls(shell.sender.callAction)).toHaveLength(1);

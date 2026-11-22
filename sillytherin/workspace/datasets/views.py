@@ -40,12 +40,22 @@ class ViewFile:
     path: str  # file inside the entry (checked by safe_relpath); the same path the project's link uses
 
 
+def visible_kaggle_files(dataset: ProjectDataset, entry: PoolEntry) -> set[ViewFile]:
+    paths = set(dataset.files)
+    if dataset.status != "ready" or not paths <= entry.ready_paths():
+        return set()
+    return {ViewFile(entry.id, path) for path in paths}
+
+
 def visible_pool_files(datasets: Iterable[ProjectDataset], entries: dict[str, PoolEntry]) -> set[ViewFile]:
     """The pool files a project may read: its download rows' files that are ready in the pool."""
     visible: set[ViewFile] = set()
     for dataset in datasets:
         entry = entries.get(dataset.pool_entry)
         if entry is None:
+            continue
+        if entry.source == "kaggle":
+            visible.update(visible_kaggle_files(dataset, entry))
             continue
         ready_listed_paths = set(dataset.files) & entry.ready_paths()
         visible.update(ViewFile(entry.id, path) for path in ready_listed_paths)

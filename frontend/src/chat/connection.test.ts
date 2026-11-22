@@ -4,6 +4,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatConnection, RECONNECT_FIRST_DELAY_MS, type ConnectionStatus } from "@/chat/connection";
 import type { ServerEvent } from "@/chat/events";
 
+it("test_socket_close_discards_unanswered_chat_prompt", async () => {
+  const connection = connect();
+  sockets[0].open();
+  const pending = connection.callAction({ name: "kg_download_dataset", payload: { project_id: "p1", ref: "ana/sample" } });
+  const request = sockets[0].sent[0].request_id;
+  sockets[0].receive({
+    type: "ask.opened", ask_id: "yes", purpose: "kaggle_download", request_id: request,
+    markdown: "250 MB", choices: [{ id: "download", label: "Download" }],
+  });
+  sockets[0].drop();
+  sockets[0].receive({ type: "panel.result", request_id: request, result: { state: "accepted" } });
+  await expect(pending).resolves.toMatchObject({ error: { code: "OFFLINE" } });
+  expect(events.map((event) => event.type)).toEqual(["ask.opened"]);
+});
+
 class FakeSocket {
   readyState = 0;
   sent: Record<string, unknown>[] = [];

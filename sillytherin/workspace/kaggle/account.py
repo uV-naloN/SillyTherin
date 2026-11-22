@@ -96,6 +96,8 @@ class KaggleAccountService:
         self._cached: CachedAccessToken | None = None
         self._notice: str | None = None
         self._refresh_lock = asyncio.Lock()
+        self._connection_generation = 0
+        self._disconnecting = False
 
     def status(self) -> KaggleAccountStatus:
         if self._pending is not None:
@@ -107,7 +109,7 @@ class KaggleAccountService:
 
     async def start_connect(self) -> str | None:
         """Start a sign-in and return Kaggle's approval page URL; None when already connected."""
-        if self.token_file.load() is not None:
+        if self._disconnecting or self.token_file.load() is not None:
             return None
         await self.cancel_connect()
         self._notice = None
@@ -144,28 +146,50 @@ class KaggleAccountService:
                 await pending.finished
 
     async def disconnect(self) -> None:
+        if self._disconnecting:
+            return
         if self._pending is not None:
             await self.cancel_connect()
             return
         saved = self.token_file.load()
         self._notice = None
-        if saved is not None:
-            self._notice = await self._revoke_on_kaggle(saved)
-        self.token_file.delete()
-        self._cached = None
+        self._connection_generation += 1
+        self._disconnecting = True
+        try:
+            if saved is not None:
+                self._notice = await self._revoke_on_kaggle(saved)
+        finally:
+            self.token_file.delete()
+            self._cached = None
+            self._disconnecting = False
         await self.on_change(self.status())
 
-    async def access_token(self) -> str | None:
-        saved = self.token_file.load()
-        if saved is None:
-            self._cached = None
+    @property
+    def connection_generation(self) -> int:
+        return self._connection_generation
+
+    async def access_token_for_generation(self, generation: int) -> str | None:
+        if not self._can_use_generation(generation):
             return None
         if self._cached_is_fresh():
             return self._cached.token
         async with self._refresh_lock:
+            if not self._can_use_generation(generation):
+                return None
             if self._cached_is_fresh():
                 return self._cached.token
-            return await self._refresh(saved)
+            saved = self.token_file.load()
+            return await self._refresh(saved, generation) if saved is not None else None
+
+    def _can_use_generation(self, generation: int) -> bool:
+        return not self._disconnecting and generation == self.connection_generation and self.token_file.load() is not None
+
+    async def forget_if_generation(self, generation: int) -> None:
+        if self._can_use_generation(generation):
+            await self._forget_signed_out_account()
+
+    async def access_token(self) -> str | None:
+        return await self.access_token_for_generation(self.connection_generation)
 
     # ---- steps ----
 
@@ -198,17 +222,20 @@ class KaggleAccountService:
                 connected_at=utc_now(),
             )
         )
+        self._connection_generation += 1
         self._remember(grant)
         return None
 
-    async def _refresh(self, saved: SavedSignIn) -> str | None:
+    async def _refresh(self, saved: SavedSignIn, generation: int) -> str | None:
         try:
             async with self.http_factory() as http:
                 grant = await oauth.refresh_access_token(http, saved.client_id, saved.refresh_token)
         except oauth.KaggleSignInError as failure:
-            if failure.reason == "signed_out":
+            if failure.reason == "signed_out" and self._can_use_generation(generation):
                 await self._forget_signed_out_account()
             return None  # a network problem keeps the sign-in; the next download tries again
+        if not self._can_use_generation(generation):
+            return None
         if grant.refresh_token and grant.refresh_token != saved.refresh_token:
             self.token_file.save(SavedSignIn(saved.client_id, grant.refresh_token, saved.username, saved.connected_at))
         self._remember(grant)
@@ -216,7 +243,7 @@ class KaggleAccountService:
 
     async def _revoke_on_kaggle(self, saved: SavedSignIn) -> str | None:
         """Cancel the sign-in on Kaggle; the notice to show when Kaggle couldn't be reached."""
-        access = self._cached.token if self._cached_is_fresh() else await self._refresh(saved)
+        access = self._cached.token if self._cached_is_fresh() else await self._access_for_revocation(saved)
         if access is None:
             return None if self.token_file.load() is None else REVOKE_UNREACHABLE_NOTICE
         try:
@@ -226,7 +253,16 @@ class KaggleAccountService:
             return REVOKE_UNREACHABLE_NOTICE
         return None
 
+    async def _access_for_revocation(self, saved: SavedSignIn) -> str | None:
+        try:
+            async with self.http_factory() as http:
+                grant = await oauth.refresh_access_token(http, saved.client_id, saved.refresh_token)
+        except oauth.KaggleSignInError:
+            return None
+        return grant.access_token
+
     async def _forget_signed_out_account(self) -> None:
+        self._connection_generation += 1
         self.token_file.delete()
         self._cached = None
         self._notice = SIGNED_OUT_NOTICE

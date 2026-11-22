@@ -1,6 +1,7 @@
 """The chat ports for one browser tab: each one turns calls into events on that chat's socket."""
 
 import asyncio
+import re
 import secrets
 from collections.abc import Sequence
 from typing import Literal, Protocol
@@ -13,6 +14,7 @@ from sillytherin.server.events import (
     ChatMessage,
     GroupDone,
     GroupLabel,
+    KaggleDownloadAskOpened,
     KagglePopup,
     PanelPropsEvent,
     PickersChanged,
@@ -25,6 +27,13 @@ from sillytherin.server.events import (
     ThinkingDelta,
     Toast,
 )
+from sillytherin.tools.dataset_download import (
+    APPROVAL_TIMEOUT_SECONDS,
+    DOWNLOAD_CHOICE,
+    DOWNLOAD_OR_SKIP,
+)
+from sillytherin.workspace.datasets.service import human_size
+from sillytherin.workspace.kaggle.dataset_downloads import KaggleApprovalOffer
 from sillytherin.workspace.kaggle.settings_switch import (
     WAITING_POPUP_MESSAGE,
     SignInPopupState,
@@ -137,6 +146,9 @@ class OpenPrompts:
         if waiting is None:
             return "unknown"
         offered, answer = waiting
+        if answer.done():
+            self.expire(ask_id)
+            return "unknown"
         if choice not in offered:
             return "unoffered"
         del self._waiting[ask_id]
@@ -153,17 +165,38 @@ class SocketAsker:
         self._sender = sender
         self._prompts = prompts
 
+    async def ask_kaggle_download(self, request_id: str, offer: KaggleApprovalOffer) -> bool:
+        choices = list(DOWNLOAD_OR_SKIP)
+        ask_id, answer = self._prompts.open(choices)
+        name = plain_prompt_label(offer.dataset_name)
+        project = plain_prompt_label(offer.selection.project_id)
+        markdown = f"Download {name} into {project}? **{human_size(offer.download_bytes)}** will be downloaded."
+        opened = KaggleDownloadAskOpened(ask_id=ask_id, request_id=request_id, markdown=markdown, choices=choices)
+        choice = await self._await_choice(opened, answer, APPROVAL_TIMEOUT_SECONDS)
+        return choice == DOWNLOAD_CHOICE.id
+
     async def ask_choice(self, markdown: str, choices: Sequence[Choice], timeout_seconds: int) -> str | None:
         ask_id, answer = self._prompts.open(choices)
-        await self._sender.send(AskOpened(ask_id=ask_id, markdown=markdown, choices=list(choices)))
+        opened = AskOpened(ask_id=ask_id, markdown=markdown, choices=list(choices))
+        return await self._await_choice(opened, answer, timeout_seconds)
+
+    async def _await_choice(self, opened: AskOpened, answer: asyncio.Future[str], timeout_seconds: int) -> str | None:
         try:
+            await self._sender.send(opened)
             choice: str | None = await asyncio.wait_for(answer, timeout_seconds)
         except TimeoutError:
             choice = None  # nobody answered: the tool treats it as Skip
         finally:
-            self._prompts.expire(ask_id)
-        await self._sender.send(AskClosed(ask_id=ask_id, choice=choice))
+            self._prompts.expire(opened.ask_id)
+        await self._sender.send(AskClosed(ask_id=opened.ask_id, choice=choice))
         return choice
+
+
+def plain_prompt_label(text: str) -> str:
+    # Code spans prevent GitHub-flavored Markdown from autolinking an upstream title.
+    label = " ".join(text.split())
+    fence = "`" * (1 + max(map(len, re.findall(r"`+", label)), default=0))
+    return f"{fence} {label} {fence}"
 
 
 class SocketToaster:

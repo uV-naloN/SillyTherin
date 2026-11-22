@@ -32,6 +32,10 @@ ALLOWED_KAGGLE_URLS = {
     "https://www.kaggle.com/api/v1/oauth2/register",
     "https://api.kaggle.com/v1/users.AccountService/ExpireApiToken",
     LIST_DATASETS_URL,
+    "https://api.kaggle.com/v1/datasets.DatasetApiService/GetDataset",
+    "https://api.kaggle.com/v1/datasets.DatasetApiService/ListDatasetFiles",
+    "https://api.kaggle.com/v1/datasets.DatasetApiService/DownloadDataset",
+    "https://www.kaggle.com/datasets/",  # display link only; not an RPC target
 }
 
 
@@ -135,7 +139,7 @@ def test_errors_do_not_echo_kaggle_body(tmp_path) -> None:
 
 
 def test_account_code_calls_no_write_endpoints() -> None:
-    # Changed: read the Kaggle account sources · Then: only the sign-in, token, register and revoke endpoints appear · Demonstrates: the full-account scope is only used to read
+    # The full-account scope permits writes, but the app uses it only for account lifecycle and read-only dataset RPCs.
     urls = set()
     for source in KAGGLE_SOURCES.glob("*.py"):
         urls |= set(re.findall(r"https://[A-Za-z0-9./_-]+", source.read_text()))

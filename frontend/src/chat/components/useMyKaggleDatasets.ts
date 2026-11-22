@@ -11,12 +11,23 @@ export interface MyKaggleDatasets {
   retry: () => void;
 }
 
+export interface KaggleListingContext {
+  /** Invalidates list results when the connected account changes or the socket reconnects. */
+  connectionGeneration: number;
+  isOnline: boolean;
+}
+
 /**
  * The window's list while it is open. `hasSignInFinished` turns true when a Kaggle sign-in ends connected,
  * so a Connect from the window shows the list as soon as Kaggle says yes.
  */
-export function useMyKaggleDatasets(callAction: CallAction, hasSignInFinished: boolean): MyKaggleDatasets {
-  const [view, setView] = useState<MyDatasetsView>({ phase: "loading" });
+export function useMyKaggleDatasets(
+  callAction: CallAction, hasSignInFinished: boolean, context?: KaggleListingContext,
+): MyKaggleDatasets {
+  const generation = context?.connectionGeneration ?? 0;
+  const isOnline = context?.isOnline ?? true;
+  const [loaded, setLoaded] = useState<{ generation: number; view: MyDatasetsView } | null>(null);
+  const view: MyDatasetsView = isOnline && loaded?.generation === generation ? loaded.view : { phase: "loading" };
   // only the newest request may fill the window; closing the window outdates every request
   const newestRequest = useRef(0);
 
@@ -24,14 +35,15 @@ export function useMyKaggleDatasets(callAction: CallAction, hasSignInFinished: b
     newestRequest.current += 1;
     const request = newestRequest.current;
     const showIfNewest = (answer: MyDatasetsAnswer) => {
-      if (request === newestRequest.current) setView({ phase: "answered", answer });
+      if (request === newestRequest.current) setLoaded({ generation, view: { phase: "answered", answer } });
     };
-    setView({ phase: "loading" });
+    setLoaded(null);
+    if (!isOnline) return;
     callAction({ name: LIST_MY_DATASETS_ACTION, payload: {} }).then(
       (result) => showIfNewest(answerFromServer(result)),
       () => showIfNewest(UNREACHABLE_ANSWER),
     );
-  }, [callAction]);
+  }, [callAction, generation, isOnline]);
 
   useEffect(() => {
     load();

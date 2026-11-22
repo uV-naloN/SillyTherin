@@ -4,6 +4,7 @@ import { create } from "zustand";
 import type { Choice, ChatLine, Picker, ServerEvent, SessionReady, SettingSwitch, ToastKind } from "@/chat/events";
 import type { ConnectionStatus } from "@/chat/connection";
 import type { NotebookProps } from "@/panel/types";
+import { newer } from "@/panel/lib/newer";
 
 export const RESTART_NOTICE = "The app restarted, so this is a new chat.";
 export const TOAST_HIDE_MS = 5_000; // info and success toasts; warnings and errors stay
@@ -36,6 +37,8 @@ export interface PromptView {
   outcome: "open" | "answered" | "timed-out";
   chosen: string | null;
   answerMessageId: string | null; // the answer the prompt belongs to
+  /** Standalone Kaggle consent, tied to the pending picker action. */
+  kaggleRequestId?: string;
 }
 
 export interface ToastView { id: number; kind: ToastKind; text: string }
@@ -48,6 +51,8 @@ export interface ChatState {
   notice: string | null; // the restart notice, shown once
   messages: MessageView[];
   prompts: PromptView[];
+  kagglePrompts: PromptView[];
+  kaggleGeneration: number;
   pickers: Picker[];
   settings: SettingSwitch[];
   panel: NotebookProps | null;
@@ -63,6 +68,8 @@ export const emptyChat = (): ChatState => ({
   notice: null,
   messages: [],
   prompts: [],
+  kagglePrompts: [],
+  kaggleGeneration: 0,
   pickers: [],
   settings: [],
   panel: null,
@@ -96,6 +103,7 @@ function sessionReady(state: ChatState, event: SessionReady): ChatState {
     status: "open",
     messages: isSameChat ? state.messages : linesToMessages(event.messages),
     prompts: isSameChat ? state.prompts : [],
+    kagglePrompts: [],
     pickers: event.pickers,
     settings: event.settings,
     panel: event.panel,
@@ -137,7 +145,7 @@ export function applyEvent(state: ChatState, event: ServerEvent): ChatState {
     case "session.ready":
       return sessionReady(state, event);
     case "chat.closed":
-      return { ...state, chatId: null, messages: [], prompts: [], notice: RESTART_NOTICE };
+      return { ...state, chatId: null, messages: [], prompts: [], kagglePrompts: [], notice: RESTART_NOTICE };
     case "reply.started":
       return withAnswer(state, event.message_id);
     case "reply.delta":
@@ -161,23 +169,42 @@ export function applyEvent(state: ChatState, event: ServerEvent): ChatState {
         askId: event.ask_id, markdown: event.markdown, choices: event.choices,
         outcome: "open", chosen: null, answerMessageId: streamingAnswerId(state),
       };
+      if (event.purpose === "kaggle_download") {
+        const standalone = { ...prompt, answerMessageId: null, kaggleRequestId: event.request_id };
+        return { ...state, kagglePrompts: [...state.kagglePrompts, standalone] };
+      }
       return { ...state, prompts: [...state.prompts, prompt] };
     }
     case "ask.closed": {
-      if (!state.prompts.some((p) => p.askId === event.ask_id)) return state;
       const outcome = event.choice === null ? "timed-out" : "answered";
+      if (state.kagglePrompts.some((p) => p.askId === event.ask_id)) {
+        return { ...state, kagglePrompts: state.kagglePrompts.map(
+          (p) => p.askId === event.ask_id ? { ...p, outcome, chosen: event.choice } : p,
+        ) };
+      }
+      if (!state.prompts.some((p) => p.askId === event.ask_id)) return state;
       return { ...state, prompts: state.prompts.map((p) => (p.askId === event.ask_id ? { ...p, outcome, chosen: event.choice } : p)) };
     }
     case "toast":
       return addToast(state, event.kind, event.text);
     case "error":
       return addToast(state, "error", event.message);
-    case "settings.changed":
-      return { ...state, settings: event.switches };
+    case "settings.changed": {
+      const before = state.settings.find((setting) => setting.id === "kaggle_account")?.initial;
+      const after = event.switches.find((setting) => setting.id === "kaggle_account")?.initial;
+      if (before === after) return { ...state, settings: event.switches };
+      return { ...state, settings: event.switches, kagglePrompts: [], kaggleGeneration: state.kaggleGeneration + 1 };
+    }
     case "pickers.changed":
       return { ...state, pickers: event.pickers, picked: pickedFrom(event.pickers, state.picked) };
     case "panel.props":
-      return { ...state, panel: event.props };
+      if (state.panel && state.panel.project.id !== event.props.project.id) return state;
+      return { ...state, panel: newer(state.panel, event.props) };
+    case "panel.project_changed":
+      if (state.panel?.project.id === event.props.project.id) return { ...state, panel: newer(state.panel, event.props) };
+      return { ...state, panel: event.props, kagglePrompts: [] };
+    case "panel.result":
+      return { ...state, kagglePrompts: state.kagglePrompts.filter((p) => p.kaggleRequestId !== event.request_id) };
     case "kaggle.popup":
       return { ...state, kaggle: { state: event.state, authorizeUrl: event.authorize_url, message: event.message } };
     default:
@@ -207,7 +234,9 @@ export const useChat = create<ChatStore>()((set) => ({
   ...emptyChat(),
   apply: (event) => set((state) => applyEvent(state, event)),
   sent: (text) => set((state) => addUserLine(state, text)),
-  setStatus: (status) => set({ status }),
+  setStatus: (status) => set((state) => status === "reconnecting" && state.status !== status
+    ? { status, kagglePrompts: [], kaggleGeneration: state.kaggleGeneration + 1 }
+    : { status }),
   dismissToast: (id) => set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
   pick: (pickerId, optionId) => set((state) => ({ picked: { ...state.picked, [pickerId]: optionId } })),
   closeKaggle: () => set({ kaggle: null }),

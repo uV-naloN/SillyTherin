@@ -64,12 +64,18 @@ export interface GroupDone { type: "group.done"; message_id: string; label: stri
 export interface ThinkingDelta { type: "thinking.delta"; message_id: string; text: string }
 export interface StepDone { type: "step.done"; message_id: string; title: string; output: string }
 export interface ChatMessage { type: "chat.message"; text: string }
-export interface AskOpened { type: "ask.opened"; ask_id: string; markdown: string; choices: Choice[] }
+interface AskOpenedContent { type: "ask.opened"; ask_id: string; markdown: string; choices: Choice[] }
+export type AskOpened = AskOpenedContent & (
+  | { purpose?: never; request_id?: never }
+  | { purpose: "kaggle_download"; request_id: string }
+);
 export interface AskClosed { type: "ask.closed"; ask_id: string; choice: string | null }
 export interface Toast { type: "toast"; kind: ToastKind; text: string }
 export interface SettingsChanged { type: "settings.changed"; switches: SettingSwitch[] }
 export interface PickersChanged { type: "pickers.changed"; pickers: Picker[] }
 export interface PanelProps { type: "panel.props"; props: NotebookProps }
+/** Local event emitted by the connection for a successful project switch. */
+export interface PanelProjectChanged { type: "panel.project_changed"; props: NotebookProps }
 export interface PanelResult { type: "panel.result"; request_id: string; result: unknown }
 export interface KagglePopup { type: "kaggle.popup"; state: "waiting" | "connected" | "failed"; authorize_url: string; message: string }
 export interface ErrorEvent { type: "error"; code: "BAD_EVENT" | "BUSY" | "UNKNOWN_ASK" | "INTERNAL"; message: string }
@@ -79,4 +85,4 @@ export type ServerEvent =
   | ReplyStarted | ReplyDelta | ReplyEnded
   | GroupLabel | GroupDone | ThinkingDelta | StepDone
   | ChatMessage | AskOpened | AskClosed | Toast
-  | SettingsChanged | PickersChanged | PanelProps | PanelResult | KagglePopup | ErrorEvent;
+  | SettingsChanged | PickersChanged | PanelProps | PanelProjectChanged | PanelResult | KagglePopup | ErrorEvent;

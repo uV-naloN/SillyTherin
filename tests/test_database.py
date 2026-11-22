@@ -20,6 +20,43 @@ from sillytherin.workspace.kernels import ContainerMounts, KernelRegistry
 
 APP_TABLES = {"projects", "pool_entries", "pool_files", "project_datasets", "project_dataset_files"}
 UNKNOWN_REVISION = "9999"
+LATEST_REVISION = "0005"
+
+
+def test_kaggle_source_migration_preserves_existing_dataset_links(root) -> None:
+    engine = db.database_for(root)
+    migrate(engine, command.downgrade, "0004")
+    seed_downloaded_dataset(engine)
+    migrate(engine, command.upgrade, LATEST_REVISION)
+    with engine.begin() as connection:
+        insert_kaggle_pool_row(connection)
+        assert connection.execute(text("PRAGMA foreign_key_check")).all() == []
+        assert connection.execute(text("SELECT pool_entry_pk FROM project_datasets")).scalar_one() == 1
+    assert file_list_paths(engine) == ["a.csv", "b.csv"]
+    with engine.begin() as connection:
+        connection.execute(text("DELETE FROM pool_entries WHERE source = 'kaggle'"))
+    migrate(engine, command.downgrade, "0004")
+    with pytest.raises(IntegrityError), engine.begin() as connection:
+        insert_kaggle_pool_row(connection)
+    assert file_list_paths(engine) == ["a.csv", "b.csv"]
+
+
+def test_downgrade_refuses_when_kaggle_entries_exist(root) -> None:
+    engine = db.database_for(root)
+    with engine.begin() as connection:
+        insert_kaggle_pool_row(connection)
+    with pytest.raises(RuntimeError, match="Remove Kaggle datasets"):
+        migrate(engine, command.downgrade, "0004")
+    assert current_revisions(engine) == (LATEST_REVISION,)
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT slug FROM pool_entries WHERE source = 'kaggle'")).scalar_one() == "kaggle-sample"
+
+
+def insert_kaggle_pool_row(connection) -> None:
+    connection.execute(text(
+        "INSERT INTO pool_entries (slug, source, source_id, revision, name) "
+        "VALUES ('kaggle-sample', 'kaggle', 'ana/sample', '2', 'Sample')"
+    ))
 
 
 @pytest.fixture
@@ -57,7 +94,7 @@ def test_first_open_creates_database_at_head(root):
     engine = db.database_for(root)
 
     assert db.database_path(root).is_file()
-    assert current_revisions(engine) == ("0004",)
+    assert current_revisions(engine) == (LATEST_REVISION,)
     assert APP_TABLES <= table_names(engine)
 
 
@@ -75,7 +112,7 @@ def test_second_open_reuses_database_without_migrating(root):
     second = db.database_for(root)
 
     assert second is not first
-    assert current_revisions(second) == ("0004",)
+    assert current_revisions(second) == (LATEST_REVISION,)
     with second.connect() as connection:
         assert connection.execute(text("SELECT slug FROM projects")).scalars().all() == ["p1"]
 
@@ -345,6 +382,7 @@ def test_downgrade_refuses_with_link_rows(root):
     # Then: a downgrade with a link row stops with a clear message and keeps the data
     # Demonstrates: a downgrade never orphans a project's dataset
     engine = db.database_for(root)
+    migrate(engine, command.downgrade, "0004")
     insert_link_entry(engine)
 
     with pytest.raises(RuntimeError, match="pasted links"):

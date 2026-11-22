@@ -67,6 +67,12 @@ export function createdMissingText(d: DatasetProps): string {
 }
 
 const DOWNLOAD_MISSING_TEXT = "Some files were deleted. Ask the assistant to download it again; only the missing files are fetched.";
+const KAGGLE_MISSING_TEXT = "Some files were deleted. Open /kaggle to download this dataset again.";
+
+function missingText(dataset: DatasetProps): string {
+  if (dataset.origin === "created") return createdMissingText(dataset);
+  return dataset.source === "kaggle" ? KAGGLE_MISSING_TEXT : DOWNLOAD_MISSING_TEXT;
+}
 
 /** The Delete confirmation of a downloaded dataset: what it frees, or who else still uses it */
 const downloadDeleteText = (d: DatasetProps) =>
@@ -149,7 +155,7 @@ function DatasetCardView({ d, inserting, onCancel, onDelete, onInsert }: Dataset
 
       {active && <Progress className="rcds-progress" value={d.status === "queued" ? 0 : unknownSize ? null : pct} aria-label="Download progress" />}
       {d.status === "failed" && d.error && <div className="rcds-error">{d.error}</div>}
-      {d.status === "missing" && <div className="rcds-error">{created ? createdMissingText(d) : DOWNLOAD_MISSING_TEXT}</div>}
+      {d.status === "missing" && <div className="rcds-error">{missingText(d)}</div>}
 
       {open && (
         <div className="rcds-details" id={detailsId}>
