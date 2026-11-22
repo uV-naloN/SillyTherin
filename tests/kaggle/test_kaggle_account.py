@@ -29,6 +29,44 @@ from tests.kaggle.fakes import (
     network_down,
 )
 
+
+def test_revoked_signin_requires_reconnect(tmp_path) -> None:
+    kaggle = FakeKaggle(token=answer(400, {"error": "invalid_grant", "error_description": "Invalid refresh token"}))
+    harness = Harness(tmp_path, kaggle=kaggle, saved=SAVED)
+    generation = harness.service.connection_generation
+    assert run(harness.service.access_token_for_generation(generation)) is None
+    assert harness.service.connection_generation != generation
+    assert harness.service.status().notice == SIGNED_OUT_NOTICE
+
+
+def test_refresh_racing_disconnect_cannot_supply_job_credentials(tmp_path, monkeypatch) -> None:
+    async def scenario() -> None:
+        harness = Harness(tmp_path, saved=SAVED)
+        generation = harness.service.connection_generation
+        refreshing = asyncio.Event()
+        continue_refresh = asyncio.Event()
+        real_refresh = oauth.refresh_access_token
+        calls = 0
+
+        async def refresh(http, client_id: str, refresh_token: str):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                refreshing.set()
+                await continue_refresh.wait()
+            return await real_refresh(http, client_id, refresh_token)
+
+        monkeypatch.setattr(oauth, "refresh_access_token", refresh)
+        worker = asyncio.create_task(harness.service.access_token_for_generation(generation))
+        await asyncio.wait_for(refreshing.wait(), 2)
+        await harness.service.disconnect()
+        continue_refresh.set()
+        assert await worker is None
+        assert harness.service.status().state == "disconnected"
+
+    asyncio.run(scenario())
+
+
 SAVED = SavedSignIn(client_id=CLIENT_ID, refresh_token=REFRESH_TOKEN, username=USERNAME, connected_at="2026-11-19T10:00:00Z")
 THREE_HOURS = 3 * 60 * 60
 

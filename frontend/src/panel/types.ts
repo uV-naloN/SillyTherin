@@ -1,5 +1,4 @@
 // Mirrors NotebookProps / DatasetProps in sillytherin/workspace/service.py.
-// No fields are added or removed: the Python contract is unchanged.
 
 export type CellType = "code" | "markdown";
 export type CellStatus = "idle" | "queued" | "running" | "ok" | "error" | "interrupted" | "timeout" | string;
@@ -38,6 +37,8 @@ export interface DatasetProps {
   id: string;
   name: string;
   source: string;
+  /** Canonical owned-list match key, present only for imported Kaggle rows. */
+  kaggle_ref?: string;
   status: DatasetStatus;
   /** Bytes downloaded so far; only set while downloading (drives the progress bar) */
   done_bytes: number | null;

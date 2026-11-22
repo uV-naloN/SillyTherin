@@ -18,6 +18,17 @@ from tests.chat.fakes import FakeChatState, in_chat
 from tests.conftest import FakeDatasetService, FakeFreeDisk, fake_lookup
 from tests.tool_calls import call_tool, failure_text, fake_services
 
+
+@pytest.mark.parametrize("ref", ["kaggle:ana/sample", "https://www.kaggle.com/api/v1/datasets/download/ana/sample"])
+def test_model_cannot_download_from_kaggle_inputs(ref: str) -> None:
+    from sillytherin.workspace.datasets.links import parse_dataset_ref
+
+    with pytest.raises(WorkspaceError) as error:
+        parse_dataset_ref(ref)
+    assert error.value.code in (ErrorCode.BAD_REF, ErrorCode.UNSUPPORTED_SOURCE)
+
+
+
 STARTED = {
     "dataset_id": "hf-org--name",
     "status": "downloading",

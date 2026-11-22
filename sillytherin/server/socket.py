@@ -5,9 +5,11 @@ import logging
 import secrets
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
+from functools import partial
 from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect
+from pydantic import ValidationError
 
 from sillytherin.chat.current import ChatContext, current_chat
 from sillytherin.chat_start import (
@@ -51,7 +53,17 @@ from sillytherin.server.web_chat import (
 )
 from sillytherin.settings import keep_chat_choices
 from sillytherin.turn import TurnViews, UserMessage, run_turn
-from sillytherin.workspace import actions
+from sillytherin.workspace import ErrorCode, actions
+from sillytherin.workspace.kaggle.dataset_downloads import (
+    DOWNLOAD_ACTION,
+    MAX_PENDING_IMPORTS,
+    RECONNECT,
+    KaggleDownloadPayload,
+    KaggleDownloadResult,
+    KaggleImportError,
+    KaggleImportSelection,
+    reject_import,
+)
 
 log = logging.getLogger(__name__)
 
@@ -73,6 +85,9 @@ class ChatOutbox:
     def attach(self, socket: WebSocket) -> None:
         self._socket = socket
 
+    def is_attached(self, socket: WebSocket) -> bool:
+        return self._socket is socket
+
     def detach(self, socket: WebSocket) -> None:
         if self._socket is socket:
             self._socket = None
@@ -88,6 +103,21 @@ class ChatOutbox:
 
 
 @dataclass
+class KaggleSocketSelections:
+    """Verified refs and pending actions for one socket, never its resumed chat."""
+
+    account_generation: int = -1
+    listing_generation: int = 0
+    owned_refs: frozenset[str] = frozenset()
+    pending: set[KaggleImportSelection] = field(default_factory=set)
+    tasks: set[asyncio.Task[None]] = field(default_factory=set)
+
+    def cancel(self) -> None:
+        for task in self.tasks:
+            task.cancel()
+
+
+@dataclass
 class OpenChat:
     """A chat that lives while its tab is open, or for the grace period after its socket drops."""
 
@@ -98,6 +128,11 @@ class OpenChat:
     asker: SocketAsker
     turn: asyncio.Task[None] | None = None  # the reply being written, if any
     tasks: set[asyncio.Task[None]] = field(default_factory=set)  # panel actions still running
+    kaggle: KaggleSocketSelections = field(default_factory=KaggleSocketSelections)
+
+    def reset_kaggle_socket(self) -> None:
+        self.kaggle.cancel()
+        self.kaggle = KaggleSocketSelections()
 
     @property
     def chat_id(self) -> str:
@@ -173,24 +208,30 @@ async def serve_chat(
         await websocket.close(code=POLICY_VIOLATION)
         return
     await websocket.accept()
-    chat = sessions.resume(requested_chat_id) if requested_chat_id else None
-    if chat is None:
+    resumed = sessions.resume(requested_chat_id) if requested_chat_id else None
+    if resumed is None:
         if requested_chat_id:
             await websocket.send_text(ChatClosed().model_dump_json())
         chat = sessions.open_new()
-        chat.outbox.attach(websocket)
-        await chat.outbox.send(await new_chat_ready(chat))
     else:
-        chat.outbox.attach(websocket)
-        await chat.outbox.send(await resumed_chat_ready(chat))
+        chat = resumed
+        chat.reset_kaggle_socket()
+    chat.outbox.attach(websocket)
+    socket_scope = chat.kaggle
     try:
+        ready = await new_chat_ready(chat) if resumed is None else await resumed_chat_ready(chat)
+        if not chat.outbox.is_attached(websocket):
+            return
+        await chat.outbox.send(ready)
         await read_events(websocket, chat)
     except WebSocketDisconnect:
         pass
     finally:
-        chat.outbox.detach(websocket)
-        if sessions.is_open(chat.chat_id):
-            sessions.detach(chat.chat_id)
+        if chat.kaggle is socket_scope:
+            chat.reset_kaggle_socket()
+            chat.outbox.detach(websocket)
+            if sessions.is_open(chat.chat_id):
+                sessions.detach(chat.chat_id)
 
 
 async def new_chat_ready(chat: OpenChat) -> SessionReady:
@@ -222,6 +263,8 @@ def visible_messages(history: list[dict]) -> list[ChatLine]:
 async def read_events(websocket: WebSocket, chat: OpenChat) -> None:
     while True:
         frame = await websocket.receive_text()
+        if not chat.outbox.is_attached(websocket):
+            return
         if len(frame.encode()) > MAX_FRAME_BYTES:
             await websocket.close(code=MESSAGE_TOO_BIG)
             return
@@ -288,22 +331,90 @@ async def on_ask_answer(chat: OpenChat, event: AskAnswer) -> None:
         await refuse(chat, EventError.BAD_EVENT, "Not one of the offered choices.")
 
 
+async def on_list_kaggle_datasets(chat: OpenChat, _event: PanelAction) -> dict:
+    socket = chat.kaggle
+    socket.listing_generation += 1
+    list_generation = socket.listing_generation
+    socket.owned_refs = frozenset()
+    account_generation = actions.kaggle_account.connection_generation
+    answer = await actions.my_kaggle_datasets.list_owned()
+    if socket.listing_generation != list_generation or account_generation != actions.kaggle_account.connection_generation:
+        return {"state": "signed_out", "username": None, "datasets": [], "is_truncated": False}
+    if answer.state == "listed":
+        socket.account_generation = account_generation
+        socket.owned_refs = frozenset(row.ref.lower() for row in answer.datasets)
+    return answer.to_page()
+
+
+async def on_kaggle_download(chat: OpenChat, event: PanelAction) -> KaggleDownloadResult:
+    try:
+        payload = KaggleDownloadPayload.model_validate(event.payload)
+    except ValidationError:
+        return reject_import(ErrorCode.BAD_PAYLOAD, "Invalid Kaggle dataset selection.")
+    socket = chat.kaggle
+    project = actions.session_project(chat.state)
+    account = actions.kaggle_account
+    if payload.project_id != project:
+        return reject_import(KaggleImportError.STALE_PROJECT, "Switch back to the target project and try again.")
+    if account.status().state != "connected" or socket.account_generation not in (-1, account.connection_generation):
+        return reject_import(ErrorCode.KAGGLE_SIGNIN, RECONNECT)
+    ref = payload.ref.lower()
+    if ref not in socket.owned_refs:
+        return reject_import(ErrorCode.NOT_FOUND, "Dataset not in your current Kaggle list.")
+    selection = KaggleImportSelection(project, actions.project_generation(chat.state), account.connection_generation, ref)
+    if selection in socket.pending or len(socket.pending) >= MAX_PENDING_IMPORTS:
+        return reject_import(ErrorCode.BUSY, "A Kaggle download is already being prepared. Try again shortly.")
+    return await start_kaggle_selection(chat, socket, selection, event.request_id)
+
+
+async def start_kaggle_selection(
+    chat: OpenChat, socket: KaggleSocketSelections, selection: KaggleImportSelection, request_id: str,
+) -> KaggleDownloadResult:
+    def is_current() -> bool:
+        return (
+            chat.kaggle is socket and actions.project_generation(chat.state) == selection.project_generation
+            and actions.kaggle_account.connection_generation == selection.account_generation and selection.ref in socket.owned_refs
+        )
+
+    socket.pending.add(selection)
+    try:
+        return await actions.download_picked_kaggle_dataset(
+            selection, approve=partial(chat.asker.ask_kaggle_download, request_id), is_selection_current=is_current,
+        )
+    finally:
+        socket.pending.discard(selection)
+
+
+async def run_workspace_panel_action(chat: OpenChat, event: PanelAction) -> dict | list:
+    return await actions.run_panel_action(chat.link, event.name, event.payload)
+
+
+SOCKET_PANEL_ACTIONS = {DOWNLOAD_ACTION: on_kaggle_download, "kg_list_my_datasets": on_list_kaggle_datasets}
+
+
 async def on_panel_action(chat: OpenChat, event: PanelAction) -> None:
     """Panel actions run beside the chat (a cell may run for a while) and answer this tab when done."""
 
     async def run_action() -> None:
         current_chat.set(chat.context)
         try:
-            result = await actions.run_panel_action(chat.link, event.name, event.payload)
-        except Exception:
-            log.exception("Panel action %s failed", event.name)
-            await refuse(chat, EventError.INTERNAL, GENERIC_FAILURE)
-            return
+            result = await SOCKET_PANEL_ACTIONS.get(event.name, run_workspace_panel_action)(chat, event)
+        except Exception as error:
+            if event.name in SOCKET_PANEL_ACTIONS:
+                log.warning("Kaggle panel action failed (%s)", type(error).__name__)
+                result = reject_import("INTERNAL", GENERIC_FAILURE)
+            else:
+                log.exception("Panel action %s failed", event.name)
+                await refuse(chat, EventError.INTERNAL, GENERIC_FAILURE)
+                return
         await chat.outbox.send(PanelResult(request_id=event.request_id, result=result))
 
     task = asyncio.create_task(run_action())
     chat.tasks.add(task)
     task.add_done_callback(chat.tasks.discard)
+    if event.name in SOCKET_PANEL_ACTIONS:
+        chat.kaggle.tasks.add(task)
+        task.add_done_callback(chat.kaggle.tasks.discard)
 
 
 EventHandler = Callable[[OpenChat, Any], Awaitable[None]]

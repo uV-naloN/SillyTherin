@@ -179,6 +179,13 @@ class AskOpened(ServerEvent):
     choices: list[Choice]
 
 
+class KaggleDownloadAskOpened(AskOpened):
+    """A standalone chat prompt correlated with its still-pending picker action."""
+
+    purpose: Literal["kaggle_download"] = "kaggle_download"
+    request_id: Annotated[str, Field(min_length=1, max_length=MAX_ID_CHARS)]
+
+
 class AskClosed(ServerEvent):
     """The prompt was answered or timed out; `choice` is None on timeout."""
 

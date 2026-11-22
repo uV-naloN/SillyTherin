@@ -40,6 +40,13 @@ from sillytherin.workspace.kaggle.account import (
     KaggleAccountStatus,
 )
 from sillytherin.workspace.kaggle.callback import CallbackListener
+from sillytherin.workspace.kaggle.dataset_downloads import (
+    ApproveKaggleImport,
+    KaggleDatasetDownloads,
+    KaggleDownloadResult,
+    KaggleImportSelection,
+    reject_import,
+)
 from sillytherin.workspace.kaggle.my_datasets import MyKaggleDatasets
 from sillytherin.workspace.kaggle.settings_switch import (
     KAGGLE_SWITCH_ID,
@@ -144,6 +151,7 @@ kaggle_account = KaggleAccountService(
     on_change=refresh_kaggle_switch_everywhere,
 )
 my_kaggle_datasets = MyKaggleDatasets(kaggle_account, kaggle_http_client)
+kaggle_dataset_downloads = KaggleDatasetDownloads(kaggle_account, kaggle_http_client)
 
 
 async def apply_kaggle_switch(previous_settings: dict, new_settings: dict, link: ChatLink) -> None:
@@ -178,6 +186,7 @@ datasets.created.run_lock = service.run_lock  # a created-file delete waits for 
 kernels.before_start = datasets.sync_view  # a kernel mounts only its project's datasets
 
 SESSION_KEY = "project_id"
+PROJECT_GENERATION_KEY = "project_generation"
 
 # Allowed payload fields per action: name -> type. Unknown fields are ignored.
 FIELDS: dict[str, dict[str, type | tuple[type, ...]]] = {
@@ -235,14 +244,24 @@ async def switch_project(svc: NotebookService, session, project_id: str):
     """Point this chat at an existing project (the only way to change it)."""
     if project_id not in {p.id for p in store.list_projects(svc.root)}:
         raise WorkspaceError(ErrorCode.NOT_FOUND, "Unknown project.")
-    session.set(SESSION_KEY, project_id)
+    set_active_project(session, project_id)
     return await svc.props(project_id)
 
 
 async def create_and_switch(svc: NotebookService, session, name: str):
     props = await svc.create_project(name)
-    session.set(SESSION_KEY, props["project"]["id"])
+    set_active_project(session, props["project"]["id"])
     return props
+
+
+def set_active_project(session: ChatState, project_id: str) -> None:
+    if session.get(SESSION_KEY) != project_id:
+        session.set(PROJECT_GENERATION_KEY, project_generation(session) + 1)
+        session.set(SESSION_KEY, project_id)
+
+
+def project_generation(session: ChatState) -> int:
+    return session.get(PROJECT_GENERATION_KEY) or 0
 
 
 async def list_projects_with_current(svc: NotebookService, session, _payload: dict) -> dict:
@@ -252,6 +271,19 @@ async def list_projects_with_current(svc: NotebookService, session, _payload: di
 async def list_my_kaggle_datasets(lister: MyKaggleDatasets) -> dict:
     """The window's list, answered to the asking tab only; it never enters the chat history."""
     return (await lister.list_owned()).to_page()
+
+
+async def download_picked_kaggle_dataset(
+    selection: KaggleImportSelection, *, approve: ApproveKaggleImport, is_selection_current: Callable[[], bool],
+) -> KaggleDownloadResult:
+    try:
+        return await datasets.request_kaggle_import(
+            selection, kaggle_dataset_downloads, approve=approve, is_selection_current=is_selection_current,
+        )
+    except WorkspaceError as error:
+        if error.code == ErrorCode.KAGGLE_SIGNIN:
+            await kaggle_account.forget_if_generation(selection.account_generation)
+        return reject_import(error.code, error.message)
 
 
 async def delete_dataset(svc: NotebookService, project_id: str, payload: dict) -> NotebookProps:
@@ -337,7 +369,7 @@ async def run_panel_action(link: ChatLink, name: str, payload: object) -> dict |
     finally:
         if token is not None:
             skip_session.reset(token)
-    if moved_to_another_project(name, result):
+    if moved_to_another_project(name, result) and session_project(link.state) == result["project"]["id"]:
         panels.open(result["project"]["id"], link.state.chat_id, link.panel)
         if name == "nb_switch_project":
             await toast_missing_created_files(datasets, result["project"]["id"], link.toaster.show_toast)

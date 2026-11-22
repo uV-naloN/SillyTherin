@@ -26,6 +26,19 @@ from sillytherin.workspace.datasets.views import (
     visible_pool_files,
 )
 
+
+@pytest.mark.parametrize(
+    ("status", "expected"),
+    [("ready", {ViewFile("sample", "a.csv")}), ("downloading", set()), (None, set())],
+    ids=["test_ready_import_is_readable_without_a_link", "test_active_import_cannot_be_read_by_kernel",
+         "test_unlinked_project_cannot_read_pooled_file"],
+)
+def test_kaggle_project_view_contract(status: str | None, expected: set[ViewFile]) -> None:
+    entry = PoolEntry("sample", "kaggle", "ana/sample", "2", "Sample", None, None,
+                      files=[PoolFile("a.csv", 3, None, ready=True)])
+    rows = [download_row(entry_id="sample", files=("a.csv",), status=status)] if status else []
+    assert visible_pool_files(rows, {entry.id: entry}) == expected
+
 # ---- The visible set is the tab's linked files · unit
 # Baseline: project A has one ready download row `iris` → entry `iris@abc1234`,
 # every file selected and ready; visible_pool_files runs.

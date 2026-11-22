@@ -118,6 +118,12 @@ def _has_port(parts: ParseResult) -> bool:
         return True  # a port that isn't a number
 
 
+def refuse_kaggle_link(link: str) -> None:
+    host = (urlparse(link).hostname or "").lower().rstrip(".")
+    if host == "kaggle.com" or host.endswith(".kaggle.com"):
+        raise WorkspaceError(ErrorCode.UNSUPPORTED_SOURCE, "Use /kaggle to download a Kaggle dataset into this project.")
+
+
 def parse_dataset_ref(ref: object) -> tuple[Source, str]:
     """A catalog ref or dataset page as `sources.parse_ref` reads it; any other https URL is a file link."""
     try:
@@ -126,7 +132,9 @@ def parse_dataset_ref(ref: object) -> tuple[Source, str]:
         is_url = isinstance(ref, str) and "://" in ref
         if e.code != ErrorCode.BAD_REF or not is_url:
             raise
-    return LINK_SOURCE, normalize_link(ref.strip())
+    normalized = normalize_link(ref.strip())
+    refuse_kaggle_link(normalized)
+    return LINK_SOURCE, normalized
 
 
 def require_pasted(link: str, pasted_links: frozenset[str]) -> None:

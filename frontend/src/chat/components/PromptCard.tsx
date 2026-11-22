@@ -19,7 +19,7 @@ export function PromptCard({ prompt, onAnswer }: { prompt: PromptView; onAnswer:
     <div className="st-enter overflow-hidden rounded-xl border border-primary/30 bg-background shadow-sm">
       <div className="flex items-center gap-2 bg-primary/10 px-4 py-2.5 text-sm font-semibold">
         <ShieldQuestion className="size-4 text-primary" aria-hidden />
-        The assistant is asking first
+        {prompt.kaggleRequestId ? "Confirm Kaggle download" : "The assistant is asking first"}
       </div>
       <div className="space-y-3 px-4 py-3">
         <Answer text={prompt.markdown} />

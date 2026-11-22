@@ -128,6 +128,11 @@ class DatasetPool:
         return ds.path_inside(self.entry_dir(entry_id), relpath)
 
     @staticmethod
+    def make_kaggle_entry_id(ref: str, revision: str | None) -> str:
+        identity = f"{ref}\0{revision or ''}".encode()
+        return "kaggle-" + hashlib.sha256(identity).hexdigest()
+
+    @staticmethod
     def make_entry_id(dataset_slug: str, revision: str | None) -> str:
         """<dataset-slug>@<first 7 of revision>, or the slug when there's no revision."""
         if not revision:

@@ -14,7 +14,7 @@ import re
 import time
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Literal, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 from nbformat import NotebookNode
 
@@ -76,6 +76,7 @@ class DatasetProps(TypedDict):
     id: str  # sent back in ds_delete / ds_cancel
     name: str  # row title
     source: str  # source badge (huggingface / zenodo)
+    kaggle_ref: NotRequired[str]  # canonical match key, only for a Kaggle card in this project
     status: DatasetPanelStatus  # badge while not ready; a ready row has no badge
     done_bytes: int | None  # progress bar while downloading
     position_in_queue: int | None  # "2nd in queue" while queued

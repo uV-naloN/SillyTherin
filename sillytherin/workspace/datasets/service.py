@@ -42,6 +42,15 @@ from sillytherin.workspace.datasets.pool import DatasetPool, PoolEntry, PoolFile
 from sillytherin.workspace.datasets.sources import DatasetPlan, PlannedFile
 from sillytherin.workspace.datasets.store import DatasetStatus, ProjectDataset, Source
 from sillytherin.workspace.datasets.views import ProjectViews, visible_pool_files
+from sillytherin.workspace.kaggle.dataset_downloads import (
+    ApproveKaggleImport,
+    KaggleApprovalOffer,
+    KaggleDatasetDownloads,
+    KaggleDownloadResult,
+    KaggleFileDownload,
+    KaggleImportError,
+    KaggleImportSelection,
+)
 from sillytherin.workspace.service import (
     DatasetOrigin,
     DatasetProps,
@@ -166,6 +175,13 @@ class Waiter:
 
 
 @dataclass
+class KaggleTransfer:
+    downloads: KaggleDatasetDownloads
+    selection: KaggleImportSelection
+    revision: str
+
+
+@dataclass
 class Job:
     """One download into one pool entry, shared by every waiting project (job key = entry + files)."""
 
@@ -179,6 +195,7 @@ class Job:
     cancelled: bool = False
     last_push: float = field(default=0.0)
     is_link: bool = False  # a pasted link: its size may only be known once it's downloaded
+    kaggle: KaggleTransfer | None = None
 
     @property
     def total(self) -> int:
@@ -450,6 +467,142 @@ class DatasetService:
 
     # ---- tool-call side (quick checks) ----
 
+    async def request_kaggle_import(
+        self, selection: KaggleImportSelection, downloads: KaggleDatasetDownloads, *,
+        approve: ApproveKaggleImport, is_selection_current: Callable[[], bool],
+    ) -> KaggleDownloadResult:
+        await self._wait_ready()
+        async with self._lock:
+            self._require_kaggle_selection(selection, downloads, is_selection_current)
+            active = self._existing_kaggle_import(selection)
+            if active is not None:
+                return {"state": "accepted", "dataset_id": active.id}
+        plan = await self._resolve_kaggle(selection, downloads, is_selection_current)
+        offered = await self._accept_or_offer_kaggle(selection, plan, downloads, is_selection_current)
+        if not isinstance(offered, KaggleApprovalOffer):
+            return offered
+        if not await approve(offered):
+            return {"state": "skipped"}
+        if not is_selection_current():
+            raise WorkspaceError(KaggleImportError.STALE_APPROVAL, "The project or Kaggle account changed. Try again.")
+        plan = await self._resolve_kaggle(selection, downloads, is_selection_current)
+        result = await self._accept_or_offer_kaggle(selection, plan, downloads, is_selection_current, approved=offered)
+        assert not isinstance(result, KaggleApprovalOffer)
+        return result
+
+    def _require_kaggle_selection(
+        self, selection: KaggleImportSelection, downloads: KaggleDatasetDownloads, is_current: Callable[[], bool],
+    ) -> None:
+        downloads.require_generation(selection.account_generation)
+        if not is_current():
+            raise WorkspaceError(KaggleImportError.STALE_PROJECT, "The project or picker changed. Open /kaggle and try again.")
+        store.get_project(selection.project_id, self.root)
+
+    def _existing_kaggle_import(self, selection: KaggleImportSelection) -> ProjectDataset | None:
+        dataset = self._find_dataset(selection.project_id, "kaggle", selection.ref)
+        if dataset is not None and self._status(selection.project_id, dataset) in ("ready", "queued", "downloading"):
+            return dataset
+        return None
+
+    async def _resolve_kaggle(
+        self, selection: KaggleImportSelection, downloads: KaggleDatasetDownloads, is_current: Callable[[], bool],
+    ) -> DatasetPlan:
+        try:
+            return await downloads.resolve_current(selection, max_files=self.settings.max_files)
+        except WorkspaceError as error:
+            if error.code == ErrorCode.DOWNLOAD_FAILED and is_current():
+                await self.record_kaggle_preflight_failure(selection, error.message, is_current)
+            raise
+
+    async def record_kaggle_preflight_failure(
+        self, selection: KaggleImportSelection, reason: str, is_current: Callable[[], bool],
+    ) -> None:
+        project_id = selection.project_id
+        async with self._lock:
+            if not is_current() or self._existing_kaggle_import(selection) is not None:
+                return
+            dataset = self._find_dataset(project_id, "kaggle", selection.ref)
+            if dataset is None:
+                request = DownloadRequest(project_id, "", "kaggle", selection.ref, None, False)
+                plan = DatasetPlan("kaggle", selection.ref, selection.ref, None, "", None, [])
+                target = self._target_for_plan(request, plan)
+                if target.is_new_entry:
+                    self.pool.add_entry(target.entry)
+                    self.pool.save_index()
+                dataset = self._new_dataset(request, target.entry)
+            dataset.status, dataset.error = "failed", reason[:200]
+            self._refresh_view(project_id, dataset)
+            self._save(project_id)
+        await self._push(project_id)
+
+    async def _accept_or_offer_kaggle(
+        self, selection: KaggleImportSelection, plan: DatasetPlan, downloads: KaggleDatasetDownloads,
+        is_current: Callable[[], bool], *, approved: KaggleApprovalOffer | None = None,
+    ) -> KaggleDownloadResult | KaggleApprovalOffer:
+        project_id = selection.project_id
+        if not plan.files:
+            raise WorkspaceError(ErrorCode.NO_FILES, "Kaggle dataset has no downloadable files.")
+        async with self._lock:
+            if approved and (not is_current() or approved.revision != plan.revision):
+                raise WorkspaceError(KaggleImportError.STALE_APPROVAL, "This Kaggle download changed. Try again.")
+            self._require_kaggle_selection(selection, downloads, is_current)
+            active = self._existing_kaggle_import(selection)
+            if active is not None:
+                return {"state": "accepted", "dataset_id": active.id}
+            request = DownloadRequest(project_id, "", "kaggle", selection.ref, None, False)
+            target = self._target_for_plan(request, plan)
+            pending_bytes, fetch = self._plan_kaggle_fetch(target, selection.account_generation)
+            if fetch.to_fetch:
+                self._check_disk(fetch.download_bytes, plan)
+            if approved and pending_bytes > approved.download_bytes:
+                raise WorkspaceError(KaggleImportError.STALE_APPROVAL, "This download needs more space than approved. Try again.")
+            if approved is None and pending_bytes > self.settings.ask_above_mb * MB:
+                return KaggleApprovalOffer(selection, plan.name, plan.revision or "", pending_bytes)
+            transfer = KaggleTransfer(downloads, selection, plan.revision or "")
+            dataset = self._stage_kaggle_fetch(request, fetch, transfer)
+        await self._push(project_id)
+        return {"state": "accepted", "dataset_id": dataset.id}
+
+    def _plan_kaggle_fetch(self, target: RequestTarget, generation: int) -> tuple[int, FetchPlan]:
+        entry = target.entry
+        jobs = [] if target.is_new_entry else self._jobs_on_entry(entry.id)
+        if any(job.kaggle is None or job.kaggle.selection.account_generation != generation for job in jobs):
+            raise WorkspaceError(ErrorCode.BUSY, "An earlier Kaggle download is still stopping. Try again.")
+        wanted = [file.path for file in target.plan.files]
+        missing = [file for file in target.plan.files if not self._is_verified_kaggle_file(entry, file)]
+        running_paths = set().union(*(job.paths for job in jobs))
+        to_fetch = [file for file in missing if file.path not in running_paths]
+        return sum(file.size for file in missing), FetchPlan(target, wanted, to_fetch, jobs, False)
+
+    def _is_verified_kaggle_file(self, entry: PoolEntry, file: PlannedFile) -> bool:
+        stored = entry.file(file.path)
+        return stored is not None and stored.ready and stored.size == file.size and self.pool.is_file_unchanged(entry, stored)
+
+    def _stage_kaggle_fetch(self, request: DownloadRequest, fetch: FetchPlan, transfer: KaggleTransfer) -> ProjectDataset:
+        project_id, entry = request.project_id, fetch.target.entry
+        self._store_entry(fetch)
+        dataset = self._find_dataset(project_id, "kaggle", request.source_id) or self._new_dataset(request, entry)
+        previous_entry = dataset.pool_entry
+        if not fetch.has_downloads:
+            self.pool.link_files(project_id, dataset.id, entry, fetch.wanted)
+        else:
+            self.pool.unlink_dataset(project_id, dataset.id)
+        if previous_entry != entry.id:
+            dataset.assistant_description = None
+        dataset.pool_entry, dataset.files = entry.id, sorted(fetch.wanted)
+        dataset.status, dataset.error = ("queued" if fetch.has_downloads else "ready"), None
+        dataset.linked_at = None if fetch.has_downloads else utc_now()
+        job = self._queue_downloads(request, dataset, fetch)
+        if job is not None:
+            job.kaggle = transfer
+        self.pool.save_index()
+        self._save(project_id)
+        self._refresh_view(project_id, dataset)
+        if previous_entry != entry.id:
+            self._remove_entry_if_unused(previous_entry)
+        self._schedule()
+        return dataset
+
     async def request(
         self,
         project_id: str,
@@ -644,8 +797,10 @@ class DatasetService:
         existing = next((e for e in self.pool.find_entries(request.source, request.source_id) if e.revision == plan.revision), None)
         if existing is not None:
             return RequestTarget(existing, plan, is_new_entry=False)
+        entry_id = (self.pool.make_kaggle_entry_id(request.source_id, plan.revision) if request.source == "kaggle"
+                    else self.pool.make_entry_id(ds.base_id(request.source, request.source_id), plan.revision))
         entry = PoolEntry(
-            id=DatasetPool.make_entry_id(ds.base_id(request.source, request.source_id), plan.revision),
+            id=entry_id,
             source=request.source, source_id=request.source_id, revision=plan.revision, name=plan.name,
             url=plan.url, license=plan.license, created_at=utc_now(), description=plan.description,
         )
@@ -902,6 +1057,12 @@ class DatasetService:
         dataset = ds.find_project_dataset(datasets, dataset_id)
         if dataset is None:
             return
+        if self._entry(dataset).source == "kaggle":
+            self.pool.unlink_dataset(project_id, dataset_id)
+            datasets.remove(dataset)
+            self._save(project_id)
+            self._refresh_view(project_id)
+            return
         ready = self._entry(dataset).ready_paths()
         dataset.files = [p for p in dataset.files if p in ready]
         if dataset.files and not self._jobs_for(project_id, dataset_id):
@@ -947,6 +1108,8 @@ class DatasetService:
             if job.running or job.pool_entry in busy:
                 continue
             job.running = True
+            if job.kaggle is not None:
+                self.rev += 1
             running.append(job)
             busy.add(job.pool_entry)
             # A fresh context: the job must not carry the starting chat's context
@@ -982,6 +1145,8 @@ class DatasetService:
             pass
 
     async def _on_bytes(self, job: Job, n: int) -> None:
+        if job.kaggle is not None:
+            job.kaggle.downloads.require_generation(job.kaggle.selection.account_generation)
         job.done_bytes += n
         free = self.free_bytes(self.root)
         if free <= self.settings.min_free_disk_mb * MB:
@@ -989,6 +1154,8 @@ class DatasetService:
         now = time.monotonic()
         if now - job.last_push >= self.progress_interval:
             job.last_push = now
+            if job.kaggle is not None:
+                self.rev += 1
             await self._push_all(job.waiters)
 
     async def _run_job(self, job: Job) -> None:
@@ -1000,7 +1167,9 @@ class DatasetService:
             async with self.client_factory() as client:
                 for f in job.files:
                     dest = ds.path_inside(folder, f.path)
-                    if job.is_link:
+                    if job.kaggle is not None:
+                        await self._stream_kaggle_file(job, f, dest)
+                    elif job.is_link:
                         f.size = await links.stream_link_file(
                             f, dest, client=client, on_bytes=lambda n: self._on_bytes(job, n),
                             stall_timeout=self.settings.stall_timeout_seconds,
@@ -1021,10 +1190,10 @@ class DatasetService:
             if e.errno == errno.ENOSPC:
                 error = "disk full"
             else:
-                log.exception("Dataset download into %s failed", job.pool_entry)
+                self._log_download_failure(job, e)
                 error = "couldn't write the files (see the app log)"
-        except Exception:
-            log.exception("Dataset download into %s failed", job.pool_entry)
+        except Exception as failure:  # noqa: BLE001 - Unexpected job failures must still release the queue slot.
+            self._log_download_failure(job, failure)
             error = "unexpected error (see the app log)"
         finally:
             if job in self._jobs:
@@ -1033,12 +1202,35 @@ class DatasetService:
         if error is not None:
             await self._finish_failed(job, error)
         else:
-            await self._finish_ready(job)
+            try:
+                await self._finish_ready(job)
+            except WorkspaceError as failure:
+                await self._finish_failed(job, failure.message)
+            except OSError:
+                await self._finish_failed(job, "Couldn't link the downloaded files.")
         self._schedule()
+
+    @staticmethod
+    def _log_download_failure(job: Job, failure: Exception) -> None:
+        if job.kaggle is not None:
+            log.warning("Kaggle download into %s failed (%s)", job.pool_entry, type(failure).__name__)
+        else:
+            log.exception("Dataset download into %s failed", job.pool_entry)
+
+    async def _stream_kaggle_file(self, job: Job, file: PlannedFile, destination: Path) -> None:
+        transfer = job.kaggle
+        assert transfer is not None
+        download = KaggleFileDownload(transfer.selection.ref, transfer.revision, file.path, file.size, transfer.selection.account_generation)
+        await transfer.downloads.stream_file(
+            download, destination, on_bytes=lambda count: self._on_bytes(job, count),
+            stall_timeout_seconds=self.settings.stall_timeout_seconds,
+        )
 
     async def _commit_file(self, job: Job, f: PlannedFile, downloaded: Path) -> None:
         """Move one verified file into the pool and link it into every waiting project that sees it now."""
         async with self._lock:
+            if job.kaggle is not None:
+                job.kaggle.downloads.require_generation(job.kaggle.selection.account_generation)
             entry = self.pool.get_entry(job.pool_entry)
             if entry is None:
                 raise WorkspaceError(ErrorCode.DOWNLOAD_FAILED, "the dataset was removed during the download")
@@ -1046,6 +1238,8 @@ class DatasetService:
             pool_file.size, pool_file.checksum = f.size, f.checksum
             self.pool.store_file(entry, pool_file, downloaded)
             self.pool.save_index()
+            if job.kaggle is not None:
+                return
             for project_id, waiter in job.waiters.items():
                 dataset = ds.find_project_dataset(self._load(project_id), waiter.dataset_id)
                 if dataset is not None and not waiter.switches_entry and f.path in waiter.paths:
@@ -1054,9 +1248,13 @@ class DatasetService:
 
     async def _finish_ready(self, job: Job) -> None:
         async with self._lock:
+            if job.kaggle is not None:
+                job.kaggle.downloads.require_generation(job.kaggle.selection.account_generation)
             entry = self.pool.get_entry(job.pool_entry)
             finished = [(project_id, w) for project_id, w in job.waiters.items() if self._finish_waiter(project_id, w, entry)]
         await self._push_all(job.waiters)
+        if job.kaggle is not None:
+            return
         for project_id, waiter in finished:
             dataset = ds.find_project_dataset(self._load(project_id), waiter.dataset_id)
             if dataset is None:
@@ -1073,6 +1271,10 @@ class DatasetService:
         dataset = ds.find_project_dataset(self._load(project_id), waiter.dataset_id)
         if dataset is None or entry is None or self._jobs_for(project_id, waiter.dataset_id):
             return False
+        if entry.source == "kaggle":
+            if not waiter.paths <= entry.ready_paths():
+                raise WorkspaceError(ErrorCode.DOWNLOAD_FAILED, "Not all Kaggle files could be verified.")
+            self.pool.link_files(project_id, dataset.id, entry, sorted(waiter.paths))
         if waiter.switches_entry:
             if not waiter.paths <= entry.ready_paths():
                 return False
@@ -1093,10 +1295,14 @@ class DatasetService:
                 dataset.status = "failed"
                 dataset.error = reason[:200]
                 self._save(project_id)
+                if job.kaggle is not None:
+                    self._refresh_view(project_id)
                 failed.append((waiter, self._entry(dataset).name))
             if job.waiters and all(w.switches_entry for w in job.waiters.values()):
                 self._remove_entry_if_unused(job.pool_entry)
         await self._push_all(job.waiters)
+        if job.kaggle is not None:
+            return
         for waiter, name in failed:
             await self.chat_notes.tell(waiter.session_id, f"Download of **{name}** failed: {reason}", f"- {waiter.dataset_id}: failed ({reason[:200]})")
 
@@ -1119,6 +1325,7 @@ class DatasetService:
                     "id": dataset.id,
                     "name": entry.name,
                     "source": entry.source,
+                    **({"kaggle_ref": entry.source_id} if entry.source == "kaggle" else {}),
                     "status": status,
                     "done_bytes": view["done_bytes"],
                     "position_in_queue": view["position_in_queue"],
