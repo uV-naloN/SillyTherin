@@ -2,15 +2,18 @@
 
 import ast
 import asyncio
-import json
 import re
 from pathlib import Path
+from uuid import uuid4
 
+from langchain_core.messages import ToolMessage
+
+from sillytherin.agent.tool_progress import NativeToolProgress
 from sillytherin.chat.widgets import Picker, SettingSwitch
 from sillytherin.modes import PickerChoices, Picks, build_modes
 from sillytherin.progress import Progress
 from sillytherin.settings import NO_REASONING_REASON, NO_TOOLS_REASON, build_widgets
-from sillytherin.tools import run_tool_call, web_search
+from sillytherin.tools import web_search
 from sillytherin.workspace.kaggle.account import KaggleAccountStatus
 from tests.chat.fakes import FakeProgressView
 
@@ -19,28 +22,22 @@ from tests.chat.fakes import FakeProgressView
 # builder, the pickers or progress run
 
 
-def known_tool(monkeypatch, run) -> None:
-    """Replace web_search's run with `run`, keeping its real name and step title."""
-    monkeypatch.setattr(web_search, "run", run)
-
-
-def test_run_tool_call_shows_one_step_with_the_tool_output(monkeypatch):
-    # Given a tool call to a known tool and a FakeProgressView
-    # When run_tool_call runs it
-    # Then the view got one tool step titled by the tool's step_title, finished with the tool's shown text
-    # Demonstrates: a tool step needs no Chainlit
-    async def found(args: dict) -> tuple[str, str]:
-        return "3 results", "result for the model"
-
-    known_tool(monkeypatch, found)
+def test_native_tool_event_shows_one_step_with_the_tool_output() -> None:
     view = FakeProgressView()
-    call = {"id": "c1", "name": "web_search", "arguments": json.dumps({"query": "hanoi air"})}
+    arguments = {"query": "hanoi air"}
+    result = ToolMessage(content="result for the model", artifact="3 results", tool_call_id="c1")
+    asyncio.run(show_tool_result(view, arguments, result))
 
-    result = asyncio.run(run_tool_call(call, Progress(view)))
+    assert result.content == "result for the model"
+    assert [(step.title, step.output) for step in view.tool_steps] == [(web_search.step_title(arguments), "3 results")]
+    assert view.labels == [web_search.step_title(arguments)]
 
-    assert result == "result for the model"
-    assert [(step.title, step.output) for step in view.tool_steps] == [(web_search.step_title({"query": "hanoi air"}), "3 results")]
-    assert view.labels == [web_search.step_title({"query": "hanoi air"})]
+
+async def show_tool_result(view: FakeProgressView, arguments: dict, result: ToolMessage) -> None:
+    progress = NativeToolProgress(Progress(view))
+    run_id = uuid4()
+    await progress.on_tool_start({"name": "web_search"}, "", run_id=run_id, inputs=arguments, tool_call_id=result.tool_call_id)
+    await progress.on_tool_end(result, run_id=run_id)
 
 
 def test_build_widgets_returns_our_own_switches():
@@ -113,19 +110,8 @@ def requires_chainlit(path: Path) -> bool:
     return any(re.match(r"chainlit\b", line) for line in lines)
 
 
-def test_run_tool_call_reports_failure_in_the_step(monkeypatch):
-    # Given a tool that raises, with a url in its arguments
-    # When run_tool_call runs it
-    # Then the step finishes with "Failed: …" and a link to the url, and the model gets "Tool failed: …"
-    # Demonstrates: failures stay visible to the user and to the model
-    async def broken(args: dict) -> tuple[str, str]:
-        raise ValueError("site down")
-
-    known_tool(monkeypatch, broken)
+def test_native_tool_event_reports_failure_in_the_step() -> None:
     view = FakeProgressView()
-    call = {"id": "c1", "name": "web_search", "arguments": json.dumps({"query": "q", "url": "https://example.org/a"})}
-
-    result = asyncio.run(run_tool_call(call, Progress(view)))
-
-    assert result == "Tool failed: site down"
-    assert view.tool_steps[0].output == "Failed: site down\n\n[https://example.org/a](https://example.org/a)"
+    result = ToolMessage(content="Tool failed: site down", status="error", tool_call_id="c1")
+    asyncio.run(show_tool_result(view, {"query": "air"}, result))
+    assert view.tool_steps[0].output == "Failed: site down"

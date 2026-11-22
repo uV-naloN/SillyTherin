@@ -11,10 +11,12 @@ from sillytherin.tools import chosen_tools, dataset_download, dataset_list
 from sillytherin.tools import dataset_search as search
 from sillytherin.workspace import ErrorCode, WorkspaceError, store
 from sillytherin.workspace.datasets import sources as src
+from sillytherin.workspace.datasets.links import find_pasted_links
 from sillytherin.workspace.datasets.service import DatasetService, DatasetsSettings
 from sillytherin.workspace.datasets.sources import DatasetPlan, PlannedFile
 from tests.chat.fakes import FakeChatState, in_chat
 from tests.conftest import FakeDatasetService, FakeFreeDisk, fake_lookup
+from tests.tool_calls import call_tool, failure_text, fake_services
 
 STARTED = {
     "dataset_id": "hf-org--name",
@@ -58,11 +60,11 @@ def test_download_tool_returns_before_download_ends():
     # Demonstrates: the chat isn't blocked
     svc = FakeDatasetService()
     svc.started = STARTED
-    shown, result = run(dataset_download.run({"ref": "hf:org/name", "files": ["*.csv"]}, svc=svc, project_id="p1", session_id="s1", approve=never))
-    data = json.loads(result)
+    result = run(call_tool(dataset_download.dataset_download, {"ref": "hf:org/name", "files": ["*.csv"]}, fake_services(datasets=svc, project_id="p1", chat_id="s1", approve_download=never)))
+    data = json.loads(result.content)
     assert data["status"] == "downloading" and data["files"][0]["path"].startswith("/work/datasets/")
     assert "Don't read the files until then" in data["note"]
-    assert "Downloading in the background" in shown
+    assert "Downloading in the background" in result.artifact
     assert svc.calls == [("request", "p1", "s1", "hf:org/name", ["*.csv"], False)]
 
 
@@ -71,12 +73,12 @@ def test_list_tool_shows_status_and_progress():
     # Demonstrates: the model can answer "is it done?"
     svc = FakeDatasetService()
     svc.records = [view("a", "ready"), view("b", "downloading", done=400), view("c", "queued", position=1)]
-    shown, result = run(dataset_list.run({}, svc=svc, project_id="p1"))
-    data = json.loads(result)["datasets"]
+    result = run(call_tool(dataset_list.dataset_list, {}, fake_services(datasets=svc, project_id="p1")))
+    data = json.loads(result.content)["datasets"]
     assert [(d["status"], d["done_bytes"], d["position_in_queue"]) for d in data] == [
         ("ready", None, None), ("downloading", 400, None), ("queued", None, 1)
     ]
-    assert "downloading 40%" in shown
+    assert "downloading 40%" in result.artifact
 
 
 def test_search_results_carry_download_ref():
@@ -89,7 +91,7 @@ def test_search_results_carry_download_ref():
 
 def test_dataset_tools_are_behind_notebook_switch():
     # Changed: settings · Then: present only with notebook: True · Demonstrates: the switch controls them
-    names = lambda s: {t["function"]["name"] for t in chosen_tools(s)}
+    names = lambda s: {tool.name for tool in chosen_tools(s)}
     dataset_tools = {"dataset_download", "dataset_list", "dataset_delete"}
     assert dataset_tools <= names({"notebook": True})
     assert not dataset_tools & names({"web_search": True})
@@ -100,8 +102,8 @@ def test_download_tool_needs_ref():
     # Changed: {} · Then: ValueError; service not called
     svc = FakeDatasetService()
     for args in ({}, {"ref": ""}, {"ref": 5}):
-        with pytest.raises(ValueError):
-            run(dataset_download.run(args, svc=svc, project_id="p1", session_id="s1", approve=never))
+        message = run(call_tool(dataset_download.dataset_download, args, fake_services(datasets=svc, project_id="p1", chat_id="s1", approve_download=never)))
+        assert message.status == "error", args
     assert svc.calls == []
 
 
@@ -117,8 +119,8 @@ def test_download_tool_rejects_bad_args():
         {"ref": "hf:a/b", "files": [3]},
         {"ref": "hf:a/b", "update": "yes"},
     ):
-        with pytest.raises(ValueError):
-            run(dataset_download.run(args, svc=svc, project_id="p1", session_id="s1", approve=never))
+        message = run(call_tool(dataset_download.dataset_download, args, fake_services(datasets=svc, project_id="p1", chat_id="s1", approve_download=never)))
+        assert message.status == "error", args
     assert svc.calls == []
 
 
@@ -129,9 +131,8 @@ def test_no_space_result_explains_sizes():
     svc.error = WorkspaceError(ErrorCode.NO_SPACE, "Not enough disk.", {
         "needed_bytes": 50, "free_bytes": 40, "reserved_bytes": 0, "available_files": [{"path": "a.csv", "size": 50}],
     })
-    with pytest.raises(ValueError) as e:
-        run(dataset_download.run({"ref": "hf:a/b"}, svc=svc, project_id="p1", session_id="s1", approve=never))
-    data = json.loads(str(e.value))
+    message = run(call_tool(dataset_download.dataset_download, {"ref": "hf:a/b"}, fake_services(datasets=svc, project_id="p1", chat_id="s1", approve_download=never)))
+    data = json.loads(failure_text(message))
     assert data["error"] == "NO_SPACE" and data["needed_bytes"] == 50 and data["free_bytes"] == 40
     assert data["available_files"] == [{"path": "a.csv", "size": 50}]
 
@@ -141,7 +142,8 @@ def test_no_space_result_explains_sizes():
 
 
 def test_model_cannot_skip_approval_with_arguments(tmp_path):
-    # Changed: extra args like {"approved": true} · Then: still asks · Demonstrates: approval can't be bypassed
+    # Changed: extra args like {"approved": true} · Then: rejected without asking or downloading
+    # Demonstrates: approval can't be bypassed
     root = tmp_path / "ws"
     store.create_project("P1", root, project_id="p1")
     plan = DatasetPlan("huggingface", "org/name", "Big", "1" * 40, "https://huggingface.co/datasets/org/name", None,
@@ -160,9 +162,9 @@ def test_model_cannot_skip_approval_with_arguments(tmp_path):
         svc = DatasetService(settings=DatasetsSettings(parallel_downloads=0), root=root, free_bytes=FakeFreeDisk(10**12), resolve=resolve)
         await svc.startup_cleanup()
         args = {"ref": "hf:org/name", "approved": True, "approve": True, "force": True}
-        shown, result = await dataset_download.run(args, svc=svc, project_id="p1", session_id="s1", approve=skip)
-        assert json.loads(result)["error"] == "DECLINED" and "Skipped" in shown
-        assert asked == [300_000_000] and svc.active_jobs() == []
+        result = await call_tool(dataset_download.dataset_download, args, fake_services(datasets=svc, project_id="p1", chat_id="s1", approve_download=skip))
+        assert "approved: Extra inputs are not permitted" in failure_text(result)
+        assert asked == [] and svc.active_jobs() == []
 
     run(scenario())
 
@@ -182,12 +184,12 @@ def test_dataset_list_line_says_created_in_this_project(tmp_path):
     }
     svc.records = [view("hf-x", "ready"), created_view]
 
-    shown, result = run(dataset_list.run({}, svc=svc, project_id="p1"))
+    result = run(call_tool(dataset_list.dataset_list, {}, fake_services(datasets=svc, project_id="p1")))
 
-    assert shown.splitlines()[1] == "- Iris.csv · ready · 4.6 KB · created in this project · `/work/Iris.csv`"
-    assert shown.splitlines()[0].startswith("- hf-x · ready")
-    assert [d["origin"] for d in json.loads(result)["datasets"]] == ["downloaded", "created"]
-    assert "created in this project" in dataset_list.DEFINITION["function"]["description"]
+    assert result.artifact.splitlines()[1] == "- Iris.csv · ready · 4.6 KB · created in this project · `/work/Iris.csv`"
+    assert result.artifact.splitlines()[0].startswith("- hf-x · ready")
+    assert [d["origin"] for d in json.loads(result.content)["datasets"]] == ["downloaded", "created"]
+    assert "created in this project" in " ".join(dataset_list.dataset_list.description.split())
 
 PASTED_LINK = "https://example.org/data/iris.csv"
 USER_HISTORY = [
@@ -223,7 +225,10 @@ def download_with_history(monkeypatch, tmp_path, ref, history=USER_HISTORY, extr
 
     async def download():
         await svc.startup_cleanup()
-        return await dataset_download.run({"ref": ref, **(extra_args or {})}, svc=svc, project_id="p1", approve=never)
+        services = fake_services(
+            datasets=svc, project_id="p1", chat_id="s1", approve_download=never, pasted_links=find_pasted_links(history)
+        )
+        return await call_tool(dataset_download.dataset_download, {"ref": ref, **(extra_args or {})}, services)
 
     async def go():
         with in_chat(FakeChatState(chat_id="s1", values={"history": history})):
@@ -233,9 +238,7 @@ def download_with_history(monkeypatch, tmp_path, ref, history=USER_HISTORY, extr
 
 
 def refused_code(go) -> str:
-    with pytest.raises(ValueError) as e:
-        run(go())
-    return json.loads(str(e.value))["error"]
+    return json.loads(failure_text(run(go())))["error"]
 
 
 # ---- Links the assistant made up are refused
@@ -246,8 +249,8 @@ def test_pasted_link_is_downloaded(monkeypatch, tmp_path):
     # Then: a DownloadStarted result
     # Demonstrates: a pasted link is downloaded
     go, _svc, _site = download_with_history(monkeypatch, tmp_path, PASTED_LINK)
-    _shown, result = run(go())
-    started = json.loads(result)
+    result = run(go())
+    started = json.loads(result.content)
     assert started["dataset_id"] == "link-example-org--iris-csv" and started["status"] == "queued"
     assert "No licence is known" in started["note"]
 
@@ -303,10 +306,10 @@ def test_service_refuses_without_pasted_links(monkeypatch, tmp_path):
 
 
 def test_unknown_args_dont_skip_check(monkeypatch, tmp_path):
-    # Then: an extra argument {'pasted': true} still gives NOT_PASTED
-    # Demonstrates: extra arguments change nothing
+    # Then: an extra argument {'pasted': true} is rejected before the link is checked or fetched
+    # Demonstrates: extra arguments can't vouch for a link
     go, _svc, site = download_with_history(monkeypatch, tmp_path, "https://evil.example/x.csv", extra_args={"pasted": True})
-    assert refused_code(go) == ErrorCode.NOT_PASTED and site.requests == []
+    assert "pasted: Extra inputs are not permitted" in failure_text(run(go())) and site.requests == []
 
 
 
@@ -317,5 +320,5 @@ def test_unknown_size_download_says_size_unknown():
     svc = FakeDatasetService()
     svc.started = {**STARTED, "dataset_id": "link-example-org--iris-csv", "size_bytes": 0, "download_bytes": 0,
                    "path": "/work/datasets/link-example-org--iris-csv"}
-    shown, _result = run(dataset_download.run({"ref": PASTED_LINK}, svc=svc, project_id="p1", session_id="s1", approve=never))
-    assert shown == "Downloading in the background (size unknown) → `/work/datasets/link-example-org--iris-csv/`"
+    result = run(call_tool(dataset_download.dataset_download, {"ref": PASTED_LINK}, fake_services(datasets=svc, project_id="p1", chat_id="s1", approve_download=never)))
+    assert result.artifact == "Downloading in the background (size unknown) → `/work/datasets/link-example-org--iris-csv/`"

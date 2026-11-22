@@ -6,33 +6,14 @@ the project may be read without asking the user, whoever added it.
 
 import json
 
-from sillytherin.chat.current import this_chat
-from sillytherin.tools.dataset_download import error_json
-from sillytherin.tools.services import DatasetDescriber
-from sillytherin.workspace import ErrorCode, WorkspaceError
+from langchain.tools import ToolRuntime
+from langchain_core.tools import ToolException, tool
+from pydantic import Field
 
-DEFINITION = {
-    "type": "function",
-    "function": {
-        "name": "dataset_describe",
-        "description": (
-            "Save a one-line description of a dataset in the user's project that says "
-            "nothing about itself (dataset_list marks it with describe): look at its first "
-            "rows with notebook_run, then call this with dataset_id and description."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "dataset_id": {"type": "string", "description": "Id from dataset_list."},
-                "description": {
-                    "type": "string",
-                    "description": "What the data holds, in one line (at most 300 characters). Leave out to ask the user.",
-                },
-            },
-            "required": ["dataset_id"],
-        },
-    },
-}
+from sillytherin.tools.arguments import ToolArguments, TrimmedText
+from sillytherin.tools.dataset_download import error_json
+from sillytherin.tools.services import ToolServices
+from sillytherin.workspace import ErrorCode, WorkspaceError
 
 
 def step_title(args: dict) -> str:
@@ -59,38 +40,39 @@ class ChatLooks:
 looked = ChatLooks()  # undescribed datasets the assistant looked at (notebook_run), per chat; lets downloads go
 
 
-async def run(
-    args: dict,
-    *,
-    svc: DatasetDescriber | None = None,
-    project_id: str | None = None,
+class DatasetDescribeArguments(ToolArguments):
+    dataset_id: TrimmedText = Field(description="Current project's dataset ID from dataset_list.")
+    description: str = Field(default=None, description="One line, at most 300 characters. Omit to ask the user.")
+
+
+@tool(
+    "dataset_describe",
+    args_schema=DatasetDescribeArguments,
+    response_format="content_and_artifact",
+)
+async def dataset_describe(
+    dataset_id: str, runtime: ToolRuntime[ToolServices], description: str | None = None
 ) -> tuple[str, str]:
-    """Return (text shown in the chat step, JSON for the model).
+    """Save a one-line description of a dataset in the user's project that says nothing about itself.
 
-    Only dataset_id → what to do next. With description → save it as
-    {saved, description}. svc / project_id default to the app's service and
-    this chat's project; tests pass their own.
+    dataset_list marks the dataset with describe. Look at its first rows with notebook_run before calling
+    this with its dataset_id and description.
     """
-    dataset_id = args.get("dataset_id")
-    if not isinstance(dataset_id, str) or not dataset_id.strip():
-        raise ValueError("No dataset_id given. Use an id from dataset_list.")
-    description = args.get("description")  # any other argument is ignored
-    if svc is None or project_id is None:
-        from sillytherin.workspace import actions
-
-        svc = svc or actions.datasets
-        project_id = project_id or actions.session_project(this_chat().state)
+    services = runtime.context
     try:
-        view = svc.view_for_model(project_id, dataset_id.strip())
+        view = services.datasets.view_for_model(services.project_id, dataset_id)
         if view["describe"] is None:
             raise WorkspaceError(ErrorCode.NOT_NEEDED, "This dataset already says what it holds, or isn't ready.")
         if description is None:
-            return f"Ready to note what **{view['name']}** holds.", json.dumps({"allowed": True, "next": NEXT_STEP})
-        saved = await svc.save_description(project_id, view["dataset_id"], description)
+            return json.dumps({"allowed": True, "next": NEXT_STEP}), f"Ready to note what **{view['name']}** holds."
+        saved = await services.datasets.save_description(services.project_id, view["dataset_id"], description)
     except WorkspaceError as e:
-        raise ValueError(error_json(e)) from e
+        raise ToolException(error_json(e)) from e
     text = saved["assistant_description"]
-    return f"Noted what **{view['name']}** holds: {text}", json.dumps({"saved": view["dataset_id"], "description": text})
+    return (
+        json.dumps({"saved": view["dataset_id"], "description": text}),
+        f"Noted what **{view['name']}** holds: {text}",
+    )
 
 
 NEXT_STEP = "Look at its first rows with notebook_run, then call dataset_describe again with a one-line description."

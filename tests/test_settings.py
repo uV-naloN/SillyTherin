@@ -61,7 +61,7 @@ def test_no_tools_reach_a_model_without_tools():
 def test_each_switch_adds_its_own_tools():
     from sillytherin.tools import chosen_tools
 
-    names = lambda s: [t["function"]["name"] for t in chosen_tools(s)]
+    names = lambda s: [tool.name for tool in chosen_tools(s)]
     assert names({}) == []
     assert names({"web_search": True}) == ["web_search", "read_page", "dataset_search"]
     notebook = ["notebook_read", "notebook_run", "dataset_download", "dataset_list", "dataset_delete", "dataset_describe"]

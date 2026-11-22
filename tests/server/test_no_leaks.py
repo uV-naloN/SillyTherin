@@ -41,10 +41,10 @@ def test_no_event_carries_the_api_key(client, model, monkeypatch):
     key = config.OPENROUTER_API_KEY or "sk-or-placeholder-for-the-test"
     monkeypatch.setattr(config, "OPENROUTER_API_KEY", key)
 
-    async def found(args: dict) -> tuple[str, str]:
-        return "3 results", "results"
+    async def found(query: str, runtime: object) -> tuple[str, str]:
+        return "results", "3 results"
 
-    monkeypatch.setattr(web_search, "run", found)
+    monkeypatch.setattr(web_search.web_search, "coroutine", found)
     model.scripts += [[tool_call_chunk("web_search", {"query": "q"})], [text_chunk("Done")]]
     with open_tab(client) as tab:
         events = [tab.receive_json()]

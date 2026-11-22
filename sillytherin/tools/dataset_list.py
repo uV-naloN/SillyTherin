@@ -2,28 +2,13 @@
 
 import json
 
-from sillytherin.chat.current import this_chat
-from sillytherin.tools.services import DatasetLister
+from langchain.tools import ToolRuntime
+from langchain_core.tools import tool
+
+from sillytherin.tools.arguments import ToolArguments
+from sillytherin.tools.services import ToolServices
 from sillytherin.workspace.datasets.describe import one_line
 from sillytherin.workspace.datasets.service import human_size
-
-DEFINITION = {
-    "type": "function",
-    "function": {
-        "name": "dataset_list",
-        "description": (
-            "List the datasets in the user's project: id, name, status (queued, "
-            "downloading, ready, failed, missing), progress, size, licence, what each "
-            "one holds (catalog description, column names or a description you saved), "
-            "the /work/datasets/... file paths and load_code to use in notebook code. "
-            "Data files the project's own code saved are listed too, as created in this "
-            "project, with their /work/<file> path. Call this first whenever the user "
-            "wants data, before dataset_search, dataset_download or writing a data file "
-            "with notebook_run: the project may already have it."
-        ),
-        "parameters": {"type": "object", "properties": {}},
-    },
-}
 
 REUSE_RULES = (
     "You may read any of these without asking the user. "
@@ -49,58 +34,80 @@ def step_title(args: dict) -> str:
     return "List datasets"
 
 
-def _about(v: dict) -> list[str]:
+def describe_contents(dataset_view: dict) -> list[str]:
     """What the line says the data holds: catalog text, columns, the assistant's note, or that nothing is known."""
-    if v.get("description"):
-        return [f'"{v["description"]}"']
-    if v.get("columns"):
-        return ["columns: " + ", ".join(v["columns"])]
-    if v.get("assistant_description"):
-        return [f'described by the assistant: "{v["assistant_description"]}"']
-    if v.get("describe") == "write":
+    if dataset_view.get("description"):
+        return [f'"{dataset_view["description"]}"']
+    if dataset_view.get("columns"):
+        return ["columns: " + ", ".join(dataset_view["columns"])]
+    if dataset_view.get("assistant_description"):
+        return [f'described by the assistant: "{dataset_view["assistant_description"]}"']
+    if dataset_view.get("describe") == "write":
         return ["nothing known"]
     return []
 
 
-def _created_line(v: dict) -> str:
+def _created_line(dataset_view: dict) -> str:
     """`- Iris.csv · ready · 4.6 KB · created in this project · columns: … · `/work/Iris.csv``."""
-    path = one_line(v["path"], PATH_MAX_CHARS)
-    parts = [f"- {v['name']}", v["status"], human_size(v["size_bytes"]), "created in this project", *_about(v), f"`{path}`"]
+    path = one_line(dataset_view["path"], PATH_MAX_CHARS)
+    size = human_size(dataset_view["size_bytes"])
+    parts = [
+        f"- {dataset_view['name']}", dataset_view["status"], size, "created in this project",
+        *describe_contents(dataset_view), f"`{path}`",
+    ]
     return " · ".join(parts)
 
 
-def _downloaded_line(v: dict) -> str:
-    status = v["status"]
-    if status == "downloading" and v["size_bytes"]:
-        status += f" {100 * (v['done_bytes'] or 0) // v['size_bytes']}%"
-    shared = f" · also in {v['shared_with']} other project(s)" if v["shared_with"] else ""
-    parts = [f"- {v['name']}", status, human_size(v["size_bytes"]), *_about(v), f"`{one_line(v['path'], PATH_MAX_CHARS)}/`"]
+def _downloaded_line(dataset_view: dict) -> str:
+    status = dataset_view["status"]
+    size_bytes = dataset_view["size_bytes"]
+    if status == "downloading" and size_bytes:
+        status += f" {100 * (dataset_view['done_bytes'] or 0) // size_bytes}%"
+    shared_with = dataset_view["shared_with"]
+    shared = f" · also in {shared_with} other project(s)" if shared_with else ""
+    folder = one_line(dataset_view["path"], PATH_MAX_CHARS)
+    parts = [
+        f"- {dataset_view['name']}", status, human_size(size_bytes), *describe_contents(dataset_view), f"`{folder}/`",
+    ]
     return " · ".join(parts) + shared
 
 
 LINE_BY_ORIGIN = {"downloaded": _downloaded_line, "created": _created_line}  # one chat line per dataset kind
 
 
-def _safe_view(v: dict) -> dict:
+def _safe_view(dataset_view: dict) -> dict:
     """The view with every free text on one capped line, for the chat line and the JSON alike."""
-    safe = dict(v, name=one_line(v["name"], NAME_MAX_CHARS))
+    safe = dict(dataset_view, name=one_line(dataset_view["name"], NAME_MAX_CHARS))
     for key in ("description", "assistant_description"):
         if safe.get(key):
             safe[key] = one_line(safe[key], TEXT_MAX_CHARS)
     if safe.get("columns"):
-        safe["columns"] = [one_line(c, NAME_MAX_CHARS) for c in safe["columns"]]
+        safe["columns"] = [one_line(column, NAME_MAX_CHARS) for column in safe["columns"]]
     return safe
 
 
-async def run(args: dict, *, svc: DatasetLister | None = None, project_id: str | None = None) -> tuple[str, str]:
-    """Return (text shown in the chat step, JSON {"datasets": [DatasetRecordView], "note": reuse rules})."""
-    if svc is None or project_id is None:
-        from sillytherin.workspace import actions
+class DatasetListArguments(ToolArguments):
+    pass
 
-        svc = svc or actions.datasets
-        project_id = project_id or actions.session_project(this_chat().state)
-    views = [_safe_view(v) for v in svc.list_for_model(project_id)]
+
+@tool(
+    "dataset_list",
+    args_schema=DatasetListArguments,
+    response_format="content_and_artifact",
+)
+async def dataset_list(runtime: ToolRuntime[ToolServices]) -> tuple[str, str]:
+    """List the datasets in the user's project.
+
+    Includes ID, name, status (queued, downloading, ready, failed, missing), progress, size, licence,
+    what each one holds (catalog description, column names or a description you saved),
+    the /work/datasets/... file paths and load_code to use in notebook code.
+    Data files the project's own code saved are listed too, as created in this project, with their
+    /work/<file> path. Call this first whenever the user wants data, before dataset_search, dataset_download
+    or writing a data file with notebook_run: the project may already have it.
+    """
+    services = runtime.context
+    views = [_safe_view(view) for view in services.datasets.list_for_model(services.project_id)]
     if not views:
-        return "No datasets in this project yet.", json.dumps({"datasets": []})
-    shown = "\n".join(LINE_BY_ORIGIN[v["origin"]](v) for v in views)
-    return shown, json.dumps({"datasets": views, "note": REUSE_RULES})
+        return json.dumps({"datasets": []}), "No datasets in this project yet."
+    shown = "\n".join(LINE_BY_ORIGIN[view["origin"]](view) for view in views)
+    return json.dumps({"datasets": views, "note": REUSE_RULES}), shown

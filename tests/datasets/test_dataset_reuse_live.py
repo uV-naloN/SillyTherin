@@ -20,6 +20,7 @@ from tests.datasets.test_dataset_reuse import (
     created_record,
     record,
 )
+from tests.tool_calls import call_tool, fake_services
 
 pytestmark = [
     pytest.mark.live,
@@ -60,7 +61,7 @@ class Chat:
         from sillytherin.tools import NOTEBOOK_TOOLS, TOOLS
 
         # A model per chat: a shared one is tied to the event loop of the first test
-        tools = TOOLS + NOTEBOOK_TOOLS
+        tools = [*TOOLS, *NOTEBOOK_TOOLS]
         model = build_chat_model(ModelRequest(model=MODEL, tools=tools, thinking={})).bind_tools(tools)
         messages = [SystemMessage(content=SYSTEM_PROMPT), HumanMessage(content=user_text)]
         for _ in range(MAX_ROUNDS):
@@ -77,7 +78,7 @@ class Chat:
         from sillytherin.tools import dataset_list
 
         if name == "dataset_list":
-            return (await dataset_list.run({}, svc=self.svc, project_id="p1"))[1]
+            return (await call_tool(dataset_list.dataset_list, {}, fake_services(datasets=self.svc, project_id="p1"))).content
         if name == "dataset_search":  # the real tool (marks, reminders) with canned catalog answers
             from sillytherin.tools import dataset_search
 
@@ -86,7 +87,7 @@ class Chat:
 
             real_search, dataset_search.search = dataset_search.search, canned
             try:
-                return (await dataset_search.run(args, svc=self.svc, project_id="p1"))[1]
+                return (await call_tool(dataset_search.dataset_search, args, fake_services(datasets=self.svc, project_id="p1"))).content
             finally:
                 dataset_search.search = real_search
         if name == "dataset_download":  # the real tool: a broken copy gets the "Download again?" question, answered No
@@ -97,19 +98,13 @@ class Chat:
                 return False
 
             try:
-                return (await dataset_download.run(
-                    args, svc=self.svc, project_id="p1", session_id="s1", approve=yes, pasted_links=frozenset(),
-                    confirm_retry=say_no, looked=self.looked,
-                ))[1]
+                return (await call_tool(dataset_download.dataset_download, args, fake_services(datasets=self.svc, project_id="p1", chat_id="s1", approve_download=yes, pasted_links=frozenset(), confirm_retry=say_no, looked=self.looked))).content
             except ValueError as e:
                 return f"Tool failed: {e}"
         if name == "notebook_run":  # the real tool, so looks at undescribed data are recorded
             from sillytherin.tools import notebook_run
 
-            return (await notebook_run.run(
-                args, svc=self.notebook, project_id="p1", approve=yes_to_code, datasets=self.svc, session_id="s1",
-                looked=self.looked,
-            ))[1]
+            return (await call_tool(notebook_run.notebook_run, args, fake_services(notebook=self.notebook, project_id="p1", approve_run=yes_to_code, datasets=self.svc, chat_id="s1", looked=self.looked))).content
         if name == "dataset_describe":
             if args.get("description"):
                 return json.dumps({"saved": args.get("dataset_id"), "description": args["description"]})

@@ -5,28 +5,17 @@ Every model delete shows Delete / Keep with the name and the space it frees.
 
 import json
 
+from langchain.tools import ToolRuntime
+from langchain_core.tools import ToolException, tool
+from pydantic import Field
+
 from sillytherin.chat.current import this_chat
 from sillytherin.chat.ports import Choice
+from sillytherin.tools.arguments import ToolArguments, TrimmedText
 from sillytherin.tools.dataset_download import error_json
-from sillytherin.tools.services import ApproveDelete, DatasetDeleter
+from sillytherin.tools.services import ToolServices
 from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.datasets.service import human_size
-
-DEFINITION = {
-    "type": "function",
-    "function": {
-        "name": "dataset_delete",
-        "description": (
-            "Delete a dataset from the user's project to free disk space. The user "
-            "is always asked first. Pass the dataset_id from dataset_list."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {"dataset_id": {"type": "string", "description": "Id from dataset_list."}},
-            "required": ["dataset_id"],
-        },
-    },
-}
 
 APPROVAL_TIMEOUT_SECONDS = 120
 DELETE_CHOICE = Choice("delete", "Delete")
@@ -53,29 +42,31 @@ async def ask_approval(name: str, frees_bytes: int, shared_with: int) -> bool:
     return answer == DELETE_CHOICE.id
 
 
-async def run(
-    args: dict, *, svc: DatasetDeleter | None = None, project_id: str | None = None,
-    approve: ApproveDelete | None = None,
-) -> tuple[str, str]:
-    """Return (text shown in the chat step, JSON {deleted, freed_bytes, still_used_by})."""
-    dataset_id = args.get("dataset_id")
-    if not isinstance(dataset_id, str) or not dataset_id.strip():
-        raise ValueError("No dataset_id given. Use an id from dataset_list.")
-    if svc is None or project_id is None:
-        from sillytherin.workspace import actions
+class DatasetDeleteArguments(ToolArguments):
+    dataset_id: TrimmedText = Field(description="Current project's dataset ID from dataset_list.")
 
-        svc = svc or actions.datasets
-        project_id = project_id or actions.session_project(this_chat().state)
+
+@tool(
+    "dataset_delete",
+    args_schema=DatasetDeleteArguments,
+    response_format="content_and_artifact",
+)
+async def dataset_delete(dataset_id: str, runtime: ToolRuntime[ToolServices]) -> tuple[str, str]:
+    """Delete a dataset from the user's project to free disk space.
+
+    The user is always asked first. Pass the dataset_id from dataset_list.
+    """
+    services = runtime.context
     try:
-        view = svc.describe(project_id, dataset_id.strip())
+        view = services.datasets.describe(services.project_id, dataset_id)
         frees_bytes = 0 if view["shared_with"] else view["size_bytes"]
-        if not await (approve or ask_approval)(view["name"], frees_bytes, view["shared_with"]):
+        if not await services.approve_delete(view["name"], frees_bytes, view["shared_with"]):
             declined = WorkspaceError(ErrorCode.DECLINED, "The user chose to keep this dataset.")
-            return f"Kept **{view['name']}**.", error_json(declined)
-        result = await svc.delete(project_id, view["dataset_id"])
+            return error_json(declined), f"Kept **{view['name']}**."
+        result = await services.datasets.delete(services.project_id, view["dataset_id"])
     except WorkspaceError as e:
-        raise ValueError(error_json(e)) from e
+        raise ToolException(error_json(e)) from e
     shown = f"Deleted **{view['name']}**, freed {human_size(result['freed_bytes'])}."
     if result["still_used_by"]:
         shown += " Other projects still use it, so its files stay."
-    return shown, json.dumps(result)
+    return json.dumps(result), shown

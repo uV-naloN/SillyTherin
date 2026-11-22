@@ -25,7 +25,7 @@ def request_for(model: str = THINKS_AND_TOOLS, effort: str = "high", settings: d
 
 
 def tool_names(request) -> set[str]:
-    return {tool["function"]["name"] for tool in request.tools}
+    return {tool.name for tool in request.tools}
 
 
 def test_turn_uses_the_picked_model_and_effort(catalog):

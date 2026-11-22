@@ -5,7 +5,8 @@ only the methods a tool calls.
 """
 
 from collections.abc import Awaitable, Callable
-from typing import Protocol
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Protocol
 
 from sillytherin.workspace.datasets.service import (
     Approve,
@@ -13,6 +14,9 @@ from sillytherin.workspace.datasets.service import (
     DeleteResult,
     DownloadStarted,
 )
+
+if TYPE_CHECKING:
+    from sillytherin.tools.dataset_describe import ChatLooks
 
 
 class DatasetLister(Protocol):
@@ -64,3 +68,27 @@ class NotebookRunner(Protocol):
 ConfirmRetry = Callable[[str, str | None], Awaitable[bool]]  # (name, reason) -> Download again?
 ApproveDelete = Callable[[str, int, int], Awaitable[bool]]  # (name, frees_bytes, shared_with) -> Delete?
 ApproveRun = Callable[[str, list[str]], Awaitable[bool]]  # (code, risk reasons) -> Run?
+
+
+class NotebookAccess(NotebookReader, NotebookRunner, Protocol):
+    """The notebook as the tools use it."""
+
+
+class DatasetAccess(DatasetLister, DatasetDownloader, DatasetDescriber, DatasetDeleter, Protocol):
+    """The dataset service as the tools use it."""
+
+
+@dataclass(frozen=True)
+class ToolServices:
+    """What a tool gets from the running message, through LangChain's runtime context; never shown to the model."""
+
+    notebook: NotebookAccess
+    datasets: DatasetAccess
+    project_id: str  # the chat's project; the model can never choose it
+    chat_id: str  # keys this chat's looks and downloads
+    pasted_links: frozenset[str]  # links the user really pasted; only these may be downloaded
+    approve_run: ApproveRun
+    approve_download: Approve
+    confirm_retry: ConfirmRetry
+    approve_delete: ApproveDelete
+    looked: "ChatLooks"  # undescribed datasets the assistant looked at in this chat

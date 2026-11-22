@@ -13,6 +13,7 @@ from sillytherin.workspace import ErrorCode, store
 from sillytherin.workspace.datasets import sources as src
 from tests.conftest import fake_lookup
 from tests.datasets.test_dataset_service import R2, Env, yes
+from tests.tool_calls import call_tool, failure_text, fake_services
 
 NOTE = "Model scores per run, 12 columns"
 
@@ -52,11 +53,11 @@ def make_file(root, path: str, by: str | None, svc, project_id: str = "p1") -> s
 
 
 async def describe(svc, args, *, project_id="p1"):
-    return await dataset_describe.run(args, svc=svc, project_id=project_id)
+    return await call_tool(dataset_describe.dataset_describe, args, fake_services(datasets=svc, project_id=project_id))
 
 
-def error_of(excinfo) -> dict:
-    return json.loads(str(excinfo.value))
+def error_of(message) -> dict:
+    return json.loads(failure_text(message))
 
 
 def view_of(svc, dataset_id: str, project_id: str = "p1") -> dict:
@@ -74,11 +75,11 @@ def test_write_row_is_saved_without_asking(root):
     async def scenario():
         _env, svc = await service(root)
         file_id = make_file(root, "results.parquet", "assistant", svc)
-        _shown, result = await describe(svc, {"dataset_id": file_id, "description": NOTE})
-        assert json.loads(result) == {"saved": file_id, "description": NOTE}
+        result = await describe(svc, {"dataset_id": file_id, "description": NOTE})
+        assert json.loads(result.content) == {"saved": file_id, "description": NOTE}
         user_cell_id = make_file(root, "mine.parquet", "user", svc)  # the user's own cell: no question either
-        _shown, result = await describe(svc, {"dataset_id": user_cell_id, "description": NOTE})
-        assert json.loads(result)["saved"] == user_cell_id
+        result = await describe(svc, {"dataset_id": user_cell_id, "description": NOTE})
+        assert json.loads(result.content)["saved"] == user_cell_id
         view = view_of(svc, file_id)
         assert view["assistant_description"] == NOTE and view["describe"] is None
         [row] = [r for r in svc.panel_state("p1")[0] if r["id"] == file_id]
@@ -94,8 +95,8 @@ def test_upload_is_saved_without_asking(root):
     async def scenario():
         _env, svc = await service(root)
         file_id = make_file(root, "upload.parquet", None, svc)
-        _shown, saved = await describe(svc, {"dataset_id": file_id, "description": NOTE})
-        assert json.loads(saved)["saved"] == file_id
+        saved = await describe(svc, {"dataset_id": file_id, "description": NOTE})
+        assert json.loads(saved.content)["saved"] == file_id
         assert view_of(svc, file_id)["assistant_description"] == NOTE
 
     run(scenario())
@@ -157,8 +158,8 @@ def test_only_an_id_says_what_to_do_next(root):
     async def scenario():
         _env, svc = await service(root)
         file_id = make_file(root, "upload.parquet", None, svc)
-        _shown, result = await describe(svc, {"dataset_id": file_id})
-        data = json.loads(result)
+        result = await describe(svc, {"dataset_id": file_id})
+        data = json.loads(result.content)
         assert data["allowed"] is True and "notebook_run" in data["next"]
         assert view_of(svc, file_id)["assistant_description"] is None
 
@@ -172,8 +173,7 @@ def test_row_that_needs_none_is_refused(root):
         _env, svc = await service(root, description="Iris flower measurements")
         await svc.request("p1", "s1", "hf:org/name", approve=yes)
         await svc.wait_idle()
-        with pytest.raises(ValueError) as excinfo:
-            await describe(svc, {"dataset_id": "hf-org--name", "description": NOTE})
+        excinfo = await describe(svc, {"dataset_id": "hf-org--name", "description": NOTE})
         assert error_of(excinfo)["error"] == ErrorCode.NOT_NEEDED
         assert view_of(svc, "hf-org--name")["assistant_description"] is None
 
@@ -189,8 +189,7 @@ def test_unknown_or_other_projects_id_is_not_found(root):
         other_id = make_file(root, "results.parquet", "assistant", svc, project_id="p2")
         errors = []
         for dataset_id in (other_id, "file-made-up"):
-            with pytest.raises(ValueError) as excinfo:
-                await describe(svc, {"dataset_id": dataset_id, "description": NOTE})
+            excinfo = await describe(svc, {"dataset_id": dataset_id, "description": NOTE})
             errors.append(error_of(excinfo))
         assert errors[0] == errors[1] and errors[0]["error"] == ErrorCode.NOT_FOUND
         assert view_of(svc, other_id, project_id="p2")["assistant_description"] is None
@@ -206,8 +205,7 @@ def test_missing_or_failed_row_is_refused(root):
         file_id = make_file(root, "results.parquet", "assistant", svc)
         (store.project_dir("p1", root) / store.FILES_DIR / "results.parquet").unlink()
         assert view_of(svc, file_id)["status"] == "missing"
-        with pytest.raises(ValueError) as excinfo:
-            await describe(svc, {"dataset_id": file_id, "description": NOTE})
+        excinfo = await describe(svc, {"dataset_id": file_id, "description": NOTE})
         assert error_of(excinfo)["error"] == ErrorCode.NOT_NEEDED
 
     run(scenario())
@@ -219,10 +217,11 @@ def test_empty_description_is_refused(root):
     async def scenario():
         _env, svc = await service(root)
         file_id = make_file(root, "results.parquet", "assistant", svc)
-        for text in ("   ", "\n\t", 42):
-            with pytest.raises(ValueError) as excinfo:
-                await describe(svc, {"dataset_id": file_id, "description": text})
+        for text in ("   ", "\n\t"):
+            excinfo = await describe(svc, {"dataset_id": file_id, "description": text})
             assert error_of(excinfo)["error"] == ErrorCode.BAD_DESCRIPTION, text
+        not_text = await describe(svc, {"dataset_id": file_id, "description": 42})
+        assert "description: Input should be a valid string" in failure_text(not_text)
         assert view_of(svc, file_id)["assistant_description"] is None
 
     run(scenario())

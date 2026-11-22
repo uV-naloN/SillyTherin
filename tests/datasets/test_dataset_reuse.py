@@ -22,6 +22,7 @@ from sillytherin.workspace.datasets.describe import describe_need
 from sillytherin.workspace.datasets.load_code import load_code
 from sillytherin.workspace.datasets.service import DatasetService
 from tests.conftest import FakeDatasetService
+from tests.tool_calls import call_tool, failure_text, fake_services
 
 IRIS_TEXT = "Iris flower measurements, 3 species, 150 rows"
 IRIS_COLUMNS = ["sepal_length", "sepal_width", "petal_length", "petal_width", "species"]
@@ -56,8 +57,8 @@ def created_record(name="data.csv", **over) -> dict:
 def list_tool(*records) -> tuple[str, dict]:
     svc = FakeDatasetService()
     svc.records = list(records)
-    shown, result = run(dataset_list.run({}, svc=svc, project_id="p1"))
-    return shown, json.loads(result)
+    result = run(call_tool(dataset_list.dataset_list, {}, fake_services(datasets=svc, project_id="p1")))
+    return result.artifact, json.loads(result.content)
 
 
 # ---- `dataset_list` says what each dataset is, where, how to load it, and the rules · unit
@@ -153,17 +154,17 @@ def test_list_uses_only_this_projects_datasets(tmp_path):
     svc = DatasetService(root=root, created=CreatedDatasets(root))
     for pid in ("a", "b"):
         svc.sync_created(pid, "user")
-    shown, result = run(dataset_list.run({}, svc=svc, project_id="a"))
-    assert [v["name"] for v in json.loads(result)["datasets"]] == ["a_only.csv"]
-    assert "b_only" not in shown and "b_only" not in result
+    result = run(call_tool(dataset_list.dataset_list, {}, fake_services(datasets=svc, project_id="a")))
+    assert [v["name"] for v in json.loads(result.content)["datasets"]] == ["a_only.csv"]
+    assert "b_only" not in result.artifact and "b_only" not in result.content
 
 
 # ---- The tools send the assistant to `dataset_list` first · unit
-# Baseline: the DEFINITIONs and `REUSE_RULES`
+# Baseline: native tool descriptions and `REUSE_RULES`
 
 
 def description_of(module) -> str:
-    return module.DEFINITION["function"]["description"]
+    return getattr(module, module.__name__.rsplit(".", 1)[-1]).description
 
 
 def test_list_description_says_call_it_first_when_the_user_wants_data():
@@ -249,8 +250,8 @@ async def with_iris(root, project_id="p1", *, fail=False):
 
 
 async def search_in(svc, project_id="p1"):
-    shown, result = await dataset_search.run({"query": "iris"}, svc=svc, project_id=project_id)
-    return shown, json.loads(result)["datasets"]
+    result = await call_tool(dataset_search.dataset_search, {"query": "iris"}, fake_services(datasets=svc, project_id=project_id))
+    return result.artifact, json.loads(result.content)["datasets"]
 
 
 def test_search_marks_a_result_already_in_the_project(ws):
@@ -293,11 +294,11 @@ def test_search_reminds_to_look_at_undescribed_datasets_first(ws):
     # Demonstrates: the assistant checks its own unexplained data before fetching more
     svc = FakeDatasetService()
     svc.records = [created_record("data.xls", columns=[], describe="write"), record()]
-    _shown, result = run(dataset_search.run({"query": "iris"}, svc=svc, project_id="p1"))
-    note = json.loads(result)["note"]
+    result = run(call_tool(dataset_search.dataset_search, {"query": "iris"}, fake_services(datasets=svc, project_id="p1")))
+    note = json.loads(result.content)["note"]
     assert "data.xls" in note and "first rows" in note and "hf-scikit-learn--iris" not in note
     svc.records = [record()]
-    assert "note" not in json.loads(run(dataset_search.run({"query": "iris"}, svc=svc, project_id="p1"))[1])
+    assert "note" not in json.loads(run(call_tool(dataset_search.dataset_search, {"query": "iris"}, fake_services(datasets=svc, project_id="p1"))).content)
 
 
 def test_another_projects_dataset_is_not_marked(ws):
@@ -337,11 +338,11 @@ def test_search_works_unmarked_when_notebook_is_off(ws):
     # Negative · Changed: no project / service
     # Then: plain results
     # Demonstrates: search still works when the Notebook tools are off
-    shown, result = run(dataset_search.run({"query": "iris"}))  # no chat here, as with no project
-    results = json.loads(result)["datasets"]
+    result = run(call_tool(dataset_search.dataset_search, {"query": "iris"}, None))  # no services, as with no project
+    results = json.loads(result.content)["datasets"]
     assert [r["ref"] for r in results] == ["hf:scikit-learn/iris", "hf:other/iris"]
     assert all("in_project" not in r for r in results)
-    assert "already in your project" not in shown
+    assert "already in your project" not in result.artifact
 
 
 # ---- Which rows need a description, and who may write it · unit (pure `describe_need`)
@@ -434,10 +435,7 @@ def download_with(records, answer=True, args=None):
     svc.records = records
     svc.started = STARTED
     question = RetryQuestion(answer)
-    result = run(dataset_download.run(
-        {"ref": "hf:scikit-learn/iris", **(args or {})}, svc=svc, project_id="p1", session_id="s1",
-        approve=never_big, confirm_retry=question,
-    ))
+    result = run(call_tool(dataset_download.dataset_download, {"ref": "hf:scikit-learn/iris", **(args or {})}, fake_services(datasets=svc, project_id="p1", chat_id="s1", approve_download=never_big, confirm_retry=question)))
     return svc, question, result
 
 
@@ -453,9 +451,9 @@ def test_failed_copy_asks_before_downloading_again():
     # Positive · Changed: —
     # Then: "Download again?" question with the name and the reason; on Yes the download starts
     # Demonstrates: the user decides, every time
-    svc, question, (_shown, result) = download_with([broken_iris()])
+    svc, question, result = download_with([broken_iris()])
     assert question.asked == [("hf-scikit-learn--iris", "Download failed: connection lost")]
-    assert requested(svc) and json.loads(result)["status"] == "queued"
+    assert requested(svc) and json.loads(result.content)["status"] == "queued"
 
 
 def test_missing_copy_asks_too():
@@ -480,19 +478,20 @@ def test_no_keeps_the_broken_copy_and_downloads_nothing():
     # Negative · Changed: user presses No (or no answer)
     # Then: `DECLINED`; the service is never called
     # Demonstrates: nothing is fetched without a yes
-    svc, question, (shown, result) = download_with([broken_iris()], answer=False)
+    svc, question, result = download_with([broken_iris()], answer=False)
     assert question.asked and not requested(svc)
-    assert json.loads(result)["error"] == "DECLINED"
-    assert "Skipped" in shown
+    assert json.loads(result.content)["error"] == "DECLINED"
+    assert "Skipped" in result.artifact
 
 
 def test_arguments_cant_skip_the_retry_question():
     # Negative · Changed: `{"confirmed": true}`, `{"approved": true}`
-    # Then: question still shown
+    # Then: rejected as invalid arguments, before any question or download
     # Demonstrates: the model can't answer for the user
     for extra in ({"confirmed": True}, {"approved": True, "retry": True}):
-        svc, question, _result = download_with([broken_iris()], answer=False, args=extra)
-        assert question.asked and not requested(svc), extra
+        svc, question, result = download_with([broken_iris()], answer=False, args=extra)
+        assert "Extra inputs are not permitted" in failure_text(result), extra
+        assert not question.asked and not requested(svc), extra
 
 
 # ---- Any project file is read without asking · unit (real DatasetService, fake notebook)
@@ -525,9 +524,8 @@ def test_any_project_file_is_read_without_asking(tmp_path):
         return True
 
     code = 'pd.read_excel("/work/upload.xls").head()'
-    _shown, result = run(notebook_run.run({"code": code}, svc=notebook, project_id="p1", approve=no_risk_question,
-                                          datasets=datasets, session_id="s1"))
-    assert notebook.ran == [code] and result == "[cell 1] out: ok"
+    result = run(call_tool(notebook_run.notebook_run, {"code": code}, fake_services(notebook=notebook, project_id="p1", approve_run=no_risk_question, datasets=datasets, chat_id="s1")))
+    assert notebook.ran == [code] and result.content == "[cell 1] out: ok"
 
 
 # ---- A download waits until the project's undescribed data was looked at · unit (fake services, real tools)
@@ -539,20 +537,20 @@ def undescribed_xls(**over) -> dict:
 
 
 def download_in(records, *, looked=None, session_id="s1", args=None, ref="hf:scikit-learn/iris", pasted=frozenset()):
-    """dataset_download.run with a fake service; returns (svc, result or the LOOK_FIRST error dict)."""
+    """dataset_download with a fake service; returns (svc, the result or the error as a dict)."""
     from sillytherin.tools.dataset_describe import ChatLooks
 
     svc = FakeDatasetService()
     svc.records = records
     svc.started = STARTED
-    try:
-        _shown, result = run(dataset_download.run(
-            {"ref": ref, **(args or {})}, svc=svc, project_id="p1", session_id=session_id, approve=never_big,
-            confirm_retry=RetryQuestion(True), pasted_links=pasted, looked=looked or ChatLooks(),
-        ))
-        return svc, json.loads(result)
-    except ValueError as e:
-        return svc, json.loads(str(e))
+    services = fake_services(
+        datasets=svc, project_id="p1", chat_id=session_id, approve_download=never_big,
+        confirm_retry=RetryQuestion(True), pasted_links=pasted, looked=looked or ChatLooks(),
+    )
+    result = run(call_tool(dataset_download.dataset_download, {"ref": ref, **(args or {})}, services))
+    if result.status == "error":
+        return svc, json.loads(failure_text(result))
+    return svc, json.loads(result.content)
 
 
 def test_download_waits_until_undescribed_data_is_looked_at():
@@ -580,8 +578,7 @@ def test_reading_it_with_notebook_run_lets_the_download_go():
         async def no_risk_question(code, reasons):
             return True
 
-        run(notebook_run.run({"code": code}, svc=notebook, project_id="p1", approve=no_risk_question,
-                             datasets=datasets, session_id="s1", looked=looked))
+        run(call_tool(notebook_run.notebook_run, {"code": code}, fake_services(notebook=notebook, project_id="p1", approve_run=no_risk_question, datasets=datasets, chat_id="s1", looked=looked)))
         svc, result = download_in([undescribed_xls()], looked=looked)
         assert requested(svc) and result["status"] == "queued", code
 
@@ -625,11 +622,13 @@ def test_a_look_in_another_chat_doesnt_count():
 
 def test_arguments_cant_skip_the_look_first_check():
     # Negative · Changed: `{"looked": true}`, `{"force": true}`
-    # Then: `LOOK_FIRST`
+    # Then: rejected as invalid arguments before any check or download
     # Demonstrates: the model can't claim it looked
     for extra in ({"looked": True}, {"force": True, "update": False}):
-        svc, error = download_in([undescribed_xls()], args=extra)
-        assert error["error"] == "LOOK_FIRST" and not requested(svc), extra
+        svc = FakeDatasetService()
+        svc.records = [undescribed_xls()]
+        result = run(call_tool(dataset_download.dataset_download, {"ref": "hf:scikit-learn/iris", **extra}, fake_services(datasets=svc)))
+        assert "Extra inputs are not permitted" in failure_text(result) and not requested(svc), extra
 
 
 # ---- Texts can't act as instructions or code · unit

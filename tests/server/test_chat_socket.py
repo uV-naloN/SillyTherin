@@ -59,10 +59,10 @@ def test_tool_steps_reach_the_page(client, model, monkeypatch):
     # Changed: the model calls a tool
     # Then: group.label with the step title, then step.done with its output
     # Demonstrates: tool steps are visible
-    async def found(args: dict) -> tuple[str, str]:
-        return "3 results", "results"
+    async def found(query: str, runtime: object) -> tuple[str, str]:
+        return "results", "3 results"
 
-    monkeypatch.setattr(web_search, "run", found)
+    monkeypatch.setattr(web_search.web_search, "coroutine", found)
     model.scripts += [[tool_call_chunk("web_search", {"query": "hanoi"})], [text_chunk("Done")]]
     title = web_search.step_title({"query": "hanoi"})
     with open_tab(client) as tab:

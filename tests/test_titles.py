@@ -45,10 +45,8 @@ def test_step_titles_use_short_forms():
 def test_every_registered_tool_has_a_step_title():
     # Negative · Changed: a tool module without step_title
     # Then: each tool the model can call gives a non-empty chat step title, even with no arguments
-    # Demonstrates: run_tool_call never fails on the title before the tool runs
-    from sillytherin.tools import _BY_NAME
+    # Demonstrates: every native tool has a progress title even with invalid input.
+    from sillytherin.tools import NOTEBOOK_TOOLS, TOOLS, native_tool_step_title
 
-    for name, module in _BY_NAME.items():
-        assert callable(getattr(module, "step_title", None)), name
-        title = module.step_title({})
-        assert isinstance(title, str) and title.strip(), name
+    for tool in TOOLS + NOTEBOOK_TOOLS:
+        assert native_tool_step_title(tool.name, {}).strip(), tool.name
