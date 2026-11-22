@@ -6,6 +6,7 @@ import json
 import pytest
 
 from sillytherin.tools import dataset_search as ds
+from tests.tool_calls import call_tool
 
 
 @pytest.fixture(autouse=True)
@@ -96,10 +97,10 @@ def test_merge_respects_limit_and_hides_empty_fields():
 
 def test_run_merges_sources_and_reports_a_failed_one(monkeypatch):
     fake_sources(monkeypatch, One=[item("iris flowers", downloads=1500)], Two=RuntimeError("down"))
-    shown, result = asyncio.run(ds.run({"query": "iris"}))
-    assert "[iris flowers](https://example.com/iris flowers)" in shown
-    assert "1,500 downloads" in shown and "No answer from: Two." in shown
-    payload = json.loads(result)
+    result = asyncio.run(call_tool(ds.dataset_search, {"query": "iris"}, None))
+    assert "[iris flowers](https://example.com/iris flowers)" in result.artifact
+    assert "1,500 downloads" in result.artifact and "No answer from: Two." in result.artifact
+    payload = json.loads(result.content)
     assert payload["datasets"][0]["name"] == "iris flowers"
     assert payload["note"] == "No answer from: Two."
 
@@ -107,36 +108,36 @@ def test_run_merges_sources_and_reports_a_failed_one(monkeypatch):
 def test_filters_only_ask_catalogs_that_support_them(monkeypatch):
     calls = fake_sources(monkeypatch, One=[item("iris")], Two=[item("iris two")])
     monkeypatch.setattr(ds, "FILTERABLE", {"One"})
-    shown, _ = asyncio.run(ds.run({"query": "iris", "language": "vi"}))
+    result = asyncio.run(call_tool(ds.dataset_search, {"query": "iris", "language": "vi"}, None))
     assert calls == [("One", "iris", "", "vi")]
-    assert "iris two" not in shown
+    assert "iris two" not in result.artifact
 
 
 def test_run_passes_filters_and_caches_full_answers(monkeypatch):
     calls = fake_sources(monkeypatch, One=[item("iris")])
     monkeypatch.setattr(ds, "FILTERABLE", {"One"})
-    asyncio.run(ds.run({"query": "Iris", "task": "tabular-classification", "language": "en"}))
-    asyncio.run(ds.run({"query": "iris", "task": "tabular-classification", "language": "en"}))
+    asyncio.run(call_tool(ds.dataset_search, {"query": "Iris", "task": "tabular-classification", "language": "en"}, None))
+    asyncio.run(call_tool(ds.dataset_search, {"query": "iris", "task": "tabular-classification", "language": "en"}, None))
     assert calls == [("One", "Iris", "tabular-classification", "en")]
 
 
 def test_partial_answers_are_not_cached(monkeypatch):
     calls = fake_sources(monkeypatch, One=[item("iris")], Two=RuntimeError("down"))
-    asyncio.run(ds.run({"query": "iris"}))
-    asyncio.run(ds.run({"query": "iris"}))
+    asyncio.run(call_tool(ds.dataset_search, {"query": "iris"}, None))
+    asyncio.run(call_tool(ds.dataset_search, {"query": "iris"}, None))
     assert len(calls) == 4
 
 
 def test_run_fails_when_every_source_fails(monkeypatch):
     fake_sources(monkeypatch, One=RuntimeError("down"))
-    with pytest.raises(ValueError, match="catalogs"):
-        asyncio.run(ds.run({"query": "iris"}))
+    failure = asyncio.run(call_tool(ds.dataset_search, {"query": "iris"}, None))
+    assert failure.status == "error" and "catalogs" in failure.content
 
 
 def test_run_needs_a_query_and_handles_no_results(monkeypatch):
-    with pytest.raises(ValueError, match="query"):
-        asyncio.run(ds.run({"query": " ?? "}))
+    no_keywords = asyncio.run(call_tool(ds.dataset_search, {"query": " ?? "}, None))
+    assert no_keywords.status == "error" and "query" in no_keywords.content
     fake_sources(monkeypatch, One=[])
-    shown, result = asyncio.run(ds.run({"query": "zzz"}))
-    assert shown == "No datasets found."
-    assert "hint" in json.loads(result)
+    result = asyncio.run(call_tool(ds.dataset_search, {"query": "zzz"}, None))
+    assert result.artifact == "No datasets found."
+    assert "hint" in json.loads(result.content)

@@ -8,10 +8,15 @@ from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 from langgraph.graph.state import CompiledStateGraph
 
 from sillytherin.agent.history import from_langchain, to_langchain
-from sillytherin.agent.model import ModelRequest, build_chat_model
+from sillytherin.agent.model import (
+    GuardModelToolCalls,
+    ModelRequest,
+    ToolArgumentStream,
+    build_chat_model,
+)
 from sillytherin.agent.round_limit import RoundLimit
 from sillytherin.agent.stream import stream_agent
-from sillytherin.agent.tool_adapter import AppToolCalls, langchain_tools
+from sillytherin.agent.tool_errors import ToolErrorBoundary
 from sillytherin.chat.ports import (
     AnswerView,
     Asker,
@@ -32,8 +37,16 @@ from sillytherin.llm import model_params
 from sillytherin.modes import EFFORT_MODE_ID, MODEL_MODE_ID, Picks, chosen_picks
 from sillytherin.progress import Progress
 from sillytherin.settings import reasoning_body, usable_settings
-from sillytherin.tools import chosen_tools
+from sillytherin.tools import (
+    chosen_tools,
+    dataset_delete,
+    dataset_describe,
+    dataset_download,
+    notebook_run,
+)
+from sillytherin.tools.services import ToolServices
 from sillytherin.workspace import actions
+from sillytherin.workspace.datasets.links import find_pasted_links
 
 EMPTY_ANSWER = "(The model returned an empty response.)"
 
@@ -87,8 +100,13 @@ async def run_turn(chat: ChatState, message: UserMessage, views: TurnViews) -> N
     turn_notes = [{"role": "system", "content": note}] if note else []
     answer = CollectedAnswer(views.answer)
     progress = Progress(views.progress)
+    tool_arguments = ToolArgumentStream()
     try:
-        added = await stream_agent(build_agent(request, progress), to_langchain(history + turn_notes), answer, progress)
+        agent = build_agent(request, tool_arguments)
+        services = build_tool_services(chat)
+        added = await stream_agent(
+            agent, to_langchain(history + turn_notes), answer, progress, tool_arguments, services
+        )
         history.extend(from_langchain(tool_round_messages(added)))
         final_text = answer.text
     except asyncio.CancelledError:
@@ -127,9 +145,27 @@ async def model_request(chat: ChatState, picks: Picks) -> ModelRequest:
     return ModelRequest(model=picks.model, tools=chosen_tools(settings), thinking=thinking)
 
 
-def build_agent(request: ModelRequest, progress: Progress) -> CompiledStateGraph:
-    middleware = [AppToolCalls(progress), RoundLimit(TOOL_MAX_ROUNDS)]
-    return create_agent(build_chat_model(request), tools=langchain_tools(request.tools), middleware=middleware)
+def build_tool_services(chat: ChatState) -> ToolServices:
+    """The app's services, this chat's project and its prompts, handed to every tool of this message."""
+    return ToolServices(
+        notebook=actions.service,
+        datasets=actions.datasets,
+        project_id=actions.session_project(chat),
+        chat_id=chat.chat_id,
+        pasted_links=find_pasted_links(chat.get(HISTORY_KEY) or []),
+        approve_run=notebook_run.ask_approval,
+        approve_download=dataset_download.ask_approval,
+        confirm_retry=dataset_download.ask_retry,
+        approve_delete=dataset_delete.ask_approval,
+        looked=dataset_describe.looked,
+    )
+
+
+def build_agent(request: ModelRequest, tool_arguments: ToolArgumentStream) -> CompiledStateGraph:
+    middleware = [RoundLimit(TOOL_MAX_ROUNDS), GuardModelToolCalls(tool_arguments, TOOL_MAX_ROUNDS), ToolErrorBoundary()]
+    return create_agent(
+        build_chat_model(request), tools=request.tools, middleware=middleware, context_schema=ToolServices
+    )
 
 
 def tool_round_messages(added: list[BaseMessage]) -> list[BaseMessage]:

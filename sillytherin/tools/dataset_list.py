@@ -2,28 +2,13 @@
 
 import json
 
-from sillytherin.chat.current import this_chat
-from sillytherin.tools.services import DatasetLister
+from langchain.tools import ToolRuntime
+from langchain_core.tools import tool
+
+from sillytherin.tools.arguments import ToolArguments
+from sillytherin.tools.services import ToolServices
 from sillytherin.workspace.datasets.describe import one_line
 from sillytherin.workspace.datasets.service import human_size
-
-DEFINITION = {
-    "type": "function",
-    "function": {
-        "name": "dataset_list",
-        "description": (
-            "List the datasets in the user's project: id, name, status (queued, "
-            "downloading, ready, failed, missing), progress, size, licence, what each "
-            "one holds (catalog description, column names or a description you saved), "
-            "the /work/datasets/... file paths and load_code to use in notebook code. "
-            "Data files the project's own code saved are listed too, as created in this "
-            "project, with their /work/<file> path. Call this first whenever the user "
-            "wants data, before dataset_search, dataset_download or writing a data file "
-            "with notebook_run: the project may already have it."
-        ),
-        "parameters": {"type": "object", "properties": {}},
-    },
-}
 
 REUSE_RULES = (
     "You may read any of these without asking the user. "
@@ -92,15 +77,28 @@ def _safe_view(v: dict) -> dict:
     return safe
 
 
-async def run(args: dict, *, svc: DatasetLister | None = None, project_id: str | None = None) -> tuple[str, str]:
-    """Return (text shown in the chat step, JSON {"datasets": [DatasetRecordView], "note": reuse rules})."""
-    if svc is None or project_id is None:
-        from sillytherin.workspace import actions
+class DatasetListArguments(ToolArguments):
+    pass
 
-        svc = svc or actions.datasets
-        project_id = project_id or actions.session_project(this_chat().state)
-    views = [_safe_view(v) for v in svc.list_for_model(project_id)]
+
+@tool(
+    "dataset_list",
+    args_schema=DatasetListArguments,
+    response_format="content_and_artifact",
+)
+async def dataset_list(runtime: ToolRuntime[ToolServices]) -> tuple[str, str]:
+    """List the datasets in the user's project.
+
+    Includes ID, name, status (queued, downloading, ready, failed, missing), progress, size, licence,
+    what each one holds (catalog description, column names or a description you saved),
+    the /work/datasets/... file paths and load_code to use in notebook code.
+    Data files the project's own code saved are listed too, as created in this project, with their
+    /work/<file> path. Call this first whenever the user wants data, before dataset_search, dataset_download
+    or writing a data file with notebook_run: the project may already have it.
+    """
+    services = runtime.context
+    views = [_safe_view(v) for v in services.datasets.list_for_model(services.project_id)]
     if not views:
-        return "No datasets in this project yet.", json.dumps({"datasets": []})
+        return json.dumps({"datasets": []}), "No datasets in this project yet."
     shown = "\n".join(LINE_BY_ORIGIN[v["origin"]](v) for v in views)
-    return shown, json.dumps({"datasets": views, "note": REUSE_RULES})
+    return json.dumps({"datasets": views, "note": REUSE_RULES}), shown

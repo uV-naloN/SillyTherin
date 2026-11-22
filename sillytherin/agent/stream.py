@@ -1,11 +1,15 @@
 """Streams one agent run into the chat: thinking into the work group, text into the answer."""
 
-from langchain_core.messages import AIMessageChunk, BaseMessage
+from langchain_core.messages import AIMessageChunk, BaseMessage, ToolMessage
+from langgraph.graph.message import add_messages
 from langgraph.graph.state import CompiledStateGraph
 from langsmith.run_helpers import tracing_context
 
+from sillytherin.agent.model import ToolArgumentStream
+from sillytherin.agent.tool_progress import NativeToolProgress
 from sillytherin.chat.ports import AnswerView, ThinkingStep
 from sillytherin.progress import Progress
+from sillytherin.tools.services import ToolServices
 
 RECURSION_SAFETY_NET = 200  # LangGraph's own step limit; the round limit always answers well before it
 WRITING_LABEL = "Writing answer"
@@ -51,21 +55,37 @@ class RoundView:
             self.thinking = None
 
 
-async def stream_agent(agent: CompiledStateGraph, messages: list[BaseMessage], answer: AnswerView, progress: Progress) -> list[BaseMessage]:
+async def stream_agent(
+    agent: CompiledStateGraph,
+    messages: list[BaseMessage],
+    answer: AnswerView,
+    progress: Progress,
+    tool_arguments: ToolArgumentStream,
+    services: ToolServices,
+) -> list[BaseMessage]:
     """Run the agent on `messages`; returns the messages the run added (tool calls, tool results, the answer)."""
     view = RoundView(answer, progress)
+    tool_progress = NativeToolProgress(progress)
     added: list[BaseMessage] = []
     try:
         # Conversations go only to OpenRouter, even if LangSmith tracing is switched on in the environment
         with tracing_context(enabled=False):
             async for mode, data in agent.astream(
-                {"messages": messages}, stream_mode=["messages", "updates"], config={"recursion_limit": RECURSION_SAFETY_NET}
+                {"messages": messages},
+                stream_mode=["messages", "updates"],
+                context=services,
+                config={"recursion_limit": RECURSION_SAFETY_NET, "callbacks": [tool_progress, tool_arguments]},
             ):
                 if mode == "messages" and isinstance(data[0], AIMessageChunk):
                     await view.show(data[0])
                 elif mode == "updates":
-                    added.extend(messages_in(data))
+                    updates = messages_in(data)
+                    for message in updates:
+                        if isinstance(message, ToolMessage):
+                            await tool_progress.observe_tool_result(message)
+                    added = add_messages(added, updates)
     finally:
+        tool_progress.clear_pending()
         await view.close_thinking()
     return added
 

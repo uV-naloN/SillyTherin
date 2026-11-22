@@ -61,6 +61,7 @@ def scripted(monkeypatch, catalog) -> ScriptedChatModel:
     model = ScriptedChatModel()
     monkeypatch.setattr(turn, "build_chat_model", lambda _request: model)
     monkeypatch.setattr(actions, "datasets", SimpleNamespace(take_notes=lambda _chat_id: None), raising=False)
+    monkeypatch.setattr(actions, "session_project", lambda _chat: "p1")
     return model
 
 
@@ -69,11 +70,11 @@ def searches(monkeypatch) -> list[dict]:
     """web_search answers from here instead of the web, and remembers its arguments."""
     seen: list[dict] = []
 
-    async def fake_search(args: dict) -> tuple[str, str]:
-        seen.append(args)
-        return "2 results", "Result: https://found.example/page"
+    async def fake_search(query: str, runtime: object) -> tuple[str, str]:
+        seen.append({"query": query})
+        return "Result: https://found.example/page", "2 results"
 
-    monkeypatch.setattr(web_search, "run", fake_search)
+    monkeypatch.setattr(web_search.web_search, "coroutine", fake_search)
     return seen
 
 

@@ -27,6 +27,7 @@ from sillytherin.workspace.datasets.sources import DatasetPlan, PlannedFile
 from sillytherin.workspace.datasets.views import VIEW_FAILED_MESSAGE, VIEWS_DIR
 from sillytherin.workspace.service import NotebookService
 from tests.conftest import FakeChats, FakeFreeDisk, FakeKernels, fake_lookup
+from tests.tool_calls import call_tool, fake_services
 
 GB = 1_000_000_000
 MB = 1_000_000
@@ -790,8 +791,8 @@ def test_model_delete_declined_keeps_dataset(root):
             asked.append((name, size, shared_with))
             return False
 
-        shown, result = await dataset_delete.run({"dataset_id": "hf-org--name"}, svc=env.svc, project_id="p1", approve=keep)
-        assert json.loads(result)["error"] == ErrorCode.DECLINED
+        result = await call_tool(dataset_delete.dataset_delete, {"dataset_id": "hf-org--name"}, fake_services(datasets=env.svc, project_id="p1", approve_delete=keep))
+        assert json.loads(result.content)["error"] == ErrorCode.DECLINED
         assert asked == [("Secret Pretty Name", len(b"a,b\n1,2\n") + len(b"x\n" * 50), 0)]
         assert len(records(root, "p1")) == 1 and (env.folder("p1") / "a.csv").is_file()
 

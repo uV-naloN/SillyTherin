@@ -10,58 +10,23 @@ import html
 import json
 import re
 import time
+from typing import Annotated
 
 import httpx
+from langchain.tools import ToolRuntime
+from langchain_core.tools import ToolException, tool
+from pydantic import AfterValidator, Field
 
-from sillytherin.chat.current import this_chat
 from sillytherin.config import DATASET_MAX_RESULTS
-from sillytherin.tools.services import ProjectDatasetLookup, UndescribedDatasets
+from sillytherin.tools.arguments import ToolArguments
+from sillytherin.tools.services import (
+    ProjectDatasetLookup,
+    ToolServices,
+    UndescribedDatasets,
+)
 from sillytherin.tools.titles import shorten
 from sillytherin.workspace import WorkspaceError
 from sillytherin.workspace.datasets.describe import look_first_message
-
-DEFINITION = {
-    "type": "function",
-    "function": {
-        "name": "dataset_search",
-        "description": (
-            "Search dataset catalogs (Hugging Face, Zenodo, DataCite) for "
-            "datasets. Prefer this over web_search when the user wants data. "
-            "Returns name, URL, description, licence, size, format, downloads "
-            "and last update. Use 2-4 plain keywords, not a sentence: "
-            "catalogs match on dataset names. If results are poor, try "
-            "again with synonyms or fewer words. Hugging Face and Zenodo results "
-            "have a `ref` you can pass to dataset_download (only when the user "
-            "wants the data in their project). Check dataset_list first: when the project "
-            "already has matching data, use it; search for a new copy only when the user asks for one."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "Keywords, e.g. 'credit card fraud'.",
-                },
-                "task": {
-                    "type": "string",
-                    "description": (
-                        "Optional task filter, e.g. 'text-classification', "
-                        "'image-classification', 'tabular-regression'. "
-                        "Filters search Hugging Face only."
-                    ),
-                },
-                "language": {
-                    "type": "string",
-                    "description": (
-                        "Optional language code filter, e.g. 'en', 'vi'. "
-                        "Filters search Hugging Face only."
-                    ),
-                },
-            },
-            "required": ["query"],
-        },
-    },
-}
 
 PER_SOURCE = 8  # results asked from each catalog before merging
 DESCRIPTION_MAX = 220
@@ -227,7 +192,7 @@ async def search(query: str, task: str = "", language: str = "") -> tuple[list[d
         )
     failed = [name for name, a in zip(sources, answers) if isinstance(a, BaseException)]
     if len(failed) == len(sources):
-        raise ValueError("None of the dataset catalogs answered. Try again, or use web_search.")
+        raise ToolException("None of the dataset catalogs answered. Try again, or use web_search.")
     results = merge([a for a in answers if isinstance(a, list)], query, DATASET_MAX_RESULTS)
     if not failed:  # don't remember a partial answer
         _cache[key] = (time.monotonic(), results, failed)
@@ -260,21 +225,6 @@ def mark_in_project(results: list[dict], refs: dict[str, dict]) -> list[dict]:
     return marked
 
 
-def _chat_project(
-    svc: ProjectDatasetLookup | None, project_id: str | None
-) -> tuple[ProjectDatasetLookup | None, str | None]:
-    """(dataset service, project id) of this chat; (None, None) outside a chat (tests, or no session)."""
-    if svc is not None and project_id is not None:
-        return svc, project_id
-    try:
-        chat = this_chat().state  # raises outside a chat, before the app's services are imported
-        from sillytherin.workspace import actions
-
-        return svc or actions.datasets, project_id or actions.session_project(chat)
-    except Exception:  # noqa: BLE001 — search must work without a project
-        return None, None
-
-
 def _project_refs(svc: ProjectDatasetLookup | None, project_id: str | None) -> dict[str, dict]:
     """The project's catalog refs; {} without a project."""
     if svc is None:
@@ -296,17 +246,39 @@ def _undescribed_note(svc: UndescribedDatasets | None, project_id: str | None) -
     return look_first_message(names) if names else None
 
 
-async def run(args: dict, *, svc: ProjectDatasetLookup | None = None, project_id: str | None = None) -> tuple[str, str]:
-    """Return (text shown in the chat step, result sent to the model).
-
-    svc / project_id: the dataset service and this chat's project, so results the
-    project already has are marked; None when the Notebook tools are off (tests pass fakes).
-    """
-    query = str(args.get("query", ""))
+def require_keywords(query: str) -> str:
     if not words(query):
-        raise ValueError("No search query given.")
-    results, failed = await search(query, str(args.get("task") or ""), str(args.get("language") or ""))
-    svc, project_id = _chat_project(svc, project_id)
+        raise ValueError("must hold at least one keyword")
+    return query
+
+
+class DatasetSearchArguments(ToolArguments):
+    query: Annotated[str, AfterValidator(require_keywords)] = Field(description="Dataset search keywords.")
+    task: str = Field(default="", description="Optional Hugging Face task filter, e.g. text-classification.")
+    language: str = Field(default="", description="Optional Hugging Face language code, e.g. en or vi.")
+
+
+@tool(
+    "dataset_search",
+    args_schema=DatasetSearchArguments,
+    response_format="content_and_artifact",
+)
+async def dataset_search(
+    query: str, runtime: ToolRuntime[ToolServices | None], task: str = "", language: str = ""
+) -> tuple[str, str]:
+    """Search dataset catalogs (Hugging Face, Zenodo, DataCite) for datasets.
+
+    Prefer this over web_search when the user wants data. Returns name, URL, description, licence, size,
+    format, downloads and last update. Use 2-4 plain keywords, not a sentence: catalogs match on dataset names.
+    If results are poor, try again with synonyms or fewer words. Hugging Face and Zenodo results have a `ref`
+    you can pass to dataset_download (only when the user wants the data in their project). Check dataset_list first:
+    when the project already has matching data, use it; search for a new copy only when the user asks for one.
+    """
+    # Without the Notebook tools there is no project, so results are not marked
+    services = runtime.context
+    svc = services.datasets if services else None
+    project_id = services.project_id if services else None
+    results, failed = await search(query, task, language)
     results = mark_in_project(results, _project_refs(svc, project_id))
     shown = "\n".join(_line(r) for r in results) or "No datasets found."
     payload: dict = {"datasets": results}
@@ -320,4 +292,4 @@ async def run(args: dict, *, svc: ProjectDatasetLookup | None = None, project_id
         payload["note"] = " ".join(notes)
     if not results:
         payload["hint"] = "Try fewer or different keywords, or web_search."
-    return shown, json.dumps(payload, ensure_ascii=False)
+    return json.dumps(payload, ensure_ascii=False), shown

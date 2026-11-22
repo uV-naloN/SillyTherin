@@ -7,36 +7,19 @@ may be read without asking the user, whoever added it.
 
 from typing import TYPE_CHECKING
 
+from langchain.tools import ToolRuntime
+from langchain_core.tools import ToolException, tool
+from pydantic import Field
+
 from sillytherin.chat.current import this_chat
 from sillytherin.chat.ports import Choice
 from sillytherin.config import MODEL_AUTO_RUN, RISKY_CODE_NEEDS_APPROVAL
-from sillytherin.tools.services import ApproveRun, NotebookRunner, UndescribedDatasets
+from sillytherin.tools.arguments import NonBlankText, ToolArguments
+from sillytherin.tools.services import ToolServices
 from sillytherin.workspace import WorkspaceError, risk
 
 if TYPE_CHECKING:
-    from sillytherin.tools.dataset_describe import ChatLooks
-
-DEFINITION = {
-    "type": "function",
-    "function": {
-        "name": "notebook_run",
-        "description": (
-            "Run Python code in the user's project notebook (a Jupyter kernel "
-            "with numpy, pandas and matplotlib; files live in the working "
-            "folder). Variables persist between runs. The code is added as a "
-            "new cell. Returns the printed output, the last value or the error. "
-            "Before writing a data file, check dataset_list: when the project already has "
-            "matching data, load it from its path; write a new copy only when the user asks for one."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "code": {"type": "string", "description": "Python code to run."}
-            },
-            "required": ["code"],
-        },
-    },
-}
+    from sillytherin.workspace.kernels import CellCompilationError
 
 APPROVAL_TIMEOUT_SECONDS = 120
 DECLINED = "User declined to run this code."
@@ -48,18 +31,14 @@ def undescribed_named_in(code: str, views: list[dict]) -> list[dict]:
     return [v for v in views if v.get("describe") == "write" and (v["path"].lower() in lowered or v["name"].lower() in lowered)]
 
 
-def _remember_looks(
-    code: str, datasets: UndescribedDatasets, project_id: str, session_id: str, looked: "ChatLooks | None"
-) -> None:
+def _remember_looks(code: str, services: ToolServices) -> None:
     """The assistant looked at these undescribed datasets in this chat: downloads may go ahead."""
-    from sillytherin.tools.dataset_describe import looked as chat_looks
-
     try:
-        views = datasets.needs_description(project_id)
+        views = services.datasets.needs_description(services.project_id)
     except WorkspaceError:
         return
     for view in undescribed_named_in(code, views):
-        (looked or chat_looks).remember(session_id, project_id, view["dataset_id"])
+        services.looked.remember(services.chat_id, services.project_id, view["dataset_id"])
 
 
 RUN_CHOICE = Choice("run", "Run")
@@ -78,43 +57,37 @@ async def ask_approval(code: str, reasons: list[str]) -> bool:
     return answer == RUN_CHOICE.id
 
 
-async def run(
-    args: dict,
-    *,
-    svc: NotebookRunner | None = None,
-    project_id: str | None = None,
-    approve: ApproveRun | None = None,
-    datasets: UndescribedDatasets | None = None,
-    session_id: str | None = None,
-    looked: "ChatLooks | None" = None,
-) -> tuple[str, str]:
-    """Return (text shown in the chat step, result sent to the model).
+def compilation_failure_result(error: "CellCompilationError") -> tuple[str, str]:
+    # TODO: Return a bounded compile diagnostic without a cell ID or raw traceback.
+    raise NotImplementedError("Notebook compile error presentation is not wired.")
 
-    svc / project_id / approve / datasets / session_id / looked default to the
-    app's services, this chat, its prompt and the chat's looks; tests pass their
-    own (no `datasets`: looks aren't recorded).
+
+class NotebookRunArguments(ToolArguments):
+    code: NonBlankText = Field(description="Python code to run in the current project's notebook.")
+
+
+@tool(
+    "notebook_run",
+    args_schema=NotebookRunArguments,
+    response_format="content_and_artifact",
+)
+async def notebook_run(code: str, runtime: ToolRuntime[ToolServices]) -> tuple[str, str]:
+    """Run Python code in the user's project notebook.
+
+    The Jupyter kernel has numpy, pandas and matplotlib; files live in the working folder. Variables persist
+    between runs. Code is added as a new cell. Returns the printed output, the last value or the error.
+    Before writing a data file, check dataset_list: when the project already has matching data, load it from
+    its path; write a new copy only when the user asks for one.
     """
-    code = str(args.get("code") or "")
-    if not code.strip():
-        raise ValueError("No code given.")
-    if svc is None or project_id is None:
-        from sillytherin.workspace import actions
-
-        svc = svc or actions.service
-        chat = this_chat().state
-        project_id = project_id or actions.session_project(chat)
-        datasets = datasets or actions.datasets
-        session_id = session_id or chat.chat_id
-    approve = approve or ask_approval
-
+    # TODO: Describe one step per cell and when it is safe to retry.
+    services = runtime.context
     reasons = risk.check(code)
     needs_ok = (reasons and RISKY_CODE_NEEDS_APPROVAL) or not MODEL_AUTO_RUN
-    if needs_ok and not await approve(code, reasons):
-        return f"```python\n{code}\n```\n\nSkipped.", DECLINED
+    if needs_ok and not await services.approve_run(code, reasons):
+        return DECLINED, f"```python\n{code}\n```\n\nSkipped."
     try:
-        result = await svc.run_for_model(project_id, code)
+        result = await services.notebook.run_for_model(services.project_id, code)
     except WorkspaceError as e:
-        raise ValueError(e.message) from e
-    if datasets is not None:
-        _remember_looks(code, datasets, project_id, session_id or "", looked)
-    return f"```python\n{code}\n```\n\n```\n{result}\n```", result
+        raise ToolException(e.message) from e
+    _remember_looks(code, services)
+    return result, f"```python\n{code}\n```\n\n```\n{result}\n```"

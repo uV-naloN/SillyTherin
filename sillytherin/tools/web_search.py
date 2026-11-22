@@ -4,29 +4,13 @@ import asyncio
 import json
 
 from ddgs import DDGS
+from langchain.tools import ToolRuntime
+from langchain_core.tools import tool
+from pydantic import Field
 
 from sillytherin.config import SEARCH_MAX_RESULTS
+from sillytherin.tools.arguments import NonBlankText, ToolArguments
 from sillytherin.tools.titles import shorten
-
-DEFINITION = {
-    "type": "function",
-    "function": {
-        "name": "web_search",
-        "description": (
-            "Search the internet. Use it for recent events, facts you are "
-            "unsure of, or anything that needs a source. Returns titles, "
-            "URLs and short snippets. Snippets can be outdated or partial: "
-            "use read_page on the best results to get the details."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "The search query."}
-            },
-            "required": ["query"],
-        },
-    },
-}
 
 
 def search(query: str) -> list[dict]:
@@ -50,11 +34,21 @@ def step_title(args: dict) -> str:
     return f"Web search: {shorten(str(args.get('query', '')))}"
 
 
-async def run(args: dict) -> tuple[str, str]:
-    """Return (text shown in the chat step, result sent to the model)."""
-    query = str(args.get("query", ""))
-    if not query:
-        raise ValueError("No search query given.")
+class WebSearchArguments(ToolArguments):
+    query: NonBlankText = Field(description="The search query.")
+
+
+@tool(
+    "web_search",
+    args_schema=WebSearchArguments,
+    response_format="content_and_artifact",
+)
+async def web_search(query: str, runtime: ToolRuntime) -> tuple[str, str]:
+    """Search the internet. Use it for recent events, facts you are unsure of, or anything that needs a source.
+
+    Returns titles, URLs and short snippets. Snippets can be outdated or partial: use read_page on the best
+    results to get the details.
+    """
     results = await asyncio.to_thread(search, query)
     shown = "\n".join(f"- [{r['title']}]({r['url']})" for r in results)
-    return shown or "No results.", json.dumps(results, ensure_ascii=False)
+    return json.dumps(results, ensure_ascii=False), shown or "No results."

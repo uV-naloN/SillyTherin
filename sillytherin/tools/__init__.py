@@ -1,12 +1,9 @@
-"""Tools the model can call.
+"""Select the native tools offered to the model and their UI step titles."""
 
-To add a tool: create a module here with DEFINITION, step_title(args) and
-async run(args) -> (shown, result), then add it to a list below.
-"""
+from langchain_core.tools import BaseTool
+from pydantic import BaseModel
 
-import json
-
-from sillytherin.progress import Progress
+from sillytherin.agent.tool_errors import with_safe_error_text
 from sillytherin.tools import (
     dataset_delete,
     dataset_describe,
@@ -19,41 +16,49 @@ from sillytherin.tools import (
     web_search,
 )
 
-_MODULES = [web_search, read_page, dataset_search]  # behind the "Web search" switch
-# behind the "Notebook" switch; datasets land in the project's files, so they share it
-_NOTEBOOK_MODULES = [notebook_read, notebook_run, dataset_download, dataset_list, dataset_delete, dataset_describe]
+TOOLS: tuple[BaseTool, ...] = tuple(
+    with_safe_error_text(native_tool)
+    for native_tool in (web_search.web_search, read_page.read_page, dataset_search.dataset_search)
+)
+NOTEBOOK_TOOLS: tuple[BaseTool, ...] = tuple(
+    with_safe_error_text(native_tool)
+    for native_tool in (
+        notebook_read.notebook_read,
+        notebook_run.notebook_run,
+        dataset_download.dataset_download,
+        dataset_list.dataset_list,
+        dataset_delete.dataset_delete,
+        dataset_describe.dataset_describe,
+    )
+)
+_TOOL_MODULES = (
+    web_search, read_page, dataset_search,
+    notebook_read, notebook_run, dataset_download, dataset_list, dataset_delete, dataset_describe,
+)
+_STEP_TITLES = {
+    native_tool.name: (native_tool, module.step_title)
+    for native_tool, module in zip(TOOLS + NOTEBOOK_TOOLS, _TOOL_MODULES, strict=True)
+}
 
-_BY_NAME = {m.DEFINITION["function"]["name"]: m for m in _MODULES + _NOTEBOOK_MODULES}
-TOOLS = [m.DEFINITION for m in _MODULES]
-NOTEBOOK_TOOLS = [m.DEFINITION for m in _NOTEBOOK_MODULES]
+
+def chosen_tools(settings: dict) -> list[BaseTool]:
+    web_tools = TOOLS if settings.get("web_search") else ()
+    notebook_tools = NOTEBOOK_TOOLS if settings.get("notebook") else ()
+    return [*web_tools, *notebook_tools]
 
 
-def chosen_tools(settings: dict) -> list[dict]:
-    """Tools the model gets, from the settings panel switches."""
-    return (TOOLS if settings.get("web_search") else []) + (NOTEBOOK_TOOLS if settings.get("notebook") else [])
-
-
-async def run_tool_call(call: dict, progress: Progress) -> str:
-    """Run one tool call as a visible step in the reply's work group; return the model's result."""
+def native_tool_step_title(tool_name: str, arguments: dict) -> str:
+    entry = _STEP_TITLES.get(tool_name)
+    if entry is None:
+        return "Unavailable tool"
+    native_tool, step_title = entry
+    model_arguments = {name: value for name, value in arguments.items() if name != "runtime"}
+    schema = native_tool.tool_call_schema  # what the model may send; the runtime is filled in by the agent
     try:
-        args = json.loads(call["arguments"] or "{}")
-    except json.JSONDecodeError:
-        args = {}
-    module = _BY_NAME.get(call["name"])
-    title = module.step_title(args) if module else f"Unknown tool: {call['name']}"
-    step = await progress.start_tool_step(title)
-    try:
-        if module is None:
-            raise ValueError(f"Bad tool call: {call['name']}({call['arguments']})")
-        shown, result = await module.run(args)
-    except Exception as e:
-        await step.finish(failure_text(e, args.get("url")))
-        return f"Tool failed: {e}"
-    await step.finish(shown)
-    return result
-
-
-def failure_text(error: Exception, url: object) -> str:
-    """What a failed step shows: the reason, and the page it was reading when there is one."""
-    link = f"\n\n[{url}]({url})" if url else ""
-    return f"Failed: {error}{link}"
+        if isinstance(schema, type) and issubclass(schema, BaseModel):
+            if set(model_arguments) - set(schema.model_fields):
+                raise ValueError("unknown tool arguments")  # rejected by the tool, so not shown in the title
+            schema.model_validate(model_arguments)
+        return step_title(model_arguments)
+    except ValueError:
+        return step_title({})

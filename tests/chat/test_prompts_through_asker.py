@@ -12,6 +12,7 @@ from sillytherin.workspace.service import NotebookService
 from tests.chat.fakes import FakeAsker, in_chat
 from tests.conftest import FakeDatasetService
 from tests.datasets.test_dataset_tools import STARTED
+from tests.tool_calls import call_tool, fake_services
 
 RISKY_CODE = "!ls"  # a shell command: the risk check always asks first
 
@@ -34,8 +35,8 @@ def run_risky_code(notebook, answer: str | None) -> tuple[FakeAsker, str]:
     svc, project_id = notebook
     asker = FakeAsker(answer=answer)
     with in_chat(asker=asker):
-        _shown, result = asyncio.run(notebook_run.run({"code": RISKY_CODE}, svc=svc, project_id=project_id))
-    return asker, result
+        result = asyncio.run(call_tool(notebook_run.notebook_run, {"code": RISKY_CODE}, fake_services(notebook=svc, project_id=project_id)))
+    return asker, result.content
 
 
 def test_risky_code_runs_after_run_is_chosen(notebook, fake_kernels):
@@ -102,7 +103,7 @@ def test_big_download_asks_and_downloads_on_download():
     asker = FakeAsker(answer="download")
 
     with in_chat(asker=asker):
-        asyncio.run(dataset_download.run({"ref": "hf:org/name"}, svc=svc, project_id="p1", session_id="s1", pasted_links=frozenset()))
+        asyncio.run(call_tool(dataset_download.dataset_download, {"ref": "hf:org/name"}, fake_services(datasets=svc, project_id="p1", chat_id="s1", pasted_links=frozenset())))
 
     [(question, choices)] = asker.asked
     assert "Hanoi PM2.5" in question and "2 files" in question and "cc-by-4.0" in question
@@ -131,8 +132,8 @@ def test_dataset_delete_keeps_data_on_keep():
     asker = FakeAsker(answer="keep")
 
     with in_chat(asker=asker):
-        _shown, result = asyncio.run(dataset_delete.run({"dataset_id": "hf-org--name"}, svc=svc, project_id="p1"))
+        result = asyncio.run(call_tool(dataset_delete.dataset_delete, {"dataset_id": "hf-org--name"}, fake_services(datasets=svc, project_id="p1")))
 
-    assert json.loads(result)["error"] == ErrorCode.DECLINED
+    assert json.loads(result.content)["error"] == ErrorCode.DECLINED
     assert [choice.id for _question, choices in asker.asked for choice in choices] == ["delete", "keep"]
     assert svc.deleted == []

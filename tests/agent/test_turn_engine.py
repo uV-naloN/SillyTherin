@@ -52,20 +52,17 @@ def test_empty_answer_shows_the_empty_response_note(scripted):
 
 def test_unknown_tool_name_fails_the_step_not_the_turn(scripted):
     # Changed: the model calls a tool named nope
-    # Then: the step says Unknown tool: nope and failed; the turn still finishes
+    # Then: the step shows a safe unavailable-tool message and the turn still finishes
     # Demonstrates: bad calls don't crash the chat
     scripted.scripts += [[tool_call_chunk("nope", {})], [text_chunk("Sorry")]]
     run = run_one_turn()
     step = run.progress.tool_steps[0]
-    assert step.title == "Unknown tool: nope" and step.output.startswith("Failed: Bad tool call: nope")
+    assert step.title == "Unavailable tool" and step.output.startswith("Failed:")
     assert run.answer.final == "Sorry"
 
 
-def test_bad_tool_arguments_are_treated_as_empty(scripted, searches):
-    # Changed: the tool arguments aren't JSON
-    # Then: the tool runs with no arguments, as today
-    # Demonstrates: today's tolerance is kept
-    scripted.scripts += [[tool_call_chunk("web_search", "{not json")], [text_chunk("Done")]]
+def test_bad_tool_arguments_never_run_the_tool(scripted, searches):
+    scripted.scripts += [[tool_call_chunk("web_search", {"query": False})], [text_chunk("Done")]]
     run = run_one_turn()
-    assert searches == [{}]
+    assert searches == []
     assert run.answer.final == "Done"

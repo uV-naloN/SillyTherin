@@ -12,6 +12,7 @@ from sillytherin.tools import notebook_read, notebook_run
 from sillytherin.workspace import ErrorCode, WorkspaceError, store
 from sillytherin.workspace.service import NotebookService
 from tests.chat.fakes import FakeAsker, in_chat
+from tests.tool_calls import call_tool, failure_text, fake_services
 
 
 def run(coro):
@@ -64,9 +65,9 @@ def test_safe_code_runs_without_asking(project, fake_kernels):
     svc, pid, root, pushes = project
     fake_kernels.results["2+2"] = ("done", [nbformat.v4.new_output("execute_result", {"text/plain": "4"}, execution_count=1)])
     approve = Approver(True)
-    shown, result = run(notebook_run.run({"code": "2+2"}, svc=svc, project_id=pid, approve=approve))
+    result = run(call_tool(notebook_run.notebook_run, {"code": "2+2"}, fake_services(notebook=svc, project_id=pid, approve_run=approve)))
     assert approve.asked == []
-    assert result == "[cell 1] out: 4"
+    assert result.content == "[cell 1] out: 4"
     cells = store.load_notebook(pid, root).cells
     assert [c.source for c in cells] == ["2+2"] and cells[0].execution_count == 1
     assert pushes and pushes[-1]["cells"][0]["outputs"][0]["text"] == "4"
@@ -76,22 +77,22 @@ def test_long_output_is_trimmed_for_model(project, fake_kernels):
     # Demonstrates: model context stays small
     svc, pid, _, _ = project
     fake_kernels.results["big()"] = ("done", [stream("x" * 10_000)])
-    _, result = run(notebook_run.run({"code": "big()"}, svc=svc, project_id=pid, approve=Approver(True)))
-    assert len(result) <= 4100 and "cut off" in result
+    result = run(call_tool(notebook_run.notebook_run, {"code": "big()"}, fake_services(notebook=svc, project_id=pid, approve_run=Approver(True))))
+    assert len(result.content) <= 4100 and "cut off" in result.content
 
 
 def test_image_output_is_described_not_sent(project, fake_kernels):
     svc, pid, _, _ = project
     fake_kernels.results["plot()"] = ("done", [image(640, 480)])
-    _, result = run(notebook_run.run({"code": "plot()"}, svc=svc, project_id=pid, approve=Approver(True)))
-    assert "[image 640x480]" in result and "iVBOR" not in result
+    result = run(call_tool(notebook_run.notebook_run, {"code": "plot()"}, fake_services(notebook=svc, project_id=pid, approve_run=Approver(True))))
+    assert "[image 640x480]" in result.content and "iVBOR" not in result.content
 
 
 def test_risky_code_runs_after_click(project, fake_kernels):
     # Demonstrates: you can allow it
     svc, pid, _, _ = project
     approve = Approver(True)
-    run(notebook_run.run({"code": "!ls"}, svc=svc, project_id=pid, approve=approve))
+    run(call_tool(notebook_run.notebook_run, {"code": "!ls"}, fake_services(notebook=svc, project_id=pid, approve_run=approve)))
     assert approve.asked == [["runs a shell command"]]
     assert fake_kernels.executed == ["!ls"]
 
@@ -99,8 +100,8 @@ def test_risky_code_runs_after_click(project, fake_kernels):
 def test_risky_code_skip_runs_nothing(project, fake_kernels):
     # Demonstrates: you stay in control
     svc, pid, root, _ = project
-    _, result = run(notebook_run.run({"code": "!ls"}, svc=svc, project_id=pid, approve=Approver(False)))
-    assert result == notebook_run.DECLINED
+    result = run(call_tool(notebook_run.notebook_run, {"code": "!ls"}, fake_services(notebook=svc, project_id=pid, approve_run=Approver(False))))
+    assert result.content == notebook_run.DECLINED
     assert fake_kernels.executed == [] and store.load_notebook(pid, root).cells == []
 
 
@@ -108,16 +109,16 @@ def test_risky_code_timeout_runs_nothing(project, fake_kernels):
     # no answer = the prompt times out
     svc, pid, root, _ = project
     with in_chat(asker=FakeAsker(answer=None)):
-        _, result = run(notebook_run.run({"code": "!ls"}, svc=svc, project_id=pid))
-    assert result == notebook_run.DECLINED
+        result = run(call_tool(notebook_run.notebook_run, {"code": "!ls"}, fake_services(notebook=svc, project_id=pid)))
+    assert result.content == notebook_run.DECLINED
     assert fake_kernels.executed == [] and store.load_notebook(pid, root).cells == []
 
 
 def test_empty_code_is_rejected_without_asking(project, fake_kernels):
     svc, pid, _, _ = project
     approve = Approver(True)
-    with pytest.raises(ValueError, match="No code"):
-        run(notebook_run.run({"code": "  "}, svc=svc, project_id=pid, approve=approve))
+    result = run(call_tool(notebook_run.notebook_run, {"code": "  "}, fake_services(notebook=svc, project_id=pid, approve_run=approve)))
+    assert "code: Value error, must not be blank" in failure_text(result)
     assert approve.asked == [] and fake_kernels.executed == []
 
 
@@ -129,8 +130,8 @@ def test_docker_down_runs_nothing(project, fake_kernels):
         raise WorkspaceError(ErrorCode.KERNEL_UNAVAILABLE, "Docker isn't running: start Docker Desktop, then press Restart.")
 
     fake_kernels.execute = unavailable
-    with pytest.raises(ValueError, match="Docker isn't running"):
-        run(notebook_run.run({"code": "2+2"}, svc=svc, project_id=pid, approve=Approver(True)))
+    result = run(call_tool(notebook_run.notebook_run, {"code": "2+2"}, fake_services(notebook=svc, project_id=pid, approve_run=Approver(True))))
+    assert "Docker isn't running" in failure_text(result)
 
 
 # ---- Model tool `notebook_read` · unit (kernel faked)
@@ -154,7 +155,7 @@ def read_project(project):
 
 
 def read(svc, pid):
-    return run(notebook_read.run({}, svc=svc, project_id=pid))[1]
+    return run(call_tool(notebook_read.notebook_read, {}, fake_services(notebook=svc, project_id=pid))).content
 
 
 def test_read_returns_cells_in_order_with_outputs(read_project):
@@ -210,3 +211,7 @@ def test_read_describes_images_not_sends(read_project):
     store.save_notebook(pid, nb, root)
     text = read(svc, pid)
     assert "[image 800x600]" in text and "iVBOR" not in text
+
+
+# TODO: Share a temporary notebook and a controlled kernel snapshot or preflight outcome.
+
