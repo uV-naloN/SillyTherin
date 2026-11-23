@@ -27,7 +27,7 @@ from sillytherin.server.events import (
     ThinkingDelta,
     Toast,
 )
-from sillytherin.tools.dataset_download import (
+from sillytherin.tools.approval import (
     APPROVAL_TIMEOUT_SECONDS,
     DOWNLOAD_CHOICE,
     DOWNLOAD_OR_SKIP,

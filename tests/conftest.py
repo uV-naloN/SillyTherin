@@ -1,9 +1,16 @@
 """Shared test helpers for the notebook workspace."""
 
+from pathlib import Path
+from uuid import uuid4
+
 import nbformat
 import pytest
 
-from sillytherin.workspace.kernels import RunResult
+from sillytherin.workspace.kernels import (
+    NotebookBindings,
+    RunResult,
+    missing_global_name,
+)
 from sillytherin.workspace.service import NotebookService
 
 
@@ -12,13 +19,20 @@ class FakeKernels:
 
     def __init__(self):
         self.executed: list[str] = []
+        self.validated: list[str] = []
         self.count = 0
         self.results: dict[str, tuple[str, list]] = {}  # code -> (status, outputs)
         self.vars: list[str] | None = []
+        self.bindings: NotebookBindings | None = NotebookBindings({}, [], False)
+        self.compilation_error: Exception | None = None
         self.state = "idle"
+        self.kernel_generation = uuid4().hex
 
     def status(self, project_id):
         return self.state
+
+    def generation(self, project_id: str) -> str | None:
+        return self.kernel_generation
 
     async def execute(self, project_id, code, on_output, files_dir=None):
         self.executed.append(code)
@@ -28,16 +42,37 @@ class FakeKernels:
         )
         for out in outputs:
             await on_output(out)
-        return RunResult(status, self.count, list(outputs))
+        error = next((output for output in outputs if output.output_type == "error"), {})
+        return RunResult(
+            status, self.count, list(outputs), error.get("ename"), self.kernel_generation,
+            missing_global_name(error.get("ename"), error.get("evalue")),
+        )
 
     async def variables(self, project_id):
         return self.vars
+
+    async def notebook_bindings(self, project_id: str) -> NotebookBindings | None:
+        if self.state != "idle":
+            return None
+        if self.vars is None:
+            return None
+        if self.bindings == NotebookBindings({}, [], False):
+            return NotebookBindings({}, self.vars, False)
+        return self.bindings
+
+    async def validate_cell_source(self, project_id: str, files_dir: Path, source: str) -> None:
+        self.validated.append(source)
+        if self.compilation_error is not None:
+            raise self.compilation_error
 
     async def interrupt(self, project_id):
         pass
 
     async def restart(self, project_id, files_dir):
         self.count = 0
+        self.kernel_generation = uuid4().hex
+        self.vars = []
+        self.bindings = NotebookBindings({}, [], False)
 
 
 def _docker_ready() -> str | None:

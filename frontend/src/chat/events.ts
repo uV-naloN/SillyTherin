@@ -14,6 +14,7 @@ export interface PickerOption {
   name: string;
   selected: boolean;
   detail: string; // what a model can do, e.g. "thinks · tools"
+  effort_levels?: string[]; // the Effort level ids this model offers; empty or absent = it does not think
 }
 
 export interface Picker {

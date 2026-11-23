@@ -1,8 +1,7 @@
-// The top of the Notebook panel: title with save badge, the tabs, the toolbar and the find bar.
+// The top of the Notebook panel: the tabs, the Jupyter-style toolbar (with the save badge) and the find bar.
 import type { KeyboardEvent, RefObject } from "react";
-import { AlertCircle, Check, Code2, Database, Eraser, FastForward, Loader2, NotebookPen, RotateCcw, Search, Square, X } from "lucide-react";
+import { AlertCircle, Check, Code2, Database, Eraser, FastForward, Loader2, RotateCcw, Search, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ProjectPicker } from "@/panel/components/ProjectPicker";
 import { isActive } from "@/panel/lib/datasetProgress";
 import type { SaveState } from "@/panel/components/notebookHooks";
 import type { DatasetProps } from "@/panel/types";
@@ -19,24 +18,6 @@ function SaveBadge({ state }: { state: SaveState }) {
       {state === "saving" ? <Loader2 size={12} className="spin" /> : state === "saved" ? <Check size={12} /> : <AlertCircle size={12} />}
       {SAVE_LABELS[state]}
     </span>
-  );
-}
-
-export function TitleBar({ name, projectId, onSwitch, onCreate, save }: {
-  name: string; projectId: string; save: SaveState;
-  onSwitch: (id: string) => Promise<unknown>; onCreate: (name: string) => Promise<unknown>;
-}) {
-  return (
-    <div className="rcnb-titlebar">
-      <NotebookPen className="rcnb-titleicon" size={20} />
-      <div className="rcnb-titlewrap">
-        <div className="rcnb-eyebrow">Project notebook</div>
-        <h1 className="rcnb-title">
-          <ProjectPicker name={name} current={projectId} onSwitch={onSwitch} onCreate={onCreate} />
-        </h1>
-      </div>
-      <SaveBadge state={save} />
-    </div>
   );
 }
 
@@ -74,36 +55,32 @@ export interface ToolbarActions {
   interrupt: () => void;
   restart: () => void;
   clearOutputs: () => void;
-  toggleFind: () => void;
 }
 
-export function NotebookToolbar({ status, colour, isPulsing, isRunningAll, isBusy, canStop, findOpen, actions }: {
+export function NotebookToolbar({ status, colour, isPulsing, isRunningAll, isBusy, canStop, save, actions }: {
   status: string; colour: string; isPulsing: boolean; isRunningAll: boolean; isBusy: boolean; canStop: boolean;
-  findOpen: boolean; actions: ToolbarActions;
+  save: SaveState; actions: ToolbarActions;
 }) {
   return (
     <div className="rcnb-meta" role="toolbar" aria-label="Notebook actions">
-      <span className="rcnb-status" aria-live="polite" title={status}>
-        <span className={`rcnb-dot${isPulsing ? " pulse" : ""}`} style={{ background: colour, color: colour }} />
-        <span className="rcnb-statustext">{status}</span>
-      </span>
-      <span className="rcnb-sep" />
-      <Button variant="ghost" size="sm" className="rcnb-act primary rcnb-runall" title="Run all code blocks (Ctrl+Shift+Enter)" aria-label="Run all" disabled={isBusy} onClick={actions.runAll}>
-        {isRunningAll ? <Loader2 size={13} className="spin" /> : <FastForward size={13} />}
-        <span className="rcnb-actlabel">Run all</span>
+      <Button variant="ghost" size="sm" className="rcnb-act rcnb-runall" title="Run all code blocks (Ctrl+Shift+Enter)" aria-label="Run all" disabled={isBusy} onClick={actions.runAll}>
+        {isRunningAll ? <Loader2 size={14} className="spin" /> : <FastForward size={14} />}
       </Button>
       <Button variant="ghost" size="sm" className="rcnb-act" title="Stop the running block" aria-label="Stop" disabled={!canStop} onClick={actions.interrupt}>
-        <Square size={12} /><span className="rcnb-actlabel">Stop</span>
+        <Square size={13} />
       </Button>
       <Button variant="ghost" size="sm" className="rcnb-act" title="Restart kernel (clears variables, keeps cells)" aria-label="Restart kernel" disabled={isBusy} onClick={actions.restart}>
-        <RotateCcw size={13} /><span className="rcnb-actlabel">Restart</span>
+        <RotateCcw size={14} />
       </Button>
       <Button variant="ghost" size="sm" className="rcnb-act" title="Clear all outputs" aria-label="Clear all outputs" disabled={isBusy} onClick={actions.clearOutputs}>
-        <Eraser size={13} /><span className="rcnb-actlabel">Clear</span>
+        <Eraser size={14} />
       </Button>
-      <Button variant="ghost" size="sm" className={`rcnb-act${findOpen ? " primary" : ""}`} title="Find in cells and outputs" aria-label="Find" aria-expanded={findOpen} onClick={actions.toggleFind}>
-        <Search size={13} /><span className="rcnb-actlabel">Find</span>
-      </Button>
+      <span className="rcnb-sep" />
+      <SaveBadge state={save} />
+      <span className="rcnb-status" role="status" aria-label={status} title={status}>
+        <span className={`rcnb-dot${isPulsing ? " pulse" : ""}`} style={{ background: colour, color: colour }} />
+        <span className="rcnb-statustext sr-only">{status}</span>
+      </span>
     </div>
   );
 }

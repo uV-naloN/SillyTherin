@@ -1,8 +1,12 @@
 // Applying server events (pure applyEvent)
 // Baseline: Given an empty chat state · When session.ready arrives
-import { describe, expect, it } from "vitest";
+import { act, fireEvent, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it } from "vitest";
+import { AppShell } from "@/chat/components/AppShell";
+import { rememberPicks } from "@/chat/lib/picks";
+import { renderWithChat, sessionReady, startChat } from "@/chat/test/renderChat";
 import type { ServerEvent, SessionReady } from "@/chat/events";
-import { RESTART_NOTICE, applyEvent, emptyChat, type AnswerView, type ChatState } from "@/chat/store";
+import { RESTART_NOTICE, applyEvent, emptyChat, useChat, type AnswerView, type ChatState } from "@/chat/store";
 import { dataset, props } from "@/panel/test/fixtures";
 
 describe("Kaggle project snapshots", () => {
@@ -165,5 +169,80 @@ describe("Applying server events (pure applyEvent)", () => {
     // Demonstrates: the page survives a newer server
     const state = play([ready()]);
     expect(applyEvent(state, { type: "nope" } as unknown as ServerEvent)).toBe(state);
+  });
+});
+
+// Group 4 — a new chat starts with this workspace's picks
+// Baseline: workspace p1 remembers {vendor/plain, low}; the server opens a new chat in p1 on Claude / default
+const THINKING_LEVELS = ["default", "off", "low", "medium", "high"];
+const MODELS = [
+  { id: "vendor/claude", name: "Claude", selected: true, detail: "thinks", effort_levels: THINKING_LEVELS },
+  { id: "vendor/gpt", name: "GPT", selected: false, detail: "thinks", effort_levels: ["default", "low", "medium", "high"] },
+  { id: "vendor/plain", name: "Plain", selected: false, detail: "", effort_levels: THINKING_LEVELS },
+];
+const EFFORTS = THINKING_LEVELS.map((id) => ({ id, name: id, selected: id === "default", detail: "" }));
+
+function openChatIn(workspaceId: string, messages: SessionReady["messages"] = []) {
+  startChat([], sessionReady({
+    messages,
+    pickers: [{ id: "model", name: "Model", options: MODELS }, { id: "effort", name: "Effort", options: EFFORTS }],
+    panel: props({ project: { id: workspaceId, name: workspaceId } }),
+  }));
+  return renderWithChat(<AppShell />);
+}
+
+describe("New chat picks", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    rememberPicks(localStorage, "p1", { model: "vendor/plain", effort: "low" });
+  });
+
+  it("new chat starts with the workspace's remembered picks", () => {
+    // Then: picked {vendor/plain, low}; chat.send carries them
+    // Demonstrates: a reload keeps your model
+    const { sender } = openChatIn("p1");
+    expect(useChat.getState().picked).toEqual({ model: "vendor/plain", effort: "low" });
+    fireEvent.change(screen.getByRole("textbox", { name: "Message SillyTherin" }), { target: { value: "hi" } });
+    fireEvent.keyDown(screen.getByRole("textbox", { name: "Message SillyTherin" }), { key: "Enter" });
+    expect(sender.send).toHaveBeenLastCalledWith(expect.objectContaining({ type: "chat.send", model: "vendor/plain", effort: "low" }));
+  });
+
+  it("switching workspace applies that workspace's picks", () => {
+    // Changed: p2 remembers GPT / medium; switch to p2 · Then: picked GPT / medium
+    // Demonstrates: each workspace keeps its own model
+    rememberPicks(localStorage, "p2", { model: "vendor/gpt", effort: "medium" });
+    openChatIn("p1");
+    act(() => useChat.getState().apply({ type: "panel.project_changed", props: props({ project: { id: "p2", name: "p2" } }) }));
+    expect(useChat.getState().picked).toEqual({ model: "vendor/gpt", effort: "medium" });
+  });
+
+  it("falls back when the remembered model is not offered", () => {
+    // Changed: remembered gone/model · Then: the server's default
+    // Demonstrates: old picks never break a chat
+    rememberPicks(localStorage, "p1", { model: "gone/model", effort: "low" });
+    openChatIn("p1");
+    expect(useChat.getState().picked).toEqual({ model: "vendor/claude", effort: "default" });
+  });
+
+  it("uses the model default when the remembered effort does not fit", () => {
+    // Changed: remembered GPT with off · Then: GPT and Model default
+    // Demonstrates: the model is kept even when its level is not
+    rememberPicks(localStorage, "p1", { model: "vendor/gpt", effort: "off" });
+    openChatIn("p1");
+    expect(useChat.getState().picked).toEqual({ model: "vendor/gpt", effort: "default" });
+  });
+
+  it("resumed chat keeps its own picks", () => {
+    // Changed: the chat already has messages · Then: the server's picks
+    // Demonstrates: an old chat isn't changed under you
+    openChatIn("p1", [{ role: "user", text: "earlier question" }]);
+    expect(useChat.getState().picked).toEqual({ model: "vendor/claude", effort: "default" });
+  });
+
+  it("workspace with nothing remembered starts at defaults", () => {
+    // Changed: p3 · Then: the server's picks
+    // Demonstrates: new workspaces start clean
+    openChatIn("p3");
+    expect(useChat.getState().picked).toEqual({ model: "vendor/claude", effort: "default" });
   });
 });

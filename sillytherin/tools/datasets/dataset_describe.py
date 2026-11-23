@@ -11,7 +11,7 @@ from langchain_core.tools import ToolException, tool
 from pydantic import Field
 
 from sillytherin.tools.arguments import ToolArguments, TrimmedText
-from sillytherin.tools.dataset_download import error_json
+from sillytherin.tools.errors import error_json
 from sillytherin.tools.services import ToolServices
 from sillytherin.workspace import ErrorCode, WorkspaceError
 

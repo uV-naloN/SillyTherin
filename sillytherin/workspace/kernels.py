@@ -11,9 +11,11 @@ asyncio event loop (uvicorn on Windows may not use the Proactor loop).
 
 import ast
 import asyncio
+import base64
 import hashlib
 import json
 import queue
+import re
 import secrets
 import shutil
 import socket
@@ -51,12 +53,23 @@ CONN_DIR = ".kernels"  # under workspaces_dir; not a valid project id, so never 
 START_TIMEOUT = 60  # seconds for the container + kernel to be ready
 INTERRUPT_GRACE = 10  # seconds to wait for a cell to stop after SIGINT
 TRUNCATED = "\n[output truncated]\n"
-
-# Names of user variables, without modules, IPython helpers or _private names.
-VARIABLES_EXPR = (
-    "__import__('json').dumps(sorted(k for k, v in globals().items() "
-    "if not k.startswith('_') and k not in ('In', 'Out', 'exit', 'quit', 'get_ipython') "
-    "and type(v).__name__ != 'module'))"
+PROBE_TIMEOUT_SECONDS = 1.0
+PREFLIGHT_TIMEOUT_SECONDS = 5.0
+MAX_BINDINGS = 64
+MAX_BINDING_CHARS = 128
+PUBLIC_NAME = re.compile(r"[A-Za-z][A-Za-z0-9_]*\Z")
+MODULE_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*\Z")
+EXCLUDED_BINDINGS = {"In", "Out", "exit", "quit", "get_ipython"}
+MISSING_GLOBAL = re.compile(r"name '([A-Za-z_][A-Za-z0-9_]*)' is not defined")
+BINDINGS_EXPR = (
+    "(lambda names: __import__('json').dumps({"
+    "'modules': {k: globals()[k].__dict__.get('__name__', '') for k in names[:65] "
+    "if len(k) <= 128 and type(globals()[k]) is __import__('types').ModuleType},"
+    "'variables': [k for k in names[:65] "
+    "if len(k) <= 128 and type(globals()[k]) is not __import__('types').ModuleType],"
+    "'truncated': len(names) > 64 or any(len(k) > 128 for k in names[:65])"
+    "}))(sorted(k for k in globals() if k.isidentifier() and not k.startswith('_') "
+    "and k not in ('In','Out','exit','quit','get_ipython')))"
 )
 
 KernelStatus = Literal["off", "starting", "idle", "busy", "dead", "unavailable"]
@@ -69,6 +82,72 @@ class RunResult:
     status: RunStatus
     execution_count: int | None
     outputs: list[NotebookNode] = field(default_factory=list)  # nbformat outputs, ready to save
+    error_name: str | None = None
+    kernel_generation: str | None = None
+    missing_name: str | None = None
+
+
+def missing_global_name(error_name: str | None, error_value: object) -> str | None:
+    if error_name != "NameError" or not isinstance(error_value, str):
+        return None
+    match = MISSING_GLOBAL.fullmatch(error_value)
+    return match.group(1) if match else None
+
+
+@dataclass(frozen=True)
+class NotebookBindings:
+    """Metadata from the live notebook namespace, without values."""
+
+    modules: dict[str, str]  # public alias to dotted module name
+    variables: list[str]  # public names other than module aliases
+    truncated: bool  # some names were omitted, not confirmed absent
+
+
+@dataclass
+class CellCompilationError(Exception):
+    """A compile rejection reported without a traceback."""
+
+    message: str
+    line_number: int | None = None
+
+
+def decode_notebook_bindings(value: dict) -> NotebookBindings | None:
+    """Accept only bounded, display-safe metadata from a correlated kernel reply."""
+    try:
+        if value.get("status") != "ok":
+            return None
+        payload = json.loads(ast.literal_eval(value["data"]["text/plain"]))
+        modules = payload["modules"]
+        variables = payload["variables"]
+        truncated = payload.get("truncated", False)
+        if not isinstance(modules, dict) or not isinstance(variables, list):
+            return None
+        if type(truncated) is not bool:
+            return None
+        if len(modules) + len(variables) > 4096:
+            return None
+        if not all(
+            isinstance(alias, str) and isinstance(module, str)
+            and len(alias) <= MAX_BINDING_CHARS and len(module) <= MAX_BINDING_CHARS
+            and PUBLIC_NAME.fullmatch(alias) and MODULE_NAME.fullmatch(module)
+            and alias not in EXCLUDED_BINDINGS
+            for alias, module in modules.items()
+        ):
+            return None
+        if not all(
+            isinstance(name, str) and len(name) <= MAX_BINDING_CHARS
+            and PUBLIC_NAME.fullmatch(name) and name not in EXCLUDED_BINDINGS
+            for name in variables
+        ):
+            return None
+        names = sorted(set(modules) | set(variables))[:MAX_BINDINGS]
+        return NotebookBindings(
+            {name: modules[name] for name in names if name in modules},
+            [name for name in names if name in variables and name not in modules],
+            truncated or len(set(modules) | set(variables)) > MAX_BINDINGS,
+        )
+    except (KeyError, ValueError, TypeError, SyntaxError, AttributeError):
+        return None
 
 
 @dataclass
@@ -97,6 +176,7 @@ class _Kernel:
     last_used: float = field(default_factory=time.monotonic)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)  # one request at a time
     interrupted: bool = False
+    generation: str = field(default_factory=lambda: secrets.token_hex(16))
 
 
 def _docker(*args: str, timeout: float = 60) -> subprocess.CompletedProcess:
@@ -197,6 +277,10 @@ class KernelRegistry:
         if kernel:
             return kernel.state
         return "unavailable" if self._unavailable else "off"
+
+    def generation(self, project_id: str) -> str | None:
+        kernel = self._kernels.get(project_id)
+        return kernel.generation if kernel else None
 
     def container_name(self, project_id: str) -> str:
         return f"{CONTAINER_PREFIX}{self.scope}-{project_id}"
@@ -311,6 +395,8 @@ class KernelRegistry:
             kernel.last_used = time.monotonic()
             capper = _Capper(self.max_output_chars, self.max_image_kb)
             outputs: list[NotebookNode] = []
+            error_name: str | None = None
+            missing_name: str | None = None
             timed_out = False
             try:
                 msg_id = kernel.client.execute(code, store_history=True, allow_stdin=False)
@@ -340,6 +426,9 @@ class KernelRegistry:
                     if kind == "status" and msg["content"]["execution_state"] == "idle":
                         break
                     if kind in ("stream", "execute_result", "display_data", "error"):
+                        if kind == "error":
+                            error_name = msg["content"].get("ename")
+                            missing_name = missing_global_name(error_name, msg["content"].get("evalue"))
                         out = capper.fit(nbformat.v4.output_from_msg(msg))
                         if out is None:
                             continue
@@ -363,30 +452,76 @@ class KernelRegistry:
                     status = "interrupted"
                 else:
                     status = "done" if content.get("status") == "ok" else "error"
-                return RunResult(status, count, outputs)
+                return RunResult(status, count, outputs, error_name, kernel.generation, missing_name)
             finally:
                 if kernel.state == "busy":
                     kernel.state = "idle"
                 kernel.last_used = time.monotonic()
+
+    async def notebook_bindings(self, project_id: str) -> NotebookBindings | None:
+        kernel = self._kernels.get(project_id)
+        if not kernel or kernel.state != "idle" or kernel.lock.locked():
+            return None
+        async with kernel.lock:
+            if kernel.state != "idle":
+                return None
+            deadline = time.monotonic() + PROBE_TIMEOUT_SECONDS
+            message_id = kernel.client.execute(
+                "", silent=True, store_history=False, allow_stdin=False,
+                user_expressions={"bindings": BINDINGS_EXPR},
+            )
+            try:
+                while time.monotonic() < deadline:
+                    remaining = deadline - time.monotonic()
+                    reply = await asyncio.wait_for(kernel.client.get_shell_msg(timeout=remaining), timeout=remaining)
+                    if reply.get("parent_header", {}).get("msg_id") == message_id:
+                        kernel.last_used = time.monotonic()
+                        return decode_notebook_bindings(reply.get("content", {}).get("user_expressions", {}).get("bindings", {}))
+            except (TimeoutError, queue.Empty, ValueError, KeyError):
+                return None
+        return None
+
+    async def validate_cell_source(self, project_id: str, files_dir: Path, source: str) -> None:
+        kernel = await self._kernel(project_id, files_dir)
+        encoded_source = base64.b64encode(source.encode("utf-8")).decode("ascii")
+        expression = (
+            "compile(get_ipython().input_transformer_manager.transform_cell("
+            f"__import__('base64').b64decode('{encoded_source}').decode('utf-8')),"
+            "'<assistant cell>', 'exec', flags=get_ipython().compile.flags, dont_inherit=True) is not None"
+        )
+        async with kernel.lock:
+            if kernel.state != "idle":
+                raise WorkspaceError(ErrorCode.KERNEL_DEAD, "The notebook kernel is busy; try again.")
+            message_id = kernel.client.execute(
+                "", silent=True, store_history=False, allow_stdin=False,
+                user_expressions={"compiled": expression},
+            )
+            deadline = time.monotonic() + PREFLIGHT_TIMEOUT_SECONDS
+            try:
+                while time.monotonic() < deadline:
+                    remaining = deadline - time.monotonic()
+                    reply = await asyncio.wait_for(kernel.client.get_shell_msg(timeout=remaining), timeout=remaining)
+                    if reply.get("parent_header", {}).get("msg_id") != message_id:
+                        continue
+                    result = reply.get("content", {}).get("user_expressions", {}).get("compiled", {})
+                    if result.get("status") == "ok" and result.get("data", {}).get("text/plain") == "True":
+                        kernel.last_used = time.monotonic()
+                        return
+                    if result.get("status") == "error" and result.get("ename") in {"SyntaxError", "IndentationError", "TabError"}:
+                        diagnostic = str(result.get("evalue", "Invalid Python syntax")).splitlines()[0][:200]
+                        raise CellCompilationError(diagnostic) from None
+                    raise WorkspaceError(ErrorCode.KERNEL_DEAD, "Could not verify this notebook cell.")
+            except (TimeoutError, queue.Empty) as error:
+                raise WorkspaceError(ErrorCode.KERNEL_DEAD, "Could not verify this notebook cell in time.") from error
+            raise WorkspaceError(ErrorCode.KERNEL_DEAD, "Could not verify this notebook cell in time.")
 
     async def variables(self, project_id: str) -> list[str] | None:
         """Names of user variables, via a silent user_expressions request.
 
         Doesn't change execution_count. None when the kernel is busy or off.
         """
-        kernel = self._kernels.get(project_id)
-        if not kernel or kernel.state != "idle" or kernel.lock.locked():
-            return None
-        async with kernel.lock:
-            msg_id = kernel.client.execute("", silent=True, store_history=False, user_expressions={"v": VARIABLES_EXPR})
-            for _ in range(20):
-                reply = await kernel.client.get_shell_msg(timeout=10)
-                if reply.get("parent_header", {}).get("msg_id") == msg_id:
-                    break
-            value = reply["content"].get("user_expressions", {}).get("v", {})
-            if value.get("status") != "ok":
-                return None
-            return json.loads(ast.literal_eval(value["data"]["text/plain"]))
+        bindings = await self.notebook_bindings(project_id)
+        return bindings.variables if bindings is not None else None
 
     async def interrupt(self, project_id: str) -> None:
         """Stop the running cell; variables are kept."""

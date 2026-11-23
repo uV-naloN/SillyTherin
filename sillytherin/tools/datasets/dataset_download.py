@@ -13,9 +13,15 @@ from langchain.tools import ToolRuntime
 from langchain_core.tools import ToolException, tool
 from pydantic import AfterValidator, Field
 
-from sillytherin.chat.current import this_chat
-from sillytherin.chat.ports import Choice
+from sillytherin.tools.approval import (
+    DOWNLOAD_AGAIN_CHOICE,
+    DOWNLOAD_AGAIN_OR_SKIP,
+    DOWNLOAD_CHOICE,
+    DOWNLOAD_OR_SKIP,
+    ask_choice,
+)
 from sillytherin.tools.arguments import ToolArguments, TrimmedText
+from sillytherin.tools.errors import error_json
 from sillytherin.tools.services import (
     ProjectDatasetLookup,
     ToolServices,
@@ -29,13 +35,8 @@ from sillytherin.workspace.datasets.service import REF_PREFIXES, human_size
 from sillytherin.workspace.datasets.sources import DatasetPlan
 
 if TYPE_CHECKING:
-    from sillytherin.tools.dataset_describe import ChatLooks
+    from sillytherin.tools.datasets.dataset_describe import ChatLooks
 
-APPROVAL_TIMEOUT_SECONDS = 120
-DOWNLOAD_CHOICE = Choice("download", "Download")
-DOWNLOAD_OR_SKIP = (DOWNLOAD_CHOICE, Choice("skip", "Skip"))
-DOWNLOAD_AGAIN_CHOICE = Choice("download_again", "Download again")
-DOWNLOAD_AGAIN_OR_SKIP = (DOWNLOAD_AGAIN_CHOICE, Choice("skip", "Skip"))
 MAX_PATTERNS = 20
 PATTERN_MAX_CHARS = 200
 SOURCE_NAMES = {"huggingface": "Hugging Face", "zenodo": "Zenodo"}
@@ -79,8 +80,7 @@ async def ask_approval(plan: DatasetPlan, download_bytes: int) -> bool:
         f"{count:,} file{'s' if count != 1 else ''}, **{human_size(download_bytes)}**.\n\n"
         f"Licence: {plan.license or 'not stated'} · {plan.url}"
     )
-    answer = await this_chat().asker.ask_choice(question, DOWNLOAD_OR_SKIP, APPROVAL_TIMEOUT_SECONDS)
-    return answer == DOWNLOAD_CHOICE.id
+    return await ask_choice(question, DOWNLOAD_OR_SKIP, DOWNLOAD_CHOICE)
 
 
 BROKEN_STATUSES = ("failed", "missing")  # a copy the project can't use; downloading it again needs the user's yes
@@ -90,8 +90,7 @@ async def ask_retry(name: str, reason: str | None) -> bool:
     """Download again / Skip for a copy that can't be used; False on Skip or timeout."""
     why = f" ({reason})" if reason else ""
     question = f"This project's copy of **{name}** can't be used{why}. Download it again?"
-    answer = await this_chat().asker.ask_choice(question, DOWNLOAD_AGAIN_OR_SKIP, APPROVAL_TIMEOUT_SECONDS)
-    return answer == DOWNLOAD_AGAIN_CHOICE.id
+    return await ask_choice(question, DOWNLOAD_AGAIN_OR_SKIP, DOWNLOAD_AGAIN_CHOICE)
 
 
 def undescribed_not_looked_at(
@@ -121,11 +120,6 @@ def broken_copy(datasets: ProjectDatasetLookup, project_id: str, ref: str) -> di
 def download_size_text(download_bytes: int) -> str:
     """The size to download, or "size unknown" when a linked website sent none (a download is never 0 B)."""
     return human_size(download_bytes) if download_bytes else "size unknown"
-
-
-def error_json(error: WorkspaceError) -> str:
-    """A WorkspaceError as JSON for the model, with its structured details."""
-    return json.dumps({"error": error.code, "message": error.message, **(error.details or {})})
 
 
 def look_first_error(not_looked_at: list[dict]) -> WorkspaceError:

@@ -94,8 +94,8 @@ describe("Actions", () => {
     await act(async () => {
       fireEvent.click(restart);
     });
+    expect((await screen.findByRole("alert")).textContent).toContain("Kernel restart failed");
     expect((restart as HTMLButtonElement).disabled).toBe(false);
-    expect(screen.getByRole("alert").textContent).toContain("Kernel restart failed");
   });
 
   it("double_click_sends_once", async () => {

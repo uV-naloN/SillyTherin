@@ -17,6 +17,7 @@ from sillytherin.workspace.datasets.pool import POOL_DIR, DatasetPool
 from sillytherin.workspace.datasets.views import VIEWS_DIR, ProjectViews, ViewFile
 from sillytherin.workspace.kernels import (
     SCOPE_LABEL,
+    CellCompilationError,
     ContainerMounts,
     DockerSettings,
     KernelRegistry,
@@ -761,3 +762,59 @@ def test_kernel_cannot_chmod_a_view_file(root):
         assert pool_file.stat().st_mode == mode
 
     go(root)
+
+
+# TODO: Share disposable project fixtures for live kernel binding and preflight checks.
+
+
+def test_probe_sees_bindings_from_user_cells(root) -> None:
+    # Given: The user ran a NumPy import and created arr in a project kernel.
+    # When: The live namespace is probed.
+    # Then: The reader sees np=numpy and arr without adding or running a cell.
+    # Demonstrates: User-authored work supplies bindings too.
+    @kernel_test
+    async def check_bindings(reg, workspace_root, project_id):
+        await exec_(reg, workspace_root, project_id, "import numpy as np\narr = np.arange(10)")
+        before = await reg.variables(project_id)
+        bindings = await reg.notebook_bindings(project_id)
+        assert bindings is not None
+        assert bindings.modules["np"] == "numpy"
+        assert "arr" in bindings.variables
+        assert before is not None and "arr" in before
+        result = await exec_(reg, workspace_root, project_id, "len(In)")
+        assert result.execution_count == 2
+
+    check_bindings(root)
+
+
+def test_supported_ipython_syntax_passes_preflight(root) -> None:
+    # Given: A candidate uses supported IPython syntax.
+    # When: It reaches preflight after the normal approval path.
+    # Then: It compiles, but the magic does not run during validation.
+    # Demonstrates: The gate stays compatible with existing notebook syntax.
+    @kernel_test
+    async def check_magic(reg, workspace_root, project_id):
+        await reg.validate_cell_source(project_id, files(workspace_root, project_id), "%time 1 + 1")
+        with pytest.raises(CellCompilationError):
+            await reg.validate_cell_source(project_id, files(workspace_root, project_id), "x =")
+        result = await exec_(reg, workspace_root, project_id, "len(In)")
+        assert result.execution_count == 1
+
+    check_magic(root)
+
+
+def test_preflight_does_not_execute_candidate_side_effects(root) -> None:
+    # Given: Valid code would write a marker if executed.
+    # When: The project kernel compiles the candidate.
+    # Then: The marker does not exist until the normal run path executes the code.
+    # Demonstrates: Preflight never runs the candidate.
+    @kernel_test
+    async def check_side_effect(reg, workspace_root, project_id):
+        marker = files(workspace_root, project_id) / "marker.txt"
+        source = "from pathlib import Path\nPath('/work/marker.txt').write_text('written')"
+        await reg.validate_cell_source(project_id, files(workspace_root, project_id), source)
+        assert not marker.exists()
+        await exec_(reg, workspace_root, project_id, source)
+        assert marker.read_text() == "written"
+
+    check_side_effect(root)

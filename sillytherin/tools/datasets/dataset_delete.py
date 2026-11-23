@@ -9,17 +9,12 @@ from langchain.tools import ToolRuntime
 from langchain_core.tools import ToolException, tool
 from pydantic import Field
 
-from sillytherin.chat.current import this_chat
-from sillytherin.chat.ports import Choice
+from sillytherin.tools.approval import DELETE_CHOICE, DELETE_OR_KEEP, ask_choice
 from sillytherin.tools.arguments import ToolArguments, TrimmedText
-from sillytherin.tools.dataset_download import error_json
+from sillytherin.tools.errors import error_json
 from sillytherin.tools.services import ToolServices
 from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.datasets.service import human_size
-
-APPROVAL_TIMEOUT_SECONDS = 120
-DELETE_CHOICE = Choice("delete", "Delete")
-DELETE_OR_KEEP = (DELETE_CHOICE, Choice("keep", "Keep"))
 
 
 def step_title(args: dict) -> str:
@@ -38,8 +33,7 @@ def approval_text(name: str, frees_bytes: int, shared_with: int) -> str:
 async def ask_approval(name: str, frees_bytes: int, shared_with: int) -> bool:
     """Delete / Keep in the chat; False on Keep or timeout."""
     question = approval_text(name, frees_bytes, shared_with)
-    answer = await this_chat().asker.ask_choice(question, DELETE_OR_KEEP, APPROVAL_TIMEOUT_SECONDS)
-    return answer == DELETE_CHOICE.id
+    return await ask_choice(question, DELETE_OR_KEEP, DELETE_CHOICE)
 
 
 class DatasetDeleteArguments(ToolArguments):

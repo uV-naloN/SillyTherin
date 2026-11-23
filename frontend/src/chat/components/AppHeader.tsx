@@ -1,5 +1,6 @@
-// Logo, project name, New chat, Settings, theme and notebook toggles.
-import { Folder, Moon, PanelRight, Plus, SlidersHorizontal, Sun } from "lucide-react";
+// Logo, workspace switcher, New chat, Settings, theme and notebook toggles.
+import { Moon, PanelRight, Plus, SlidersHorizontal, Sun } from "lucide-react";
+import { WorkspaceSwitcher } from "@/chat/components/WorkspaceSwitcher";
 import logoDark from "@/assets/logo_dark.svg";
 import logoLight from "@/assets/logo_light.svg";
 import type { Theme } from "@/chat/lib/theme";
@@ -23,10 +24,7 @@ export function AppHeader({ projectName, theme, isNotebookOpen, onNewChat, onOpe
       {projectName && (
         <>
           <span className="h-5 w-px bg-border" aria-hidden />
-          <span className="inline-flex min-w-0 items-center gap-1.5 text-[13px] font-medium">
-            <Folder className="size-4 shrink-0" aria-hidden />
-            <span className="truncate">{projectName}</span>
-          </span>
+          <WorkspaceSwitcher fallbackName={projectName} />
         </>
       )}
       <span className="flex-1" />

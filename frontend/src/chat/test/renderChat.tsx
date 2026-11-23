@@ -7,7 +7,7 @@ import type { ServerEvent, SessionReady } from "@/chat/events";
 import { useChat } from "@/chat/store";
 import { props } from "@/panel/test/fixtures";
 
-export const GEMMA = { id: "google/gemma-4-31b-it", name: "Gemma 4 31B", selected: false, detail: "thinks · tools" };
+export const GEMMA = { id: "google/gemma-4-31b-it", name: "Gemma 4 31B", selected: false, detail: "thinks · tools", effort_levels: ["default", "low", "high"] };
 
 export function sessionReady(overrides: Partial<SessionReady> = {}): SessionReady {
   return {
@@ -19,7 +19,7 @@ export function sessionReady(overrides: Partial<SessionReady> = {}): SessionRead
         id: "model",
         name: "Model",
         options: [
-          { id: "anthropic/claude-sonnet-4.5", name: "Claude Sonnet 4.5", selected: true, detail: "thinks · tools" },
+          { id: "anthropic/claude-sonnet-4.5", name: "Claude Sonnet 4.5", selected: true, detail: "thinks · tools", effort_levels: ["default", "low", "high"] },
           GEMMA,
           { id: "vendor/plain", name: "Plain", selected: false, detail: "" },
         ],

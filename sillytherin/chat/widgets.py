@@ -25,6 +25,7 @@ class PickerOption:
     name: str  # the label shown to the user
     selected: bool
     detail: str = ""  # what a model can do, e.g. "thinks · tools"; empty for effort levels
+    effort_levels: tuple[str, ...] = ()  # the Effort level ids this model offers; empty = it does not think
 
 
 @dataclass(frozen=True)

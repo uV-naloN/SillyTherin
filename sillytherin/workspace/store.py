@@ -191,6 +191,23 @@ def bump_version(nb: NotebookNode) -> int:
     return meta["version"]
 
 
+def mark_assistant_cell(cell: NotebookNode) -> None:
+    # TODO: mark only a cell the assistant just created.
+    raise NotImplementedError("Mark a new cell as assistant-owned.")
+
+
+def record_kernel_generation(cell: NotebookNode, generation: str) -> None:
+    cell.metadata.setdefault("sillytherin", {})["kernel_generation"] = generation
+
+
+def cell_kernel_generation(cell: NotebookNode) -> str | None:
+    return cell.metadata.get("sillytherin", {}).get("kernel_generation")
+
+
+def clear_kernel_generation(cell: NotebookNode) -> None:
+    cell.metadata.get("sillytherin", {}).pop("kernel_generation", None)
+
+
 # ---- cells -------------------------------------------------------------------------
 
 
@@ -221,6 +238,8 @@ def update_cell(nb: NotebookNode, cell_id: str, source: str) -> None:
     cell = find_cell(nb, cell_id)
     if len(source.encode("utf-8")) > MAX_SOURCE_BYTES:
         raise WorkspaceError(ErrorCode.TOO_LARGE, "A cell can hold at most 100 KB.")
+    if cell.source != source:
+        clear_kernel_generation(cell)
     cell.source = source
 
 

@@ -4,6 +4,8 @@ import { ArrowUp, Square } from "lucide-react";
 import { CommandMenu, commandRowId } from "@/chat/components/CommandMenu";
 import { EffortPicker } from "@/chat/components/EffortPicker";
 import { ModelPicker } from "@/chat/components/ModelPicker";
+import { effortPickerFor } from "@/chat/lib/effortLevels";
+import { rememberPicks } from "@/chat/lib/picks";
 import type { SlashCommand } from "@/chat/lib/slashCommands";
 import { useCommandMenu } from "@/chat/components/useCommandMenu";
 import { useChat } from "@/chat/store";
@@ -26,8 +28,13 @@ export function Composer({ isStreaming, onSend, onStop, commands = NO_COMMANDS }
   const pickers = useChat((s) => s.pickers);
   const picked = useChat((s) => s.picked);
   const pick = useChat((s) => s.pick);
+  const workspaceId = useChat((s) => s.panel?.project.id ?? null);
   const modelPicker = pickers.find((p) => p.id === "model");
-  const effortPicker = pickers.find((p) => p.id === "effort");
+  const effortPicker = effortPickerFor(modelPicker, pickers.find((p) => p.id === "effort"), picked.model);
+  const pickAndRemember = (pickerId: string, optionId: string) => {
+    pick(pickerId, optionId);
+    if (workspaceId) rememberPicks(window.localStorage, workspaceId, useChat.getState().picked);
+  };
   const hasText = text.trim().length > 0;
 
   const submit = () => {
@@ -70,8 +77,8 @@ export function Composer({ isStreaming, onSend, onStop, commands = NO_COMMANDS }
           className="block w-full resize-none rounded-t-2xl bg-transparent px-4 pb-1.5 pt-3.5 text-[15px] outline-none placeholder:text-muted-foreground"
         />
         <div className="flex flex-wrap items-center gap-1.5 px-2.5 pb-2.5 pt-2">
-          {modelPicker && <ModelPicker picker={modelPicker} picked={picked.model} onPick={(id) => pick("model", id)} />}
-          {effortPicker && <EffortPicker picker={effortPicker} picked={picked.effort} onPick={(id) => pick("effort", id)} />}
+          {modelPicker && <ModelPicker picker={modelPicker} picked={picked.model} onPick={(id) => pickAndRemember("model", id)} />}
+          {effortPicker && <EffortPicker picker={effortPicker} picked={picked.effort} onPick={(id) => pickAndRemember("effort", id)} />}
           <span className="flex-1" />
           {isStreaming ? (
             <button type="button" onClick={onStop} className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-foreground px-3 text-[13px] font-medium text-background">

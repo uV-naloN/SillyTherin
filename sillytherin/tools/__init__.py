@@ -4,16 +4,13 @@ from langchain_core.tools import BaseTool
 from pydantic import BaseModel
 
 from sillytherin.agent.tool_errors import with_safe_error_text
-from sillytherin.tools import (
+from sillytherin.tools import notebook_read, notebook_run, read_page, web_search
+from sillytherin.tools.datasets import (
     dataset_delete,
     dataset_describe,
     dataset_download,
     dataset_list,
     dataset_search,
-    notebook_read,
-    notebook_run,
-    read_page,
-    web_search,
 )
 
 TOOLS: tuple[BaseTool, ...] = tuple(
@@ -25,19 +22,21 @@ NOTEBOOK_TOOLS: tuple[BaseTool, ...] = tuple(
     for native_tool in (
         notebook_read.notebook_read,
         notebook_run.notebook_run,
+        notebook_run.notebook_edit,
         dataset_download.dataset_download,
         dataset_list.dataset_list,
         dataset_delete.dataset_delete,
         dataset_describe.dataset_describe,
     )
 )
-_TOOL_MODULES = (
-    web_search, read_page, dataset_search,
-    notebook_read, notebook_run, dataset_download, dataset_list, dataset_delete, dataset_describe,
+_STEP_TITLE_FUNCTIONS = (
+    web_search.step_title, read_page.step_title, dataset_search.step_title,
+    notebook_read.step_title, notebook_run.step_title, notebook_run.edit_step_title,
+    dataset_download.step_title, dataset_list.step_title, dataset_delete.step_title, dataset_describe.step_title,
 )
 _STEP_TITLES = {
-    native_tool.name: (native_tool, module.step_title)
-    for native_tool, module in zip(TOOLS + NOTEBOOK_TOOLS, _TOOL_MODULES, strict=True)
+    native_tool.name: (native_tool, step_title)
+    for native_tool, step_title in zip(TOOLS + NOTEBOOK_TOOLS, _STEP_TITLE_FUNCTIONS, strict=True)
 }
 
 

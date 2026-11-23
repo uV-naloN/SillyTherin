@@ -54,15 +54,16 @@ from tests.scripted_chat_model import ScriptedChatModel, text_chunk, tool_call_c
 from tests.tool_calls import TEST_CALL_ID, call_tool, fake_services
 
 TOOL_CASES = (
-    (web_search, {"query": "iris"}),
-    (read_page, {"url": "https://example.org/iris"}),
-    (dataset_search, {"query": "iris", "task": "classification", "language": "en"}),
-    (notebook_read, {}),
-    (notebook_run, {"code": "df.head()"}),
-    (dataset_download, {"ref": "hf:org/name", "files": ["*.csv"], "update": True}),
-    (dataset_list, {}),
-    (dataset_delete, {"dataset_id": "hf-org--name"}),
-    (dataset_describe, {"dataset_id": "hf-org--name", "description": "Iris measurements"}),
+    (web_search.web_search, {"query": "iris"}),
+    (read_page.read_page, {"url": "https://example.org/iris"}),
+    (dataset_search.dataset_search, {"query": "iris", "task": "classification", "language": "en"}),
+    (notebook_read.notebook_read, {}),
+    (notebook_run.notebook_run, {"code": "df.head()"}),
+    (notebook_run.notebook_edit, {"cell_id": "failed-cell", "code": "df.tail()", "version": 2}),
+    (dataset_download.dataset_download, {"ref": "hf:org/name", "files": ["*.csv"], "update": True}),
+    (dataset_list.dataset_list, {}),
+    (dataset_delete.dataset_delete, {"dataset_id": "hf-org--name"}),
+    (dataset_describe.dataset_describe, {"dataset_id": "hf-org--name", "description": "Iris measurements"}),
 )
 PRIVATE_MARKER = "private-native-value"
 PROJECT = "project-a"
@@ -77,7 +78,9 @@ def tool_of(module: ModuleType) -> BaseTool:
     return getattr(module, module.__name__.rsplit(".", 1)[-1])
 
 
-def monitor_tools(monkeypatch: pytest.MonkeyPatch, modules: list[ModuleType]) -> list[tuple[str, dict]]:
+def monitor_tools(
+    monkeypatch: pytest.MonkeyPatch, tools: list[ModuleType | BaseTool]
+) -> list[tuple[str, dict]]:
     calls: list[tuple[str, dict]] = []
 
     def recorder(name: str):
@@ -87,9 +90,9 @@ def monitor_tools(monkeypatch: pytest.MonkeyPatch, modules: list[ModuleType]) ->
 
         return record
 
-    for module in modules:
-        native = tool_of(module)
-        monkeypatch.setattr(native, "coroutine", recorder(native.name))
+    for tool in tools:
+        decorated_tool = tool if isinstance(tool, BaseTool) else tool_of(tool)
+        monkeypatch.setattr(decorated_tool, "coroutine", recorder(decorated_tool.name))
     return calls
 
 
@@ -114,16 +117,22 @@ def in_chat_state() -> FakeChatState:
     return this_chat().state
 
 
-def test_native_tools_dispatch_through_langchain_once(scripted: ScriptedChatModel, monkeypatch: pytest.MonkeyPatch) -> None:
-    calls = monitor_tools(monkeypatch, [module for module, _ in TOOL_CASES])
-    scripted.scripts += [[
-        tool_call_chunk(tool_of(module).name, arguments, call_id=f"call-{index}", index=index)
-        for index, (module, arguments) in enumerate(TOOL_CASES)
-    ], [text_chunk("Done")]]
+def test_langchain_tools_dispatch_once(scripted: ScriptedChatModel, monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = monitor_tools(monkeypatch, [tool for tool, _ in TOOL_CASES])
+    notebook_writes = {"notebook_run", "notebook_edit"}
+    scripted.scripts.append([
+        tool_call_chunk(tool.name, arguments, call_id=f"call-{index}", index=index)
+        for index, (tool, arguments) in enumerate(TOOL_CASES) if tool.name not in notebook_writes
+    ])
+    scripted.scripts.extend(
+        [tool_call_chunk(tool.name, arguments, call_id=tool.name)]
+        for tool, arguments in TOOL_CASES if tool.name in notebook_writes
+    )
+    scripted.scripts.append([text_chunk("Done")])
     result = run_one_turn()
-    assert dict(calls) == {tool_of(module).name: arguments for module, arguments in TOOL_CASES}
+    assert dict(calls) == {tool.name: arguments for tool, arguments in TOOL_CASES}
     assert len(calls) == len(TOOL_CASES) == len(result.progress.tool_steps)
-    assert scripted.tool_names(0) == [tool_of(module).name for module, _ in TOOL_CASES]
+    assert scripted.tool_names(0) == [tool.name for tool, _ in TOOL_CASES]
     for native in chosen_tools(EVERY_SWITCH_ON):
         assert native.response_format == "content_and_artifact"
         assert {step.output for step in result.progress.tool_steps} >= {f"UI for {native.name}"}

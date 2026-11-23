@@ -8,11 +8,13 @@ Two locks per project: `edit` (short, guards the .ipynb file) and `run`
 cell runs, because a run only holds the edit lock at its start and end.
 """
 
+import ast
 import asyncio
 import logging
 import re
 import time
 from collections.abc import Awaitable, Callable
+from enum import Enum
 from pathlib import Path
 from typing import Literal, NotRequired, TypedDict
 
@@ -20,7 +22,12 @@ from nbformat import NotebookNode
 
 from sillytherin.config import NOTEBOOK_READ_MAX_CHARS, WORKSPACES_DIR
 from sillytherin.workspace import ErrorCode, WorkspaceError, store
-from sillytherin.workspace.kernels import KernelRegistry, KernelStatus, RunResult
+from sillytherin.workspace.kernels import (
+    KernelRegistry,
+    KernelStatus,
+    NotebookBindings,
+    RunResult,
+)
 from sillytherin.workspace.store import CellType, Direction
 
 CellStatus = Literal["idle", "queued", "running", "done", "error", "interrupted", "timeout"]
@@ -31,6 +38,49 @@ PUSH_INTERVAL = 0.25  # seconds between live output pushes
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 
 log = logging.getLogger(__name__)
+
+
+class NotebookRunOutcome(Enum):
+    RESTART_REQUIRED = "restart_required"
+
+
+def defines_global(source: str, name: str) -> bool:
+    """Recognize direct top-level definitions without evaluating notebook source."""
+    try:
+        statements = ast.parse(source).body
+    except (SyntaxError, RecursionError):
+        return False
+    return any(name in defined_names(statement) for statement in statements)
+
+
+def defined_names(statement: ast.stmt) -> set[str]:
+    if isinstance(statement, ast.Assign):
+        return {target.id for target in statement.targets if isinstance(target, ast.Name)}
+    if isinstance(statement, ast.AnnAssign) and statement.value is not None and isinstance(statement.target, ast.Name):
+        return {statement.target.id}
+    if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+        return {statement.name}
+    if isinstance(statement, ast.Import):
+        return {alias.asname or alias.name.split(".", 1)[0] for alias in statement.names}
+    if isinstance(statement, ast.ImportFrom):
+        return {alias.asname or alias.name for alias in statement.names if alias.name != "*"}
+    return set()
+
+
+def has_old_definition(notebook: NotebookNode, cell_id: str, generation: str, name: str) -> bool:
+    has_previous_definition = False
+    for cell in notebook.cells:
+        if cell.id == cell_id:
+            return has_previous_definition
+        if cell.cell_type != "code" or _status(cell) != "done":
+            continue
+        if not defines_global(_text(cell.source), name):
+            continue
+        previous_generation = store.cell_kernel_generation(cell)
+        if previous_generation == generation:
+            return False
+        has_previous_definition |= bool(previous_generation)
+    return False
 
 
 # ---- NotebookProps (server -> panel) --------------------------------------
@@ -173,6 +223,35 @@ def trim(text: str, limit: int) -> str:
     return text[:limit] + f"\n[cut off at {limit:,} characters]"
 
 
+def render_notebook_bindings(bindings: NotebookBindings | None, max_chars: int) -> str:
+    if bindings is None:
+        return "Bindings unavailable"[:max_chars]
+    modules = ", ".join(f"{alias}={module}" for alias, module in sorted(bindings.modules.items()))
+    variables = ", ".join(sorted(bindings.variables))
+    sections = [label for label in (f"modules {modules}" if modules else "", f"variables {variables}" if variables else "") if label]
+    footer = "Live bindings: " + ("; ".join(sections) if sections else "none")
+    if bindings.truncated:
+        footer += " (some names omitted)"
+    if len(footer) > max_chars:
+        omission = "… (some names omitted)"
+        if max_chars <= len(omission):
+            return omission[:max_chars]
+        return footer[:max_chars - len(omission)] + omission
+    return footer
+
+
+def dependency_error_hint(result: RunResult) -> str | None:
+    error_name = result.error_name
+    if error_name is None:
+        error_name = next(
+            (output.get("ename") for output in result.outputs if output.get("output_type") == "error"),
+            None,
+        )
+    if result.status != "error" or error_name not in {"NameError", "ModuleNotFoundError"}:
+        return None
+    return f"{error_name}: check the live bindings before correcting this step."
+
+
 class NotebookService:
     """The only place that changes notebooks or runs code."""
 
@@ -306,7 +385,9 @@ class NotebookService:
         await self._run(project_id, cell_id)
         return await self.props(project_id)
 
-    async def _run(self, pid: str, cell_id: str, by: RunBy = "user") -> RunResult | None:
+    async def _run(
+        self, pid: str, cell_id: str, by: RunBy = "user", *, validated_source: str | None = None
+    ) -> RunResult | None:
         """Run one saved code cell; returns None if it vanished meanwhile. `by` goes to the created-file scan."""
         self._queued.setdefault(pid, []).append(cell_id)
         await self._push(pid, await self.props(pid))
@@ -319,6 +400,8 @@ class NotebookService:
                         code = _text(store.find_cell(nb, cell_id).source)
                     except WorkspaceError:
                         return None
+                    if validated_source is not None and code != validated_source:
+                        raise WorkspaceError(ErrorCode.STALE, "The cell changed after validation; it was not run.")
                 self._running[pid] = cell_id
                 self._live[cell_id] = []
                 await self._push(pid, await self.props(pid))
@@ -356,6 +439,10 @@ class NotebookService:
                     cell.outputs = result.outputs
                     cell.execution_count = result.execution_count
                     _set_status(cell, result.status)
+                    if result.kernel_generation is not None and _text(cell.source) == code:
+                        store.record_kernel_generation(cell, result.kernel_generation)
+                    else:
+                        store.clear_kernel_generation(cell)
 
                 await self._change(pid, None, save_result)
                 return result
@@ -416,26 +503,57 @@ class NotebookService:
                 run = f", run {cell['execution_count']}" if cell["execution_count"] else ", not run"
                 out = outputs_as_text(cell["outputs"])
                 blocks.append(f"[cell{run}]\n{cell['source']}" + (f"\n--- output ---\n{trim(out, 2000)}" if out else ""))
-        if props["kernel"] in ("idle", "busy"):
-            names = await self.kernels.variables(project_id)
-            footer = "variables: " + (", ".join(names) if names else "(none)")
-        else:
-            footer = "variables: kernel not running"
+        bindings = await self.kernels.notebook_bindings(project_id) if props["kernel"] == "idle" else None
+        footer = render_notebook_bindings(bindings, max_chars)
 
         # Keep the newest cells whole; drop the oldest ones first
         kept: list[str] = []
-        used = len(footer)
+        used = len(footer) + 2
         for block in reversed(blocks):
             if used + len(block) + 2 > max_chars:
-                break
+                continue
             kept.insert(0, block)
             used += len(block) + 2
         dropped = len(blocks) - len(kept)
         head = [f"[{dropped} earlier cells not shown]"] if dropped else []
+        if head:
+            while kept and len("\n\n".join(head + kept + [footer])) > max_chars:
+                kept.pop(0)
+                dropped += 1
+                head[0] = f"[{dropped} earlier cells not shown]"
+            if len("\n\n".join(head + kept + [footer])) > max_chars:
+                head = []
         return "\n\n".join(head + kept + [footer])
 
-    async def run_for_model(self, project_id: str, code: str) -> str:
+    async def diagnose_failed_cell(
+        self, project_id: str, cell_id: str, result: RunResult
+    ) -> NotebookRunOutcome | None:
+        generation = result.kernel_generation
+        name = result.missing_name
+        if result.status != "error" or not generation or not name:
+            return None
+        if self.kernels.generation(project_id) != generation:
+            return None
+        bindings = await self.kernels.notebook_bindings(project_id)
+        if bindings is None or bindings.truncated or name in bindings.modules or name in bindings.variables:
+            return None
+        if self.kernels.generation(project_id) != generation:
+            return None
+        notebook = store.load_notebook(project_id, self.root)
+        if has_old_definition(notebook, cell_id, generation, name):
+            return NotebookRunOutcome.RESTART_REQUIRED
+        return None
+
+    async def edit_failed_cell_for_model(
+        self, project_id: str, cell_id: str, source: str, version: int
+    ) -> str:
+        # TODO: verify ownership and version before replacing and safely rerunning the same cell.
+        raise NotImplementedError("Correct and safely rerun only an assistant-owned failed cell.")
+
+    async def run_for_model(self, project_id: str, code: str) -> str | NotebookRunOutcome:
         """Add a code cell at the end, run it, return trimmed output text (notebook_run)."""
+        files_dir = store.project_dir(project_id, self.root) / store.FILES_DIR
+        await self.kernels.validate_cell_source(project_id, files_dir, code)
         added: dict[str, str] = {}
 
         def add(nb: NotebookNode) -> None:
@@ -444,9 +562,17 @@ class NotebookService:
             added["id"] = cell.id
 
         await self._change(project_id, None, add)
-        result = await self._run(project_id, added["id"], by="assistant")  # files it writes are the assistant's
+        result = await self._run(project_id, added["id"], by="assistant", validated_source=code)
         if result is None:
             return "The cell was deleted before it ran."
+        outcome = await self.diagnose_failed_cell(project_id, added["id"], result)
+        if outcome is not None:
+            return outcome
         text = outputs_as_text([output_props(o) for o in result.outputs])
         label = {"done": "out", "error": "error", "interrupted": "interrupted", "timeout": "timed out"}[result.status]
-        return trim(f"[cell {result.execution_count}] {label}: {text or '(no output)'}", MODEL_OUTPUT_MAX_CHARS)
+        hint = dependency_error_hint(result)
+        prefix = f"{hint}\n" if hint else ""
+        return prefix + trim(
+            f"[cell {result.execution_count}] {label}: {text or '(no output)'}",
+            MODEL_OUTPUT_MAX_CHARS - len(prefix),
+        )
