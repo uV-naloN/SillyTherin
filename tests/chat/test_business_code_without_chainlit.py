@@ -61,18 +61,16 @@ def test_build_widgets_returns_our_own_switches():
 
 def test_build_modes_returns_our_own_pickers():
     # Given picker choices and this chat's picks
-    # When build_modes runs for a reasoning model, and again for a model that can't reason
-    # Then it returns Picker objects: Model and Effort for the first, Model only for the second
+    # When build_modes runs
+    # Then it returns Picker objects: Model and Effort (Effort is always sent; each model lists its own levels)
     # Demonstrates: the chat box pickers are unchanged
     choices = PickerChoices(models={"vendor/fast": "Fast", "vendor/smart": "Smart"}, levels={"default": "Model default", "high": "High"})
     picks = Picks(model="vendor/smart", effort="high")
 
-    thinking = build_modes(choices, picks, can_reason=True)
-    plain = build_modes(choices, picks, can_reason=False)
+    thinking = build_modes(choices, picks)
 
-    assert all(isinstance(picker, Picker) for picker in thinking + plain)
+    assert all(isinstance(picker, Picker) for picker in thinking)
     assert [picker.id for picker in thinking] == ["model", "effort"]
-    assert [picker.id for picker in plain] == ["model"]
     assert [(option.id, option.selected) for option in thinking[0].options] == [("vendor/fast", False), ("vendor/smart", True)]
     assert [(option.id, option.selected) for option in thinking[1].options] == [("default", False), ("high", True)]
 

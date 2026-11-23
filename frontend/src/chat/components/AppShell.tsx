@@ -16,6 +16,8 @@ import { Toasts } from "@/chat/components/Toasts";
 import { useConnection } from "@/chat/connectionContext";
 import { clampChatWidth, isNotebookOpen, isToggleShortcut, readChatWidth, rememberChatWidth, rememberNotebookOpen } from "@/chat/lib/layout";
 import { applyTheme, readTheme, rememberTheme, type Theme } from "@/chat/lib/theme";
+import { effortLevelsOf, settingsForModel } from "@/chat/lib/effortLevels";
+import { readRememberedPicks } from "@/chat/lib/picks";
 import { slashCommandsFor } from "@/chat/lib/slashCommands";
 import { useChat, type PromptView } from "@/chat/store";
 import { NotebookPanel } from "@/panel/NotebookPanel";
@@ -34,6 +36,10 @@ export function AppShell(): JSX.Element {
   const kaggleGeneration = useChat((s) => s.kaggleGeneration);
   const kaggleDownloads = useKaggleDownloads({ callAction, panel, generation: kaggleGeneration, isOnline: status === "open" });
   const picked = useChat((s) => s.picked);
+  const pickers = useChat((s) => s.pickers);
+  const chatId = useChat((s) => s.chatId);
+  const workspaceId = panel?.project.id ?? null;
+  const canThink = effortLevelsOf(pickers.find((p) => p.id === "model"), picked.model).length > 0;
   const [isOpen, setIsOpen] = useState(() => isNotebookOpen(window.localStorage));
   const [theme, setTheme] = useState<Theme>(() => readTheme(window.localStorage, prefersDark()));
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -56,6 +62,12 @@ export function AppShell(): JSX.Element {
   const hasStarted = messages.length > 0 || notice !== null;
 
   useEffect(() => applyTheme(document.documentElement, theme), [theme]);
+  // a chat with no messages yet starts on what was last picked in this workspace
+  useEffect(() => {
+    if (!workspaceId || useChat.getState().messages.length > 0) return;
+    const remembered = readRememberedPicks(window.localStorage, workspaceId);
+    if (remembered) useChat.getState().restorePicks(remembered);
+  }, [chatId, workspaceId]);
   // a narrower window re-applies the limits, so the notebook never drops below its minimum
   useEffect(() => {
     const fit = () => {
@@ -173,7 +185,7 @@ export function AppShell(): JSX.Element {
       <SettingsDialog
         open={isSettingsOpen}
         onOpenChange={setIsSettingsOpen}
-        switches={settings}
+        switches={settingsForModel(settings, canThink)}
         onChange={changeSetting}
         theme={theme}
         onThemeChange={changeTheme}

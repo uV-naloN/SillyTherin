@@ -1,7 +1,7 @@
-// Project picker in the header (port of ProjectPicker). The list comes from
-// useProjects (TanStack Query). Project names are React text only, never HTML.
+// Workspace picker in the top bar. The list comes from useProjects (TanStack Query).
+// Workspace names are React text only, never HTML.
 import { useState } from "react";
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, Folder, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -28,13 +28,19 @@ export function ProjectPicker({ name, current, onSwitch, onCreate }: ProjectPick
       }}
     >
       <DropdownMenuTrigger asChild>
-        <button className="rcnb-titlebtn" title="Switch project" aria-label={`Project ${name}, switch project`}>
-          <span className="rcnb-titletext">{name}</span>
-          <ChevronsUpDown size={16} className="rcnb-titlechev" />
+        <button
+          type="button"
+          title="Switch workspace"
+          aria-label={`Workspace ${name}, switch workspace`}
+          className="inline-flex h-8 min-w-0 items-center gap-1.5 rounded-lg px-2 text-[13px] font-medium hover:bg-accent data-[state=open]:bg-accent"
+        >
+          <Folder className="size-4 shrink-0" aria-hidden />
+          <span className="truncate">{name}</span>
+          <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent data-rc-overlay="project" className="rcnb-mcontent rcnb-projects" align="start" sideOffset={4} aria-label="Projects">
-        <div className="rcnb-mhead">Projects</div>
+      <DropdownMenuContent data-rc-overlay="project" className="rcnb-mcontent rcnb-projects" align="start" sideOffset={4} aria-label="Workspaces">
+        <div className="rcnb-mhead">Workspaces</div>
         {!projects.length && <DropdownMenuItem disabled className="rcnb-mitem">Loading…</DropdownMenuItem>}
         {projects.map((p) => (
           <DropdownMenuItem key={p.id} data-rc-item={p.id} className="rcnb-mitem" onSelect={() => onSwitch(p.id)}>
@@ -54,7 +60,7 @@ export function ProjectPicker({ name, current, onSwitch, onCreate }: ProjectPick
             }}
           >
             <Plus />
-            <span>New project…</span>
+            <span>New workspace…</span>
           </DropdownMenuItem>
         ) : (
           <form
@@ -74,8 +80,8 @@ export function ProjectPicker({ name, current, onSwitch, onCreate }: ProjectPick
               className="rcnb-mnew-input"
               value={newName}
               maxLength={80}
-              placeholder="Project name"
-              aria-label="New project name"
+              placeholder="Workspace name"
+              aria-label="New workspace name"
               onChange={(e) => setNewName(e.target.value)}
               // Typing must not trigger the menu's type-to-select; Escape still closes it
               onKeyDown={(e) => e.key !== "Escape" && e.stopPropagation()}

@@ -538,7 +538,7 @@ def undescribed_xls(**over) -> dict:
 
 def download_in(records, *, looked=None, session_id="s1", args=None, ref="hf:scikit-learn/iris", pasted=frozenset()):
     """dataset_download with a fake service; returns (svc, the result or the error as a dict)."""
-    from sillytherin.tools.dataset_describe import ChatLooks
+    from sillytherin.tools.datasets.dataset_describe import ChatLooks
 
     svc = FakeDatasetService()
     svc.records = records
@@ -568,7 +568,7 @@ def test_reading_it_with_notebook_run_lets_the_download_go():
     # Positive · Changed: a notebook_run in this chat named its path / file name
     # Then: the download starts
     # Demonstrates: one look is enough; a new copy can still be downloaded after it
-    from sillytherin.tools.dataset_describe import ChatLooks
+    from sillytherin.tools.datasets.dataset_describe import ChatLooks
 
     for code in ('pd.read_excel("/work/data.xls").head()', "df = pd.read_excel('DATA.XLS')"):
         looked = ChatLooks()
@@ -612,7 +612,7 @@ def test_a_look_in_another_chat_doesnt_count():
     # Negative · Changed: looked at in chat s2, download from s1
     # Then: `LOOK_FIRST`
     # Demonstrates: the check is per chat
-    from sillytherin.tools.dataset_describe import ChatLooks
+    from sillytherin.tools.datasets.dataset_describe import ChatLooks
 
     looked = ChatLooks()
     looked.remember("s2", "p1", undescribed_xls()["dataset_id"])

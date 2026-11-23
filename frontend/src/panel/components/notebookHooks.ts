@@ -12,9 +12,10 @@ export interface ShortcutActions {
   closeOverlays: () => void;
   saveAll: () => void;
   runAll: () => void;
+  openFind: () => void;
 }
 
-/** Escape, Ctrl+S and Ctrl+Shift+Enter while focus is inside the panel */
+/** Escape, Ctrl+S, Ctrl+F and Ctrl+Shift+Enter while focus is inside the panel */
 export function useNotebookShortcuts(rootRef: RefObject<HTMLElement>, actions: ShortcutActions) {
   // Re-bound on every render on purpose: the handler always sees the latest actions
   useEffect(() => {
@@ -28,6 +29,11 @@ export function useNotebookShortcuts(rootRef: RefObject<HTMLElement>, actions: S
       if (inside && mod && !e.shiftKey && e.key.toLowerCase() === "s") {
         e.preventDefault();
         actions.saveAll();
+      }
+      // Inside the panel Ctrl+F searches the cells, as in JupyterLab; elsewhere the browser keeps it
+      if (inside && mod && !e.shiftKey && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        actions.openFind();
       }
       if (inside && mod && e.shiftKey && e.key === "Enter") {
         e.preventDefault();
@@ -172,6 +178,10 @@ export function useCellFind(cells: CellProps[], sourceOf: (cell: CellProps) => s
     if (!next) setFind("");
     else setTimeout(() => findRef.current?.focus(), 0);
   };
+  const openFind = () => {
+    setFindOpen(true);
+    setTimeout(() => findRef.current?.focus(), 0);
+  };
   const closeFind = () => {
     setFind("");
     setFindOpen(false);
@@ -181,7 +191,7 @@ export function useCellFind(cells: CellProps[], sourceOf: (cell: CellProps) => s
     findRef.current?.focus();
   };
 
-  return { findRef, find, setFind, findOpen, q, visible, matchIds, toggleFind, closeFind, clearFind };
+  return { findRef, find, setFind, findOpen, q, visible, matchIds, openFind, closeFind, clearFind };
 }
 
 // ---- problem line and save badge ----

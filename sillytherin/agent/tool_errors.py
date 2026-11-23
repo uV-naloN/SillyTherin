@@ -3,7 +3,7 @@
 from collections.abc import Awaitable, Callable
 
 from langchain.agents.middleware import AgentMiddleware, ToolCallRequest
-from langchain_core.messages import ToolMessage
+from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import BaseTool, ToolException
 from langgraph.errors import GraphBubbleUp
 from langgraph.types import Command
@@ -62,5 +62,29 @@ def explain_expected_failure(error: ToolException) -> str:
 
 
 def is_conflicting_notebook_write(request: ToolCallRequest) -> bool:
-    # TODO: Match the current assistant call ID and detect a notebook write sharing its round with another read or write.
-    raise NotImplementedError("Notebook tool batch guard is not wired.")
+    if request.tool_call["name"] != "notebook_run":
+        return False
+    messages = request.state.get("messages", []) if isinstance(request.state, dict) else []
+    for message in reversed(messages):
+        if not isinstance(message, AIMessage):
+            continue
+        calls = message.tool_calls
+        if not any(call["id"] == request.tool_call["id"] for call in calls):
+            return False
+        notebook_calls = sum(call["name"] in {"notebook_read", "notebook_run"} for call in calls)
+        return notebook_calls > 1
+    return False
+
+
+class NotebookBatchGuard(AgentMiddleware):
+    """Reject competing notebook steps before any write reaches the tool."""
+
+    async def awrap_tool_call(self, request: ToolCallRequest, handler: ToolCallHandler) -> ToolMessage | Command:
+        if is_conflicting_notebook_write(request):
+            return ToolMessage(
+                content="Tool failed: Run one notebook cell per round, after any notebook read.",
+                tool_call_id=request.tool_call["id"],
+                name=request.tool_call["name"],
+                status="error",
+            )
+        return await handler(request)

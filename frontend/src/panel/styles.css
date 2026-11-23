@@ -19,7 +19,7 @@
   --rc-code-line-height: 1.3077;
   --rc-jp-editor-bg: 0 0% 96.9%; --rc-jp-editor-border: 0 0% 87.8%; --rc-jp-code-text: 0 0% 0%;
   --rc-jp-prompt: 207 60% 47%; --rc-jp-out-prompt: 14 51% 49%; --rc-jp-active: 207 71% 46%;
-  --rc-prompt-width: 52px;
+  --rc-prompt-width: 80px;
   --rc-jp-stderr-bg: 0 100% 93.3%;
   /* Jupyter's classic Python colours */
   --rc-jp-keyword: 120 100% 25%; --rc-jp-operator: 280 100% 57%; --rc-jp-number: 120 100% 27%;
@@ -38,15 +38,6 @@
   --rc-jp-selection: 210 50% 32%; --rc-jp-bracket-match: 120 30% 28%; }
 .rcnb { font-family: var(--font-sans); color: hsl(var(--foreground)); font-size: 14px; line-height: 1.6; min-height: 100%; display: flex; flex-direction: column; position: relative; container-type: inline-size; overflow: visible; }
 .rcnb-page { padding: 20px 16px 16px; flex: 1; overflow-x: clip; }
-.rcnb-titlebar { display: flex; align-items: flex-start; gap: 12px; margin: 0 0 14px; }
-.rcnb-titleicon { flex: none; margin-top: 4px; color: hsl(var(--muted-foreground)); }
-.rcnb-titlewrap { flex: 1; min-width: 0; }
-.rcnb-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: hsl(var(--muted-foreground)); line-height: 1.4; }
-.rcnb-title { font-size: 24px; font-weight: 700; line-height: 1.2; margin: 0; word-break: break-word; }
-.rcnb-titlebtn { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; margin: 0 0 0 -6px; padding: 1px 6px; border: 0; border-radius: var(--rc-radius-sm); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background .12s ease; }
-.rcnb-titlebtn:hover, .rcnb-titlebtn[data-state="open"] { background: hsl(var(--accent)); }
-.rcnb-titletext { min-width: 0; overflow-wrap: anywhere; }
-.rcnb-titlechev { flex: none; color: hsl(var(--muted-foreground)); }
 
 /* Focus ring: shaped like Chainlit's ring-2 ring-offset-2 (purged from its stylesheet, so
    written out here), in the theme's grey rather than its red ring colour. */
@@ -69,7 +60,7 @@
 .rcnb-mnew-input:focus-visible { outline: none; box-shadow: 0 0 0 2px hsl(var(--popover)), 0 0 0 4px hsl(var(--muted-foreground) / .6); }
 /* A push rebuilt this overlay: don't replay its entrance animation */
 [data-rc-overlay][data-rc-reopen][data-state="open"] { animation: none !important; }
-.rcnb-save { flex: none; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; color: hsl(var(--muted-foreground)); font-size: 11px; white-space: nowrap; }
+.rcnb-save { flex: none; display: inline-flex; align-items: center; gap: 4px; color: hsl(var(--muted-foreground)); font-size: 11px; white-space: nowrap; }
 .rcnb-save.saving { color: hsl(var(--rc-warn)); }
 .rcnb-save .spin { animation: rcnb-spin .9s linear infinite; }
 .rcnb-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 6px; }
@@ -88,7 +79,7 @@
 .rcnb-count.warn { background: hsl(var(--rc-danger) / .12); color: hsl(var(--rc-danger)); }
 
 .rcnb-meta { display: flex; align-items: center; flex-wrap: nowrap; gap: 2px 6px; min-height: 38px; color: hsl(var(--muted-foreground)); font-size: 12px; }
-.rcnb-status { display: inline-flex; align-items: center; min-width: 0; margin-right: 4px; }
+.rcnb-status { display: inline-flex; align-items: center; min-width: 0; margin: 0 4px 0 6px; }
 .rcnb-statustext { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rcnb-meta .rcnb-sep { flex: 1 1 4px; }
 .rcnb-act { display: inline-flex; align-items: center; gap: 4px; height: 26px; border: 0; background: none; color: inherit; font: inherit; font-size: 12px; font-weight: 400; padding: 0 7px; border-radius: var(--rc-radius-sm); cursor: pointer; white-space: nowrap; }
@@ -128,13 +119,15 @@
 
 .rcnb-code { position: relative; }
 .rcnb-row { display: flex; align-items: flex-start; min-width: 0; }
-.rcnb-prompt { width: var(--rc-prompt-width); flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; padding: 11px 6px 0 0; font-family: var(--rc-code-font); font-size: 13px; line-height: var(--rc-code-line-height); white-space: nowrap; }
+/* ▶ sits left of [n]: on one line, as JupyterLab draws the run control */
+.rcnb-prompt { width: var(--rc-prompt-width); flex: none; display: flex; flex-direction: row; align-items: center; justify-content: flex-end; gap: 4px; padding: 8px 6px 0 0; font-family: var(--rc-code-font); font-size: 13px; line-height: var(--rc-code-line-height); white-space: nowrap; }
 .rcnb-outprompt { color: hsl(var(--rc-jp-out-prompt)); padding-top: 2px; }
 .rcnb-outcell { flex: 1; min-width: 0; }
 /* The run button shows under the prompt while the cell is hovered, focused or running */
-.rcnb-run { opacity: 0; }
+/* faint until the cell is hovered or focused, as JupyterLab shows its run control */
+.rcnb-run { opacity: .35; }
 .rcnb-block:hover .rcnb-run, .rcnb-block:focus-within .rcnb-run, .rcnb-code.running .rcnb-run { opacity: 1; }
-.rcnb-run { width: 23px; height: 23px; border-radius: 50%; border: 0; display: flex; align-items: center; justify-content: center; background: hsl(var(--foreground) / .08); color: hsl(var(--foreground)); cursor: pointer; flex: none; }
+.rcnb-run { order: -1; width: 23px; height: 23px; border-radius: 50%; border: 0; display: flex; align-items: center; justify-content: center; background: hsl(var(--foreground) / .08); color: hsl(var(--foreground)); cursor: pointer; flex: none; }
 .rcnb-run:hover:not(:disabled) { background: hsl(var(--foreground) / .16); }
 .rcnb-run:disabled { opacity: .4; cursor: default; }
 .rcnb-mini { width: 22px; height: 22px; border: 0; border-radius: 4px; background: none; color: hsl(var(--muted-foreground)); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
@@ -218,8 +211,6 @@
   .rcnb-note-edit { opacity: 1; }
 }
 @container (max-width: 620px) {
-  .rcnb-meta .rcnb-actlabel { display: none; }
-  .rcnb-meta .rcnb-act.rcnb-runall .rcnb-actlabel { display: inline; }
   .rcnb-meta .rcnb-act { padding: 4px; }
   .rcnb-status { max-width: 150px; }
   .rcnb-meta .rcnb-sep { flex: 1 1 4px; }
@@ -229,13 +220,11 @@
   .rcds-error { padding-left: 0; }
   .rcnb-page { padding: 14px 10px 12px; }
   .rcnb-head { margin-left: -10px; margin-right: -10px; padding-left: 10px; padding-right: 10px; }
-  .rcnb-title { font-size: 21px; }
-  .rcnb-status { max-width: 92px; }
-  .rcnb-actlabel, .rcnb-meta .rcnb-act.rcnb-runall .rcnb-actlabel { display: none; }
+
   .rcnb-insert { margin-left: 20px; }
   .rcnb-block { padding-left: 22px; }
   .rcnb-gutter { width: 22px; margin-left: -22px; }
-  .rcnb-block { --rc-prompt-width: 40px; }
+  .rcnb-block { --rc-prompt-width: 64px; }
   .rcnb-prompt { font-size: 11px; }
   .rcnb-empty .rcnb-add { margin-left: 0; }
 }

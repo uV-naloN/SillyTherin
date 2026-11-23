@@ -4,6 +4,7 @@ import asyncio
 import json
 
 from ddgs import DDGS
+from ddgs.exceptions import DDGSException
 from langchain.tools import ToolRuntime
 from langchain_core.tools import tool
 from pydantic import Field
@@ -19,7 +20,7 @@ def search(query: str) -> list[dict]:
         results = DDGS(timeout=10).text(
             query, max_results=SEARCH_MAX_RESULTS, backend="auto"
         )
-    except Exception:
+    except DDGSException:
         # Free search engines fail now and then; one retry fixes most of it
         results = DDGS(timeout=10).text(
             query, max_results=SEARCH_MAX_RESULTS, backend="auto"

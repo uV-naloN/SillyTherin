@@ -16,7 +16,8 @@ from sillytherin.workspace.datasets.service import (
 )
 
 if TYPE_CHECKING:
-    from sillytherin.tools.dataset_describe import ChatLooks
+    from sillytherin.tools.datasets.dataset_describe import ChatLooks
+    from sillytherin.workspace.service import NotebookRunOutcome
 
 
 class DatasetLister(Protocol):
@@ -62,7 +63,13 @@ class NotebookReader(Protocol):
 
 
 class NotebookRunner(Protocol):
-    async def run_for_model(self, project_id: str, code: str) -> str: ...
+    async def run_for_model(self, project_id: str, code: str) -> "str | NotebookRunOutcome": ...
+
+
+class NotebookEditor(Protocol):
+    async def edit_failed_cell_for_model(
+        self, project_id: str, cell_id: str, source: str, version: int
+    ) -> str: ...
 
 
 ConfirmRetry = Callable[[str, str | None], Awaitable[bool]]  # (name, reason) -> Download again?
@@ -70,7 +77,7 @@ ApproveDelete = Callable[[str, int, int], Awaitable[bool]]  # (name, frees_bytes
 ApproveRun = Callable[[str, list[str]], Awaitable[bool]]  # (code, risk reasons) -> Run?
 
 
-class NotebookAccess(NotebookReader, NotebookRunner, Protocol):
+class NotebookAccess(NotebookReader, NotebookRunner, NotebookEditor, Protocol):
     """The notebook as the tools use it."""
 
 

@@ -23,21 +23,16 @@ def options(mode):
 
 def test_model_picker_lists_every_configured_model_with_default_marked():
     # Given two configured models, When the pickers are built, Then both show in config order and the default is marked
-    model_mode = build_modes(CHOICES, DEFAULTS, can_reason=True)[0]
+    model_mode = build_modes(CHOICES, DEFAULTS)[0]
     assert (model_mode.id, model_mode.name) == (MODEL_MODE_ID, "Model")
     assert options(model_mode) == [("vendor/fast", "Fast", True), ("vendor/smart", "Smart", False)]
 
 
 def test_effort_picker_lists_levels_in_config_order_with_default_marked():
     # Given the configured effort levels, When the picker is built, Then they show in order and the default is marked
-    effort_mode = build_modes(CHOICES, DEFAULTS, can_reason=True)[1]
+    effort_mode = build_modes(CHOICES, DEFAULTS)[1]
     assert (effort_mode.id, effort_mode.name) == (EFFORT_MODE_ID, "Effort")
     assert options(effort_mode) == [("default", "Model default", True), ("off", "Off", False), ("high", "High", False)]
-
-
-def test_no_effort_picker_when_model_cannot_reason():
-    # Given a model without reasoning support, When the pickers are built, Then only the Model picker is sent
-    assert [m.id for m in build_modes(CHOICES, DEFAULTS, can_reason=False)] == [MODEL_MODE_ID]
 
 
 def test_offered_model_is_used():
@@ -79,7 +74,7 @@ def test_unreachable_openrouter_leaves_only_the_configured_model():
 def test_resumed_chat_keeps_its_model_and_effort():
     # Given a chat that picked a model and effort, When the pickers are sent again, Then they start at those picks
     picks = Picks(model="vendor/smart", effort="high")
-    model_mode, effort_mode = build_modes(CHOICES, picks, can_reason=True)
+    model_mode, effort_mode = build_modes(CHOICES, picks)
     assert [o.id for o in model_mode.options if o.selected] == ["vendor/smart"]
     assert [o.id for o in effort_mode.options if o.selected] == ["high"]
     # a message from a model without the Effort picker keeps the earlier effort

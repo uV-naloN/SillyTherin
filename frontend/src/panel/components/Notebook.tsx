@@ -10,7 +10,7 @@ import { CodeCell } from "@/panel/components/CodeCell";
 import { DatasetsTab } from "@/panel/components/DatasetsTab";
 import { InsertRow } from "@/panel/components/InsertRow";
 import { NoteCell } from "@/panel/components/NoteCell";
-import { FindBar, NotebookTabs, NotebookToolbar, TitleBar, type PanelTab } from "@/panel/components/NotebookHeader";
+import { FindBar, NotebookTabs, NotebookToolbar, type PanelTab } from "@/panel/components/NotebookHeader";
 import {
   problemText, saveState, useCellFind, useDragReorder, useFreshBlocks, useNotebookShortcuts,
   useScrollToRunningCell, useStickyHeader, type Drop,
@@ -109,7 +109,9 @@ export function Notebook() {
     },
     saveAll: a.flushAll,
     runAll: a.runAll,
+    openFind: finder.openFind,
   });
+  useRegisterProjectControls(nb?.project ?? null, a);
 
   // A new project starts unfiltered with no menu open, as the old switchProject did
   const projectKey = nb?.project.id;
@@ -157,8 +159,6 @@ export function Notebook() {
   return (
     <div className="rcnb" ref={rootRef}>
       <div className="rcnb-page">
-        <TitleBar name={nb.project.name} projectId={projectId} onSwitch={a.switchProject} onCreate={a.createProject} save={save} />
-
         <div className={`rcnb-head${headStuck ? " stuck" : ""}`}>
           <NotebookTabs tab={tab} setTab={setTab} cellCount={nb.cells.length} datasets={datasets} />
 
@@ -170,8 +170,8 @@ export function Notebook() {
               isRunningAll={a.runner.busy === "nb_run_all"}
               isBusy={isBusy}
               canStop={busy}
-              findOpen={finder.findOpen}
-              actions={{ runAll: a.runAll, interrupt: a.interrupt, restart: a.restart, clearOutputs: a.clearOutputs, toggleFind: finder.toggleFind }}
+              save={save}
+              actions={{ runAll: a.runAll, interrupt: a.interrupt, restart: a.restart, clearOutputs: a.clearOutputs }}
             />
           )}
 
@@ -264,4 +264,25 @@ export function Notebook() {
       </div>
     </div>
   );
+}
+
+/** Hands the top bar's workspace switcher the current project and the latest switch/create actions */
+function useRegisterProjectControls(
+  project: { id: string; name: string } | null,
+  actions: { switchProject: (id: string) => Promise<unknown>; createProject: (name: string) => Promise<unknown> },
+) {
+  const latestActions = useRef(actions);
+  latestActions.current = actions;
+  const projectId = project?.id;
+  const projectName = project?.name;
+  useEffect(() => {
+    if (!projectId || projectName === undefined) return;
+    usePanel.getState().setProjectControls({
+      projectId,
+      name: projectName,
+      switchProject: (id) => latestActions.current.switchProject(id),
+      createProject: (name) => latestActions.current.createProject(name),
+    });
+  }, [projectId, projectName]);
+  useEffect(() => () => usePanel.getState().setProjectControls(null), []);
 }

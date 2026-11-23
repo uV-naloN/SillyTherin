@@ -1,9 +1,12 @@
 """One chat turn: the user's message in, the model's streamed answer and tool steps out."""
 
 import asyncio
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 
 from langchain.agents import create_agent
+from langchain.agents.middleware import AgentMiddleware, ModelResponse
+from langchain.agents.middleware import ModelRequest as AgentCall
 from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 from langgraph.graph.state import CompiledStateGraph
 
@@ -16,7 +19,7 @@ from sillytherin.agent.model import (
 )
 from sillytherin.agent.round_limit import RoundLimit
 from sillytherin.agent.stream import stream_agent
-from sillytherin.agent.tool_errors import ToolErrorBoundary
+from sillytherin.agent.tool_errors import NotebookBatchGuard, ToolErrorBoundary
 from sillytherin.chat.ports import (
     AnswerView,
     Asker,
@@ -47,8 +50,28 @@ from sillytherin.tools import (
 from sillytherin.tools.services import ToolServices
 from sillytherin.workspace import actions
 from sillytherin.workspace.datasets.links import find_pasted_links
+from sillytherin.workspace.service import NotebookRunOutcome
 
 EMPTY_ANSWER = "(The model returned an empty response.)"
+
+
+RESTART_REPLY = "The notebook was restarted, so earlier results are gone. Press Run all in the notebook, then ask me again."
+
+
+def notebook_restart_required(messages: Sequence[BaseMessage]) -> bool:
+    return any(
+        isinstance(message, ToolMessage) and message.artifact is NotebookRunOutcome.RESTART_REQUIRED
+        for message in messages
+    )
+
+
+class StopOnNotebookRestart(AgentMiddleware):
+    async def awrap_model_call(
+        self, request: AgentCall, handler: Callable[[AgentCall], Awaitable[ModelResponse]]
+    ) -> ModelResponse:
+        if notebook_restart_required(request.messages):
+            return ModelResponse(result=[AIMessage(content=RESTART_REPLY)])
+        return await handler(request)
 
 
 @dataclass(frozen=True)
@@ -108,7 +131,7 @@ async def run_turn(chat: ChatState, message: UserMessage, views: TurnViews) -> N
             agent, to_langchain(history + turn_notes), answer, progress, tool_arguments, services
         )
         history.extend(from_langchain(tool_round_messages(added)))
-        final_text = answer.text
+        final_text = RESTART_REPLY if notebook_restart_required(added) else answer.text
     except asyncio.CancelledError:
         # Stop: keep what was written, drop the half-finished tool turns
         del history[turn_start:]
@@ -162,7 +185,13 @@ def build_tool_services(chat: ChatState) -> ToolServices:
 
 
 def build_agent(request: ModelRequest, tool_arguments: ToolArgumentStream) -> CompiledStateGraph:
-    middleware = [RoundLimit(TOOL_MAX_ROUNDS), GuardModelToolCalls(tool_arguments, TOOL_MAX_ROUNDS), ToolErrorBoundary()]
+    middleware = [
+        RoundLimit(TOOL_MAX_ROUNDS),
+        GuardModelToolCalls(tool_arguments, TOOL_MAX_ROUNDS),
+        ToolErrorBoundary(),
+        NotebookBatchGuard(),
+        StopOnNotebookRestart(),
+    ]
     return create_agent(
         build_chat_model(request), tools=request.tools, middleware=middleware, context_schema=ToolServices
     )

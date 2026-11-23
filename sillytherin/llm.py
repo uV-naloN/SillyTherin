@@ -14,6 +14,9 @@ class ModelInfo:
     id: str
     name: str
     params: frozenset[str]
+    thinking_mandatory: bool = False  # OpenRouter reasoning.mandatory: thinking cannot be turned off
+    supported_efforts: tuple[str, ...] = ()  # OpenRouter reasoning.supported_efforts; empty = budget-based
+    default_effort: str | None = None  # OpenRouter reasoning.default_effort
 
 
 _catalog: dict[str, ModelInfo] | None = None
@@ -40,11 +43,25 @@ def parse_catalog(entries: list[dict]) -> dict[str, ModelInfo]:
             id=entry["id"],
             name=entry.get("name") or entry["id"],
             params=frozenset(entry.get("supported_parameters", [])),
+            **thinking_fields(entry.get("reasoning")),
         )
         for entry in entries
         if answers_in_text(entry)
     }
 
+
+
+def thinking_fields(reasoning: object) -> dict:
+    """ModelInfo's thinking fields from OpenRouter's `reasoning` object; missing or odd data adds no limits."""
+    if not isinstance(reasoning, dict):
+        return {}
+    efforts = reasoning.get("supported_efforts")
+    default_effort = reasoning.get("default_effort")
+    return {
+        "thinking_mandatory": reasoning.get("mandatory") is True,
+        "supported_efforts": tuple(e for e in efforts if isinstance(e, str)) if isinstance(efforts, list) else (),
+        "default_effort": default_effort if isinstance(default_effort, str) else None,
+    }
 
 def answers_in_text(entry: dict) -> bool:
     """Models that don't list their outputs are taken as text models, as most are."""

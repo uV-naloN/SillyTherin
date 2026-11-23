@@ -29,7 +29,8 @@ default = "default"
 
 # Thinking effort levels, in the order shown in the settings panel.
 # Left side: the level sent to OpenRouter. Allowed keys: default, off,
-#   minimal, low, medium, high, xhigh. Remove a line to hide that level.
+#   minimal, low, medium, high, xhigh, max. Remove a line to hide that level.
+#   Each model only offers the levels OpenRouter says it supports.
 # Right side: the label shown to the user. Change it to any word you like.
 [thinking.levels]
 default = "Model default"
@@ -37,6 +38,7 @@ off = "Off"
 low = "Low"
 medium = "Medium"
 high = "High"
+max = "Max"
 
 [datasets]
 # Background dataset downloads (dataset_download tool), stored in the

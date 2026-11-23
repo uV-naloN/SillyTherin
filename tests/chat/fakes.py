@@ -20,13 +20,12 @@ class FakeToolStep:
 @dataclass
 class FakeThinkingStep:
     texts: list[str]
-    is_closed: bool = False
 
     async def stream(self, text: str) -> None:
         self.texts.append(text)
 
     async def close(self) -> None:
-        self.is_closed = True
+        pass
 
 
 @dataclass

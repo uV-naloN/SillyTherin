@@ -4,7 +4,13 @@ from sillytherin.chat.ports import ChatState, SettingsView
 from sillytherin.chat.widgets import Picker, SettingSwitch
 from sillytherin.config import EFFORT_DEFAULT, EFFORT_LEVELS, MODEL, SYSTEM_PROMPT
 from sillytherin.llm import ModelInfo, model_catalog, model_params
-from sillytherin.modes import PickerChoices, Picks, build_modes, picker_models
+from sillytherin.modes import (
+    PickerChoices,
+    Picks,
+    build_modes,
+    effort_levels_for,
+    picker_models,
+)
 from sillytherin.settings import build_widgets, keep_chat_choices
 from sillytherin.workspace.kaggle.account import KaggleAccountStatus
 
@@ -32,7 +38,12 @@ async def picker_choices() -> PickerChoices:
     """What the pickers offer: every OpenRouter text model, and the configured effort levels."""
     catalog = await model_catalog()
     names = {model.id: model.name for model in catalog.values()}
-    return PickerChoices(models=picker_models(names, MODEL), levels=EFFORT_LEVELS, model_details=model_details(catalog))
+    return PickerChoices(
+        models=picker_models(names, MODEL),
+        levels=EFFORT_LEVELS,
+        model_details=model_details(catalog),
+        model_effort_levels={model_id: effort_levels_for(model, EFFORT_LEVELS) for model_id, model in catalog.items()},
+    )
 
 
 def model_details(models: dict[str, ModelInfo]) -> dict[str, str]:
@@ -46,9 +57,8 @@ def model_abilities(params: frozenset[str]) -> str:
 
 
 async def pickers_for(picks: Picks) -> list[Picker]:
-    """The chat box pickers at these picks; Effort only when the model can reason."""
-    can_reason = "reasoning" in await model_params(picks.model)
-    return build_modes(await picker_choices(), picks, can_reason)
+    """The chat box pickers at these picks; each model option lists the Effort levels it offers."""
+    return build_modes(await picker_choices(), picks)
 
 
 async def switches_for(chat: ChatState, kaggle: KaggleAccountStatus) -> list[SettingSwitch]:

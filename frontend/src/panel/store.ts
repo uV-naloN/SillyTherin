@@ -7,6 +7,14 @@ import type { ActionResult, CallAction, NotebookProps } from "@/panel/types";
 
 export interface Focus { id: string; start: number; end: number }
 
+/** What the top bar needs to switch or create a workspace; the notebook registers it once loaded */
+export interface ProjectControls {
+  projectId: string;
+  name: string;
+  switchProject: (id: string) => Promise<unknown>;
+  createProject: (name: string) => Promise<unknown>;
+}
+
 export interface PanelState {
   nb: NotebookProps | null;
   callAction: CallAction | null;
@@ -22,20 +30,22 @@ export interface PanelState {
   dsOpen: Record<string, boolean>;
   dsFilter: string;
   dsSort: "newest" | "name" | "size";
+  projectControls: ProjectControls | null;
   setProps: (props: NotebookProps) => void;
   /** Merge an action reply that carries props; returns the reply */
   apply: (result: ActionResult) => ActionResult;
   setCallAction: (fn: CallAction) => void;
+  setProjectControls: (controls: ProjectControls | null) => void;
   resetForProject: () => void;
 }
 
 type ProjectState = Pick<PanelState, "drafts" | "composing" | "focus" | "editing" | "dsOpen" | "dsFilter">;
-type DataState = Omit<PanelState, "setProps" | "apply" | "setCallAction" | "resetForProject">;
+type DataState = Omit<PanelState, "setProps" | "apply" | "setCallAction" | "setProjectControls" | "resetForProject">;
 
 /** What a project starts with; new objects each time, so no two projects share one */
 const freshProjectState = (): ProjectState => ({ drafts: {}, composing: null, focus: null, editing: {}, dsOpen: {}, dsFilter: "" });
 
-const freshPanelState = (): DataState => ({ nb: null, callAction: null, tab: "notebook", ...freshProjectState(), dsSort: "newest" });
+const freshPanelState = (): DataState => ({ nb: null, callAction: null, tab: "notebook", ...freshProjectState(), dsSort: "newest", projectControls: null });
 
 export const usePanel = create<PanelState>()((set, get) => ({
   ...freshPanelState(),
@@ -55,6 +65,10 @@ export const usePanel = create<PanelState>()((set, get) => ({
       set({ nb: next });
     }
     return result;
+  },
+
+  setProjectControls: (controls) => {
+    set({ projectControls: controls });
   },
 
   setCallAction: (fn) => {

@@ -5,7 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell } from "@/chat/components/AppShell";
 import { Composer } from "@/chat/components/Composer";
 import { useChat } from "@/chat/store";
-import { GEMMA, renderWithChat, startChat } from "@/chat/test/renderChat";
+import { GEMMA, renderWithChat, sessionReady, startChat } from "@/chat/test/renderChat";
+import { PICKS_KEY, readRememberedPicks } from "@/chat/lib/picks";
 
 const box = () => screen.getByRole("textbox", { name: "Message SillyTherin" }) as HTMLTextAreaElement;
 const type = (text: string) => fireEvent.change(box(), { target: { value: text } });
@@ -88,5 +89,137 @@ describe("Message box", () => {
     type("hi");
     enter();
     expect(sender.send).toHaveBeenLastCalledWith(expect.objectContaining({ type: "chat.send", effort: "low" }));
+  });
+
+  it("clicking effort swings the needle to the next level", () => {
+    // Changed: click Effort at High
+    // Then: "Effort: Model default", needle rotate(0deg)
+    // Demonstrates: the dial follows each click
+    renderWithChat(<AppShell />);
+    fireEvent.click(screen.getByRole("button", { name: "Effort: High" }));
+    const button = screen.getByRole("button", { name: "Effort: Model default" });
+    const needle = button.querySelector('[data-part="needle"]') as SVGElement;
+    expect(needle.style.transform).toBe("rotate(0deg)");
+  });
+
+  it("shows only the dial with the level in a tooltip", () => {
+    // Then: no visible text in the button, aria-label "Effort: High", tooltip "Effort: High" on hover
+    // Demonstrates: the chat box stays compact without losing the level's name
+    renderWithChat(<AppShell />);
+    const button = screen.getByRole("button", { name: "Effort: High" });
+    const tooltip = within(button).getByRole("tooltip");
+    expect(tooltip.textContent).toBe("Effort: High");
+    expect(tooltip.className).toContain("opacity-0");
+    expect(tooltip.className).toContain("group-hover:opacity-100");
+    expect(button.querySelector("svg")).toBeTruthy();
+  });
+});
+
+// Group 3 — Effort and Show thinking follow the picked model
+// Baseline: Claude (default/off/low/medium/high), GPT (default/low/medium/high), Plain (none); Claude picked at High
+const CLAUDE = { id: "vendor/claude", name: "Claude", selected: true, detail: "thinks", effort_levels: ["default", "off", "low", "medium", "high"] };
+const GPT = { id: "vendor/gpt", name: "GPT", selected: false, detail: "thinks", effort_levels: ["default", "low", "medium", "high"] };
+const PLAIN = { id: "vendor/plain", name: "Plain", selected: false, detail: "", effort_levels: [] as string[] };
+const LEVELS = [["default", "Model default"], ["off", "Off"], ["low", "Low"], ["medium", "Medium"], ["high", "High"]];
+
+function startOn(modelId: string, effort = "high") {
+  const models = [CLAUDE, GPT, PLAIN].map((model) => ({ ...model, selected: model.id === modelId }));
+  const efforts = LEVELS.map(([id, name]) => ({ id, name, selected: id === effort, detail: "" }));
+  startChat([], sessionReady({ pickers: [{ id: "model", name: "Model", options: models }, { id: "effort", name: "Effort", options: efforts }] }));
+}
+
+function pickModel(fromName: string, toName: string) {
+  fireEvent.click(screen.getByRole("button", { name: new RegExp(fromName) }));
+  fireEvent.click(within(screen.getByRole("listbox", { name: "Models" })).getByRole("option", { name: new RegExp(toName) }));
+}
+
+function showThinkingSwitch(): HTMLButtonElement {
+  fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+  fireEvent.click(screen.getByRole("button", { name: "Answers" }));
+  return document.querySelector('[aria-labelledby="setting-show_thinking"]') as HTMLButtonElement;
+}
+
+const effortButton = () => screen.queryByRole("button", { name: /^Effort:/ });
+
+describe("Effort follows the picked model", () => {
+  it("effort hides and show thinking greys for a model that cannot think", () => {
+    // When: pick Plain · Then: no Effort button; Show thinking disabled with the no-thinking reason
+    // Demonstrates: no control that does nothing
+    startOn(CLAUDE.id);
+    renderWithChat(<AppShell />);
+    pickModel("Claude", "Plain");
+    expect(effortButton()).toBeNull();
+    const toggle = showThinkingSwitch();
+    expect(toggle.disabled).toBe(true);
+    expect(screen.getByText("This model doesn't think before answering.")).toBeTruthy();
+  });
+
+  it("effort shows and show thinking enables for a thinking model", () => {
+    // Changed: start on Plain, pick Claude · Then: Effort button; Show thinking enabled
+    // Demonstrates: Effort is there before the first message
+    startOn(PLAIN.id, "default");
+    renderWithChat(<AppShell />);
+    expect(effortButton()).toBeNull();
+    pickModel("Plain", "Claude");
+    expect(effortButton()).toBeTruthy();
+    expect(showThinkingSwitch().disabled).toBe(false);
+  });
+
+  it("effort offers only the picked model's levels", () => {
+    // When: pick GPT · Then: clicks go Model default → Low → Medium → High
+    // Demonstrates: only levels the model accepts
+    startOn(CLAUDE.id, "default");
+    renderWithChat(<AppShell />);
+    pickModel("Claude", "GPT");
+    const seen = [effortButton()?.getAttribute("aria-label")];
+    for (let i = 0; i < 4; i++) {
+      fireEvent.click(effortButton() as HTMLElement);
+      seen.push(effortButton()?.getAttribute("aria-label"));
+    }
+    expect(seen).toEqual(["Effort: Model default", "Effort: Low", "Effort: Medium", "Effort: High", "Effort: Model default"]);
+  });
+
+  it("effort moves to default when the new model lacks it", () => {
+    // Changed: at Off, pick GPT · Then: "Effort: Model default"
+    // Demonstrates: never a level the model can't use
+    startOn(CLAUDE.id, "off");
+    renderWithChat(<AppShell />);
+    pickModel("Claude", "GPT");
+    expect(effortButton()?.getAttribute("aria-label")).toBe("Effort: Model default");
+    expect(useChat.getState().picked.effort).toBe("default");
+  });
+
+  it("effort hidden when the picked model is not in the list", () => {
+    // Changed: picked id not offered · Then: no Effort button
+    // Demonstrates: no control that does nothing
+    startOn(CLAUDE.id);
+    act(() => useChat.getState().pick("model", "vendor/gone"));
+    renderWithChat(<AppShell />);
+    expect(effortButton()).toBeNull();
+  });
+});
+
+// Group 5 — picks are remembered as you pick
+describe("Picks are remembered", () => {
+  it("picking a model and effort remembers them for this workspace", () => {
+    // When: pick GPT, then Medium · Then: storage has them under this workspace
+    // Demonstrates: the next chat in this workspace starts here
+    startOn(CLAUDE.id, "default");
+    renderWithChat(<AppShell />);
+    pickModel("Claude", "GPT");
+    fireEvent.click(effortButton() as HTMLElement);
+    fireEvent.click(effortButton() as HTMLElement);
+    const workspaceId = useChat.getState().panel?.project.id as string;
+    expect(readRememberedPicks(localStorage, workspaceId)).toEqual({ model: GPT.id, effort: "medium" });
+  });
+
+  it("nothing is remembered before the workspace is known", () => {
+    // Changed: no panel yet · Then: storage unchanged
+    // Demonstrates: picks never land under a wrong workspace
+    startOn(CLAUDE.id, "default");
+    act(() => useChat.setState({ panel: null }));
+    render(<Composer isStreaming={false} onSend={vi.fn(() => true)} onStop={vi.fn()} />);
+    pickModel("Claude", "GPT");
+    expect(localStorage.getItem(PICKS_KEY)).toBeNull();
   });
 });

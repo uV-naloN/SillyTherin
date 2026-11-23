@@ -5,23 +5,18 @@ reasons and Run / Skip buttons, and runs only on Run. Any file in the project
 may be read without asking the user, whoever added it.
 """
 
-from typing import TYPE_CHECKING
-
 from langchain.tools import ToolRuntime
 from langchain_core.tools import ToolException, tool
 from pydantic import Field
 
-from sillytherin.chat.current import this_chat
-from sillytherin.chat.ports import Choice
 from sillytherin.config import MODEL_AUTO_RUN, RISKY_CODE_NEEDS_APPROVAL
+from sillytherin.tools.approval import RUN_CHOICE, RUN_OR_SKIP, ask_choice
 from sillytherin.tools.arguments import NonBlankText, ToolArguments
 from sillytherin.tools.services import ToolServices
 from sillytherin.workspace import WorkspaceError, risk
+from sillytherin.workspace.kernels import CellCompilationError
+from sillytherin.workspace.service import NotebookRunOutcome
 
-if TYPE_CHECKING:
-    from sillytherin.workspace.kernels import CellCompilationError
-
-APPROVAL_TIMEOUT_SECONDS = 120
 DECLINED = "User declined to run this code."
 
 
@@ -44,10 +39,6 @@ def _remember_looks(code: str, services: ToolServices) -> None:
         services.looked.remember(services.chat_id, services.project_id, view["dataset_id"])
 
 
-RUN_CHOICE = Choice("run", "Run")
-RUN_OR_SKIP = (RUN_CHOICE, Choice("skip", "Skip"))
-
-
 def step_title(args: dict) -> str:
     return "Notebook: run code"
 
@@ -56,17 +47,41 @@ async def ask_approval(code: str, reasons: list[str]) -> bool:
     """Show code + reasons with Run / Skip; False on Skip or timeout."""
     why = "\n".join(f"- {r}" for r in reasons) or "- automatic running is turned off"
     question = f"The assistant wants to run this code:\n\n```python\n{code}\n```\n\n**Asking because it:**\n{why}"
-    answer = await this_chat().asker.ask_choice(question, RUN_OR_SKIP, APPROVAL_TIMEOUT_SECONDS)
-    return answer == RUN_CHOICE.id
+    return await ask_choice(question, RUN_OR_SKIP, RUN_CHOICE)
 
 
-def compilation_failure_result(error: "CellCompilationError") -> tuple[str, str]:
-    # TODO: Return a bounded compile diagnostic without a cell ID or raw traceback.
-    raise NotImplementedError("Notebook compile error presentation is not wired.")
+def compilation_failure_result(error: CellCompilationError) -> tuple[str, str]:
+    diagnostic = error.message.splitlines()[0][:200]
+    line = f" (line {error.line_number})" if error.line_number is not None else ""
+    text = f"Code did not compile{line}: {diagnostic}"
+    return text, text
 
 
 class NotebookRunArguments(ToolArguments):
     code: NonBlankText = Field(description="Python code to run in the current project's notebook.")
+
+
+class NotebookEditArguments(ToolArguments):
+    cell_id: str = Field(description="The failed assistant-created cell to correct.")
+    code: NonBlankText = Field(description="Replacement Python code for that same cell.")
+    version: int = Field(description="The notebook version returned with the failed cell.")
+
+
+def edit_step_title(args: dict) -> str:
+    return "Notebook: correct cell"
+
+
+@tool(
+    "notebook_edit",
+    args_schema=NotebookEditArguments,
+    response_format="content_and_artifact",
+)
+async def notebook_edit(
+    cell_id: str, code: str, version: int, runtime: ToolRuntime[ToolServices]
+) -> tuple[str, str]:
+    """Correct one failed assistant-created cell in the active project."""
+    # TODO: request approval and delegate a safe correction to the notebook service.
+    raise NotImplementedError("Edit and safely rerun the assistant's failed notebook cell.")
 
 
 @tool(
@@ -74,15 +89,20 @@ class NotebookRunArguments(ToolArguments):
     args_schema=NotebookRunArguments,
     response_format="content_and_artifact",
 )
-async def notebook_run(code: str, runtime: ToolRuntime[ToolServices]) -> tuple[str, str]:
+async def notebook_run(code: str, runtime: ToolRuntime[ToolServices]) -> tuple[str, str | NotebookRunOutcome]:
     """Run Python code in the user's project notebook.
 
     The Jupyter kernel has numpy, pandas and matplotlib; files live in the working folder. Variables persist
     between runs. Code is added as a new cell. Returns the printed output, the last value or the error.
     Before writing a data file, check dataset_list: when the project already has matching data, load it from
     its path; write a new copy only when the user asks for one.
+    Add only one meaningful new step per cell and per tool round. Reuse live imports and variables from notebook_read,
+    including user-run cells; avoid repeated setup and unrequested diagnostics. The first cell may set up needed data.
+    After a runtime error, read current state before a targeted correction. Retry only repeatable steps with no
+    persistent or unknown effects; never replay a file write, database change or uncertain helper automatically.
+    Failed cells remain in the notebook. If state is unavailable or a package is missing, report the blocker;
+    do not install packages or replay earlier cells.
     """
-    # TODO: Describe one step per cell and when it is safe to retry.
     services = runtime.context
     risk_reasons = risk.check(code)
     needs_user_approval = (risk_reasons and RISKY_CODE_NEEDS_APPROVAL) or not MODEL_AUTO_RUN
@@ -90,7 +110,11 @@ async def notebook_run(code: str, runtime: ToolRuntime[ToolServices]) -> tuple[s
         return DECLINED, f"```python\n{code}\n```\n\nSkipped."
     try:
         result = await services.notebook.run_for_model(services.project_id, code)
+    except CellCompilationError as error:
+        return compilation_failure_result(error)
     except WorkspaceError as error:
         raise ToolException(error.message) from error
+    if result is NotebookRunOutcome.RESTART_REQUIRED:
+        return "Earlier notebook state needs to be restored.", result
     _remember_looks(code, services)
     return result, f"```python\n{code}\n```\n\n```\n{result}\n```"

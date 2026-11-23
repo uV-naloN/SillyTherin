@@ -41,7 +41,7 @@ class Chat:
     """One scripted conversation: the real model, fake tools, every call recorded."""
 
     def __init__(self, records: list[dict]):
-        from sillytherin.tools.dataset_describe import ChatLooks
+        from sillytherin.tools.datasets.dataset_describe import ChatLooks
 
         self.svc = FakeDatasetService()
         self.svc.records = records

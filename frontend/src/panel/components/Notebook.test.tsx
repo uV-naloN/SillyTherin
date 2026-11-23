@@ -9,6 +9,21 @@ import { usePanel } from "@/panel/store";
 const threeCells = () => [cell({ id: "a", source: "x = 1" }), cell({ id: "b", source: "y = 2" }), cell({ id: "c", source: "print(x)" })];
 const statusText = () => panelRoot().querySelector(".rcnb-statustext")?.textContent;
 const problemText = () => screen.queryByRole("alert")?.textContent ?? null;
+const findBox = () => screen.queryByRole("textbox", { name: "Find in notebook" });
+const focusFirstCell = () => (panelRoot().querySelector(".cm-content") as HTMLElement).focus();
+
+/** Presses a key on the page and waits for the find box to take focus */
+async function pressOnPage(init: KeyboardEventInit): Promise<KeyboardEvent> {
+  const press = new KeyboardEvent("keydown", { cancelable: true, ...init });
+  await act(async () => {
+    window.dispatchEvent(press);
+  });
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  return press;
+}
+
 const sentActions = (fn: { mock: { calls: unknown[][] } }) =>
   fn.mock.calls.map(([action]) => action as { name: string; payload: Record<string, unknown> });
 
@@ -76,7 +91,8 @@ describe("Tabs", () => {
 describe("Find", () => {
   it("filters cells by source and says when nothing matches", async () => {
     await mountPanel(props({ cells: threeCells() }));
-    fireEvent.click(screen.getByRole("button", { name: "Find" }));
+    focusFirstCell();
+    await pressOnPage({ key: "f", ctrlKey: true });
     const input = screen.getByRole("textbox", { name: "Find in notebook" });
     fireEvent.change(input, { target: { value: "x" } });
     expect(screen.getByText("2 of 3")).toBeTruthy();
@@ -86,7 +102,8 @@ describe("Find", () => {
 
   it("Escape in the find box clears and closes it", async () => {
     await mountPanel(props({ cells: threeCells() }));
-    fireEvent.click(screen.getByRole("button", { name: "Find" }));
+    focusFirstCell();
+    await pressOnPage({ key: "f", ctrlKey: true });
     const input = screen.getByRole("textbox", { name: "Find in notebook" });
     fireEvent.change(input, { target: { value: "zzz" } });
     fireEvent.keyDown(input, { key: "Escape" });
@@ -98,7 +115,7 @@ describe("Find", () => {
 describe("Keyboard shortcuts", () => {
   it("Ctrl+Shift+Enter inside the panel runs all cells", async () => {
     const h = await mountPanel(props());
-    screen.getByRole("button", { name: "Find" }).focus();
+    screen.getByRole("button", { name: "Run all" }).focus();
     await act(async () => {
       fireEvent.keyDown(window, { key: "Enter", ctrlKey: true, shiftKey: true });
     });
@@ -134,5 +151,48 @@ describe("Empty notebook", () => {
   it("invites the user to add a first block", async () => {
     await mountPanel(props({ cells: [] }));
     expect(screen.getByText("Start your notebook")).toBeTruthy();
+  });
+});
+
+
+describe("Find opens with Ctrl+F", () => {
+  it("ctrl f opens the find bar", async () => {
+    // When: Ctrl+F with focus in a cell · Then: "Find in notebook" focused; browser find prevented
+    // Demonstrates: Find without a toolbar button
+    await mountPanel(props({ cells: threeCells() }));
+    focusFirstCell();
+    const press = await pressOnPage({ key: "f", ctrlKey: true });
+    expect(press.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(findBox());
+  });
+
+  it("cmd f opens the find bar on mac", async () => {
+    // Changed: Meta+F · Then: same as Ctrl+F
+    // Demonstrates: works on Mac
+    await mountPanel(props({ cells: threeCells() }));
+    focusFirstCell();
+    await pressOnPage({ key: "f", metaKey: true });
+    expect(findBox()).toBeTruthy();
+  });
+
+  it("ctrl f outside the panel is left to the browser", async () => {
+    // Changed: focus in the chat box · Then: no find bar; default not prevented
+    // Demonstrates: the chat page keeps the browser's find
+    await mountPanel(props({ cells: threeCells() }));
+    const chatBox = document.body.appendChild(document.createElement("textarea"));
+    chatBox.focus();
+    const press = await pressOnPage({ key: "f", ctrlKey: true });
+    expect(press.defaultPrevented).toBe(false);
+    expect(findBox()).toBeNull();
+  });
+
+  it("escape closes the find bar", async () => {
+    // Changed: Escape in the field · Then: find bar gone
+    // Demonstrates: unchanged behaviour
+    await mountPanel(props({ cells: threeCells() }));
+    focusFirstCell();
+    await pressOnPage({ key: "f", ctrlKey: true });
+    fireEvent.keyDown(findBox() as HTMLElement, { key: "Escape" });
+    expect(findBox()).toBeNull();
   });
 });

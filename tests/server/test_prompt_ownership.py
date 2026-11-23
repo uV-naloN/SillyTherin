@@ -1,6 +1,6 @@
 """Only the chat that opened a prompt can answer it, once, with an offered choice."""
 
-from sillytherin.tools import notebook_run
+from sillytherin.tools import approval
 from tests.server.conftest import (
     events_until,
     open_tab,
@@ -59,7 +59,7 @@ def test_answer_to_a_closed_prompt_is_refused(client, model, services, monkeypat
     # Changed: the answer comes after the timeout
     # Then: error UNKNOWN_ASK; the tool didn't run
     # Demonstrates: a late answer can't run skipped code
-    monkeypatch.setattr(notebook_run, "APPROVAL_TIMEOUT_SECONDS", 0.2)
+    monkeypatch.setattr(approval, "APPROVAL_TIMEOUT_SECONDS", 0.2)
     with open_tab(client) as tab:
         tab.receive_json()
         ask_id = ask_to_run(model, tab)

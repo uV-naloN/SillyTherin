@@ -2,7 +2,7 @@
 
 import time
 
-from sillytherin.tools import notebook_run, web_search
+from sillytherin.tools import approval, web_search
 from sillytherin.workspace import actions
 from tests.server.conftest import (
     HANG,
@@ -191,7 +191,7 @@ def test_unanswered_prompt_times_out_as_skip(client, model, services, monkeypatc
     # Changed: nobody answers a prompt within its timeout
     # Then: ask.closed with no choice; the tool didn't run
     # Demonstrates: no answer counts as Skip
-    monkeypatch.setattr(notebook_run, "APPROVAL_TIMEOUT_SECONDS", 0.2)
+    monkeypatch.setattr(approval, "APPROVAL_TIMEOUT_SECONDS", 0.2)
     model.scripts += [[tool_call_chunk("notebook_run", {"code": "!ls"})], [text_chunk("Skipped")]]
     with open_tab(client) as tab:
         tab.receive_json()

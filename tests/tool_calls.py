@@ -101,14 +101,6 @@ def fake_services(**overrides: object) -> ToolServices:
     return dataclasses.replace(services, **overrides)
 
 
-def app_services(**overrides: object) -> ToolServices:
-    """The services a real turn of the current chat would hand its tools."""
-    from sillytherin.chat.current import this_chat
-    from sillytherin.turn import build_tool_services
-
-    return dataclasses.replace(build_tool_services(this_chat().state), **overrides)
-
-
 async def always_yes(*_details: object) -> bool:
     return True
 

@@ -1,6 +1,7 @@
 // The chat's state. Only applyEvent changes it in answer to the server, so every event's effect
 // is one pure function the tests can check without a socket or a page.
 import { create } from "zustand";
+import { effortAfterModelChange, effortLevelsOf, restoredPicks, type Picks } from "@/chat/lib/effortLevels";
 import type { Choice, ChatLine, Picker, ServerEvent, SessionReady, SettingSwitch, ToastKind } from "@/chat/events";
 import type { ConnectionStatus } from "@/chat/connection";
 import type { NotebookProps } from "@/panel/types";
@@ -84,6 +85,14 @@ const emptyGroup = (): WorkGroupView => ({ label: null, isDone: false, thinking:
 function pickedFrom(pickers: Picker[], previous: ChatState["picked"]): ChatState["picked"] {
   const selected = (id: string) => pickers.find((p) => p.id === id)?.options.find((o) => o.selected)?.id;
   return { model: selected("model") ?? previous.model, effort: selected("effort") ?? previous.effort };
+}
+
+/** A model change keeps the effort only when the new model offers it */
+function pickedAfter(state: ChatState, pickerId: string, optionId: string): ChatState["picked"] {
+  if (pickerId !== "model") return { ...state.picked, [pickerId]: optionId };
+  const levels = effortLevelsOf(state.pickers.find((p) => p.id === "model"), optionId);
+  const effort = levels.length > 0 ? effortAfterModelChange(levels, state.picked.effort) : state.picked.effort;
+  return { model: optionId, effort };
 }
 
 function linesToMessages(lines: ChatLine[]): MessageView[] {
@@ -224,6 +233,8 @@ export interface ChatStore extends ChatState {
   setStatus: (status: ConnectionStatus) => void;
   dismissToast: (id: number) => void;
   pick: (pickerId: string, optionId: string) => void;
+  /** Start a new chat on remembered picks, where the server still offers them */
+  restorePicks: (remembered: Picks) => void;
   closeKaggle: () => void;
   /** Show a Settings switch at its new position before the server confirms it */
   setSetting: (switchId: string, value: boolean) => void;
@@ -238,7 +249,8 @@ export const useChat = create<ChatStore>()((set) => ({
     ? { status, kagglePrompts: [], kaggleGeneration: state.kaggleGeneration + 1 }
     : { status }),
   dismissToast: (id) => set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
-  pick: (pickerId, optionId) => set((state) => ({ picked: { ...state.picked, [pickerId]: optionId } })),
+  pick: (pickerId, optionId) => set((state) => ({ picked: pickedAfter(state, pickerId, optionId) })),
+  restorePicks: (remembered) => set((state) => ({ picked: restoredPicks(state.pickers, remembered, state.picked) })),
   closeKaggle: () => set({ kaggle: null }),
   setSetting: (switchId, value) =>
     set((state) => ({ settings: state.settings.map((row) => (row.id === switchId ? { ...row, initial: value } : row)) })),
