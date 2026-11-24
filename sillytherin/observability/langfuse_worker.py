@@ -18,7 +18,6 @@ from requests.auth import HTTPBasicAuth
 
 from sillytherin.observability.langfuse import (
     CLOUD_HOSTS,
-    EXPORT_TIMEOUT_SECONDS,
     OTLP_TRACES_PATH,
     ExportLoss,
     LangfuseSettings,
@@ -27,10 +26,13 @@ from sillytherin.observability.langfuse import (
 )
 from sillytherin.observability.reply_trace import (
     MAX_CHILD_SPANS,
+    MAX_REPLY_CONTENT_BYTES,
     MODEL_NAME,
     REPLY_NAME,
     SAFE_TOOL_LABELS,
+    ReplyContent,
     ReplySpan,
+    ReplyState,
     ReplyTrace,
     SpanKind,
     SpanOutcome,
@@ -58,6 +60,7 @@ HTTP_OK_MIN = 200
 HTTP_OK_LIMIT = 300
 INVALID_REQUEST_STATUS = 400
 FLUSH_INTERVAL_SECONDS = 60
+HTTP_EXPORT_TIMEOUT_SECONDS = 10
 INTERNAL_SPAN_KIND = 1
 LOCAL_SPAN_FLAGS = frozenset({0, 1, 256, 257})
 SpanSignature = tuple[str, int, int, int, tuple[tuple[str, str, bytes], ...]]
@@ -101,7 +104,7 @@ def open_sdk_exporter(settings: LangfuseSettings) -> Iterator[SdkExporter]:
     session = GuardedSession(settings)
     exporter = OTLPSpanExporter(
         endpoint=settings.endpoint, session=session, compression=Compression.NoCompression,
-        headers={INGESTION_HEADER: LANGFUSE_INGESTION_VERSION}, timeout=EXPORT_TIMEOUT_SECONDS,
+        headers={INGESTION_HEADER: LANGFUSE_INGESTION_VERSION}, timeout=HTTP_EXPORT_TIMEOUT_SECONDS,
         max_request_size=MAX_REQUEST_BYTES,
     )
     client = Langfuse(
@@ -134,7 +137,7 @@ class LangfuseBatchExporter:
 
         self._session.arm(trace)
         try:
-            root = start_span(self._tracer, trace.root, Context())
+            root = start_reply_span(self._tracer, trace, Context())
             parent = set_span_in_context(root, Context())
             for child in trace.children:
                 start_span(self._tracer, child, parent).end(end_time=child.end_time_unix_nano)
@@ -143,6 +146,36 @@ class LangfuseBatchExporter:
             return self._session.result
         finally:
             self._session.trace = None
+
+
+def start_reply_span(tracer: Tracer, trace: ReplyTrace, context: Context) -> Span:
+    from opentelemetry.trace import Status, StatusCode
+
+    attributes = reply_attributes(trace)
+    span = tracer.start_span(
+        trace.root.name, context=context, start_time=trace.root.start_time_unix_nano,
+        attributes=attributes, record_exception=False, set_status_on_exception=False,
+    )
+    span.set_status(Status(StatusCode(reply_status(trace))))
+    return span
+
+
+def reply_status(trace: ReplyTrace) -> int:
+    if trace.content is not None and trace.root.outcome is SpanOutcome.CANCELLED:
+        return 2
+    return status_code(trace.root.outcome)
+
+
+def reply_attributes(trace: ReplyTrace) -> dict[str, str]:
+    attributes = span_attributes(trace.root)
+    if trace.content is None:
+        return attributes
+    validate_reply_content(trace.content, trace.root.outcome)
+    attributes["langfuse.observation.input"] = trace.content.message
+    attributes["langfuse.observation.metadata.reply_state"] = trace.content.reply_state.value
+    if trace.content.reply is not None:
+        attributes["langfuse.observation.output"] = trace.content.reply
+    return attributes
 
 
 def start_span(tracer: Tracer, snapshot: ReplySpan, context: Context) -> Span:
@@ -301,7 +334,7 @@ def validate_encoded_batch(payload: bytes, trace: ReplyTrace) -> None:
         raise ValueError("Incomplete SDK batch")
     root = roots[0]
     validate_span_ids(spans, root)
-    if wire_span_signature(root) != snapshot_signature(trace.root, is_root=True):
+    if wire_span_signature(root) != reply_snapshot_signature(trace):
         raise ValueError("Unexpected root span")
     children = Counter(wire_span_signature(span) for span in spans if span.parent_span_id)
     if children != Counter(snapshot_signature(child, is_root=False) for child in trace.children):
@@ -314,6 +347,22 @@ def validate_snapshot_bounds(trace: ReplyTrace) -> None:
         raise ValueError("Invalid reply timestamps")
     if any(not start <= span.start_time_unix_nano <= span.end_time_unix_nano <= end for span in trace.children):
         raise ValueError("Invalid stage timestamps")
+
+
+def validate_reply_content(content: ReplyContent, outcome: SpanOutcome) -> None:
+    for text in (content.message, content.reply):
+        if text is None:
+            continue
+        if not isinstance(text, str) or len(text) > MAX_REPLY_CONTENT_BYTES:
+            raise ValueError("Invalid content size")
+        if len(text.encode("utf-8")) > MAX_REPLY_CONTENT_BYTES:
+            raise ValueError("Invalid content size")
+    if (content.reply is None) != (content.reply_state is ReplyState.MISSING):
+        raise ValueError("Inconsistent missing reply")
+    if content.reply_state is ReplyState.PARTIAL and not content.reply:
+        raise ValueError("Empty partial reply")
+    if content.reply_state is ReplyState.COMPLETE and outcome is not SpanOutcome.SUCCEEDED:
+        raise ValueError("Inconsistent completed reply")
 
 
 def validated_envelope(batch: ExportTraceServiceRequest) -> Sequence[WireSpan]:
@@ -383,6 +432,20 @@ def snapshot_signature(snapshot: ReplySpan, *, is_root: bool) -> SpanSignature:
         snapshot.name, snapshot.start_time_unix_nano, snapshot.end_time_unix_nano,
         status_code(snapshot.outcome), tuple(sorted(attributes)),
     )
+
+
+def reply_snapshot_signature(trace: ReplyTrace) -> SpanSignature:
+    from opentelemetry.proto.common.v1.common_pb2 import AnyValue
+
+    snapshot_signature(trace.root, is_root=True)
+    attributes = [
+        (key, "string_value", AnyValue(string_value=value).SerializeToString())
+        for key, value in reply_attributes(trace).items()
+    ]
+    attributes.append((ROOT_ATTRIBUTE, "bool_value", AnyValue(bool_value=True).SerializeToString()))
+    root = trace.root
+    return (root.name, root.start_time_unix_nano, root.end_time_unix_nano,
+            reply_status(trace), tuple(sorted(attributes)))
 
 
 def validate_child_label(snapshot: ReplySpan) -> None:

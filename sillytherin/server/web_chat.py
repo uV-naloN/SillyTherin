@@ -52,6 +52,10 @@ class EventSender(Protocol):
     async def send(self, event: ServerEvent) -> None: ...
 
 
+class AnswerEventSender(EventSender, Protocol):
+    async def try_send(self, event: ServerEvent) -> bool: ...
+
+
 class MemoryChatState:
     """One chat's values, kept in memory only: they go when the chat closes."""
 
@@ -71,23 +75,25 @@ class MemoryChatState:
 
 
 class SocketAnswerView:
-    def __init__(self, sender: EventSender, message_id: str) -> None:
+    def __init__(self, sender: AnswerEventSender, message_id: str) -> None:
         self._sender = sender
         self._message_id = message_id
         self._has_started = False
+        self._start_accepted = False
 
-    async def stream(self, text: str) -> None:
+    async def stream(self, text: str) -> bool:
         await self._start_once()
-        await self._sender.send(ReplyDelta(message_id=self._message_id, text=text))
+        accepted = await self._sender.try_send(ReplyDelta(message_id=self._message_id, text=text))
+        return self._start_accepted and accepted
 
-    async def finish(self, text: str) -> None:
+    async def finish(self, text: str) -> bool:
         await self._start_once()
-        await self._sender.send(ReplyEnded(message_id=self._message_id, text=text))
+        return await self._sender.try_send(ReplyEnded(message_id=self._message_id, text=text))
 
     async def _start_once(self) -> None:
         if not self._has_started:
             self._has_started = True
-            await self._sender.send(ReplyStarted(message_id=self._message_id))
+            self._start_accepted = await self._sender.try_send(ReplyStarted(message_id=self._message_id))
 
 
 class SocketThinkingStep:

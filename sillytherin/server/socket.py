@@ -95,13 +95,18 @@ class ChatOutbox:
             self._socket = None
 
     async def send(self, event: ServerEvent) -> None:
+        await self.try_send(event)
+
+    async def try_send(self, event: ServerEvent) -> bool:
         socket = self._socket
         if socket is None:
-            return
+            return False
         try:
             await socket.send_text(event.model_dump_json())
+            return True
         except (WebSocketDisconnect, RuntimeError):
             self.detach(socket)  # the tab closed mid-send
+            return False
 
 
 @dataclass

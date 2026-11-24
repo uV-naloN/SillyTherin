@@ -99,6 +99,10 @@ Restart the app after changing any of these files. Projects, notebooks and datas
 ### Optional Langfuse reply tracing
 
 The normal install does not require the Langfuse SDK or any Langfuse credentials.
+Enabling tracing exports real submitted messages and replies to the configured project.
+These may include secrets and private notebook or document text. Configure project
+access and retention before enabling it.
+
 To opt in, install the SDK in the app's virtual environment:
 
 ```bash
@@ -110,8 +114,11 @@ In `.env`, set `SILLYTHERIN_LANGFUSE_ENABLED=true`,
 `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` for the approved Cloud project.
 Restart the app. Remove the enable flag and restart to stop exporting.
 
-Traces contain only timing and outcome metadata. Approval waiting counts toward
-the reply total, not tool duration. If export fails or the queue fills, the reply
+Traces contain the submitted message, handed-off reply, timing and outcome.
+Stopped turns have a cancelled outcome and error status, with partial or missing
+reply text. Each text field is limited to 64 KiB UTF-8. Oversized traces are
+dropped with a content-free diagnostic. Existing traces keep their original data.
+Approval waiting counts toward the reply total and is excluded from tool duration. If export fails or the queue fills, the reply
 still completes and the server log records a reason and affected trace count.
 
 Use synthetic replies and tools to check a live test project. For the separate

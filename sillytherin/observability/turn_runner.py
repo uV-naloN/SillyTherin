@@ -2,6 +2,7 @@
 
 from asyncio import CancelledError
 from collections.abc import Callable
+from dataclasses import replace
 from typing import Protocol
 
 from sillytherin.chat.ports import ChatState
@@ -9,8 +10,10 @@ from sillytherin.observability.agent_observer import (
     NativeStageObserver,
     ToolWaitMiddleware,
 )
+from sillytherin.observability.answer_capture import AnswerCapture
 from sillytherin.observability.reply_trace import (
     RecordingLoss,
+    ReplyContent,
     ReplyRecorder,
     ReplyTraceSink,
     SpanOutcome,
@@ -38,6 +41,7 @@ class ObservedTurnRunner:
     async def __call__(self, chat: ChatState, message: UserMessage, views: TurnViews) -> None:
         recorder = ReplyRecorder(self._clock)
         outcome = SpanOutcome.FAILED
+        capture = None
 
         def completed(turn_outcome: TurnOutcome) -> None:
             nonlocal outcome
@@ -46,6 +50,7 @@ class ObservedTurnRunner:
         try:
             recorder.start_reply()
             hooks = build_hooks(recorder, completed)
+            views, capture = self.capture_answer(views, recorder)
         except Exception:  # noqa: BLE001 - chat still runs without observation
             recorder.invalidate()
             hooks = TurnHooks()
@@ -55,11 +60,22 @@ class ObservedTurnRunner:
             outcome = SpanOutcome.CANCELLED
             raise
         finally:
-            self.offer_recording(recorder, outcome)
+            try:
+                content = capture.seal(message.text, outcome) if capture is not None else None
+            except Exception:  # noqa: BLE001 - observer failure cannot replace the turn result
+                recorder.invalidate()
+                content = None
+            self.offer_recording(recorder, outcome, content=content)
 
-    def offer_recording(self, recorder: ReplyRecorder, outcome: SpanOutcome) -> None:
+    def capture_answer(self, views: TurnViews, recorder: ReplyRecorder) -> tuple[TurnViews, AnswerCapture]:
+        capture = AnswerCapture(views.answer, recorder.invalidate)
+        return replace(views, answer=capture), capture
+
+    def offer_recording(
+        self, recorder: ReplyRecorder, outcome: SpanOutcome, *, content: ReplyContent | None = None,
+    ) -> None:
         try:
-            trace = recorder.finish_reply(outcome)
+            trace = recorder.finish_reply(outcome, content=content)
             if trace is not None:
                 self._sink.offer(trace)
         except Exception:  # noqa: BLE001 - failure must not replace the chat result

@@ -2,14 +2,15 @@
 
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Annotated, Protocol
 from uuid import UUID
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 MAX_CHILD_SPANS = 256
+MAX_REPLY_CONTENT_BYTES = 65_536
 REPLY_NAME = "reply.turn"
 MODEL_NAME = "model.call"
 OTHER_TOOL_LABEL = "tool.other"
@@ -19,6 +20,7 @@ SAFE_TOOL_LABELS = frozenset({
     "tool.dataset_describe", OTHER_TOOL_LABEL,
 })
 UnixNanoseconds = Annotated[int, Field(ge=0, le=(1 << 64) - 1)]
+ReplyText = Annotated[str, Field(strict=True, max_length=MAX_REPLY_CONTENT_BYTES)]
 
 
 class SpanKind(StrEnum):
@@ -37,6 +39,13 @@ class SpanOutcome(StrEnum):
 class RecordingLoss(StrEnum):
     STAGE_LIMIT = "stage_limit"
     OBSERVER_FAILED = "observer_failed"
+    INVALID_TRACE = "invalid_trace"
+
+
+class ReplyState(StrEnum):
+    COMPLETE = "complete"
+    PARTIAL = "partial"
+    MISSING = "missing"
 
 
 @dataclass(frozen=True)
@@ -49,9 +58,23 @@ class ReplySpan:
 
 
 @dataclass(frozen=True)
+class ReplyContent:
+    """The submitted message and the answer text captured for this turn."""
+
+    __pydantic_config__ = ConfigDict(extra="forbid", hide_input_in_errors=True)
+
+    # Preserve the submitted text exactly for the trace input.
+    message: ReplyText = field(repr=False)
+    # A missing reply omits output in the exported span.
+    reply: ReplyText | None = field(repr=False)
+    reply_state: ReplyState
+
+
+@dataclass(frozen=True)
 class ReplyTrace:
     root: ReplySpan
     children: tuple[ReplySpan, ...]
+    content: ReplyContent | None = None
 
 
 @dataclass(frozen=True)
@@ -153,7 +176,7 @@ class ReplyRecorder:
         if stage is not None:
             self._finished[run_id] = stage.finish(self._clock.monotonic_ns(), outcome, self._epoch_offset)
 
-    def finish_reply(self, outcome: SpanOutcome) -> ReplyTrace | None:
+    def finish_reply(self, outcome: SpanOutcome, *, content: ReplyContent | None = None) -> ReplyTrace | None:
         if self._sealed or self.loss is not None:
             return None
         end = self._clock.monotonic_ns()
@@ -163,7 +186,7 @@ class ReplyRecorder:
         self._stages.clear()
         self._sealed = True
         root = ReplySpan(SpanKind.REPLY, REPLY_NAME, self._started + self._epoch_offset, end + self._epoch_offset, outcome)
-        return ReplyTrace(root, tuple(sorted(self._finished.values(), key=span_start)))
+        return ReplyTrace(root, tuple(sorted(self._finished.values(), key=span_start)), content=content)
 
 
 def span_start(span: ReplySpan) -> int:
