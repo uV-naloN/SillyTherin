@@ -3,7 +3,8 @@
 import asyncio
 import re
 import secrets
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from contextlib import AbstractContextManager, nullcontext
 from typing import Literal, Protocol
 
 from sillytherin.chat.ports import Choice, ThinkingStep, ToastKind, ToolStep
@@ -42,6 +43,7 @@ from sillytherin.workspace.service import NotebookProps
 
 PROMPT_ID_BYTES = 16  # prompt ids are unguessable, so one chat can't answer another's prompt
 AnswerOutcome = Literal["accepted", "unknown", "unoffered"]
+AnswerWaitScope = Callable[[], AbstractContextManager[None]]
 
 
 class EventSender(Protocol):
@@ -161,9 +163,12 @@ class OpenPrompts:
 
 
 class SocketAsker:
-    def __init__(self, sender: EventSender, prompts: OpenPrompts) -> None:
+    def __init__(
+        self, sender: EventSender, prompts: OpenPrompts, *, answer_wait: AnswerWaitScope = nullcontext
+    ) -> None:
         self._sender = sender
         self._prompts = prompts
+        self._answer_wait = answer_wait
 
     async def ask_kaggle_download(self, request_id: str, offer: KaggleApprovalOffer) -> bool:
         choices = list(DOWNLOAD_OR_SKIP)
@@ -183,7 +188,8 @@ class SocketAsker:
     async def _await_choice(self, opened: AskOpened, answer: asyncio.Future[str], timeout_seconds: int) -> str | None:
         try:
             await self._sender.send(opened)
-            choice: str | None = await asyncio.wait_for(answer, timeout_seconds)
+            with self._answer_wait():
+                choice: str | None = await asyncio.wait_for(answer, timeout_seconds)
         except TimeoutError:
             choice = None  # nobody answered: the tool treats it as Skip
         finally:

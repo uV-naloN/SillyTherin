@@ -1,5 +1,6 @@
 """Streams one agent run into the chat: thinking into the work group, text into the answer."""
 
+from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import AIMessageChunk, BaseMessage, ToolMessage
 from langgraph.graph.message import add_messages
 from langgraph.graph.state import CompiledStateGraph
@@ -62,6 +63,8 @@ async def stream_agent(
     progress: Progress,
     tool_arguments: ToolArgumentStream,
     services: ToolServices,
+    *,
+    extra_callbacks: tuple[BaseCallbackHandler, ...] = (),
 ) -> list[BaseMessage]:
     """Run the agent on `messages`; returns the messages the run added (tool calls, tool results, the answer)."""
     view = RoundView(answer, progress)
@@ -74,7 +77,10 @@ async def stream_agent(
                 {"messages": messages},
                 stream_mode=["messages", "updates"],
                 context=services,
-                config={"recursion_limit": RECURSION_SAFETY_NET, "callbacks": [tool_progress, tool_arguments]},
+                config={
+                    "recursion_limit": RECURSION_SAFETY_NET,
+                    "callbacks": [tool_progress, tool_arguments, *extra_callbacks],
+                },
             ):
                 if mode == "messages" and isinstance(data[0], AIMessageChunk):
                     await view.show(data[0])
