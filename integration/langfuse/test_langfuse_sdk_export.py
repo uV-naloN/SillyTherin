@@ -31,7 +31,9 @@ from sillytherin.observability.langfuse_worker import (
     validate_encoded_batch,
 )
 from sillytherin.observability.reply_trace import (
+    ReplyContent,
     ReplySpan,
+    ReplyState,
     ReplyTrace,
     SpanKind,
     SpanOutcome,
@@ -132,14 +134,14 @@ def test_successful_export_contains_only_allowed_wire_fields(http: HttpBoundary,
     views = TurnViews(FakeAnswerView(), FakeProgressView(), FakeAsker(None), None)
     asyncio.run(runner(FakeChatState(chat_id=MARKER), UserMessage(MARKER, "", ""), views))
     trace, = sink.traces
-    assert trace == TEST_TRACE
+    assert replace(trace, content=None) == TEST_TRACE
     assert export_trace(settings, trace) is None
     request = http.request()
     assert isinstance(request.body, bytes)
-    validate_encoded_batch(request.body, TEST_TRACE)
+    validate_encoded_batch(request.body, trace)
     assert settings.public_key.get_secret_value().encode() not in request.body
     assert settings.secret_key.get_secret_value().encode() not in request.body
-    assert MARKER.encode() not in request.body
+    assert MARKER.encode() in request.body
     assert not any(name.lower() == "x-langfuse-public-key" for name in request.headers)
     spans = http.spans()
     root, = (span for span in spans if not span.parent_span_id)
@@ -162,7 +164,7 @@ def test_failed_export_snapshot_excludes_exception_and_traceback(
     with pytest.raises(RuntimeError, match=MARKER):
         asyncio.run(runner(FakeChatState(chat_id=MARKER), UserMessage(MARKER, "", ""), views))
     assert export_trace(settings, sink.traces[0]) is None
-    assert MARKER.encode() not in http.request().body
+    assert MARKER.encode() in http.request().body
     root, = http.spans()
     assert root.status.code == 2 and not root.status.message and not root.events
 
@@ -296,3 +298,115 @@ def test_cloud_json_acknowledgement_is_distinguished_from_delivery_uncertainty(
     loss = export_trace(settings)
     assert loss == (None if expected is None else ExportLoss(expected, 1))
     assert http.request().url == settings.endpoint
+
+
+# Stopped-turn status
+
+
+def test_sdk_marks_partial_cancelled_reply_as_error(http: HttpBoundary, settings: LangfuseSettings) -> None:
+    trace = content_trace(SpanOutcome.CANCELLED, ReplyState.PARTIAL)
+    assert export_trace(settings, trace) is None
+    root = next(span for span in http.spans() if not span.parent_span_id)
+    assert root.status.code == 2 and not root.status.message
+    assert attributes(root)["langfuse.observation.metadata.outcome"] == "cancelled"
+
+
+def test_sdk_marks_cancelled_reply_without_output_as_error(http: HttpBoundary, settings: LangfuseSettings) -> None:
+    trace = content_trace(SpanOutcome.CANCELLED, ReplyState.MISSING)
+    assert export_trace(settings, trace) is None
+    root = next(span for span in http.spans() if not span.parent_span_id)
+    assert root.status.code == 2
+    assert "langfuse.observation.output" not in attributes(root)
+
+
+# Root-only wire contract
+
+
+def test_sdk_exports_exact_content_on_root_only(http: HttpBoundary, settings: LangfuseSettings) -> None:
+    trace = content_trace()
+    assert export_trace(settings, trace) is None
+    root = next(span for span in http.spans() if not span.parent_span_id)
+    assert attributes(root)["langfuse.observation.input"] == trace.content.message
+    assert attributes(root)["langfuse.observation.output"] == trace.content.reply
+    for child in http.spans():
+        if child.parent_span_id:
+            assert "langfuse.observation.output" not in attributes(child)
+
+
+def test_child_content_blocks_wire_request(http: HttpBoundary, settings: LangfuseSettings) -> None:
+    trace = content_trace()
+    assert export_trace(settings, trace) is None
+    batch = ExportTraceServiceRequest.FromString(http.request().body)
+    child = next(span for span in batch.resource_spans[0].scope_spans[0].spans if span.parent_span_id)
+    child.attributes.add(key="langfuse.observation.output").value.string_value = "private"
+    with pytest.raises(ValueError):
+        validate_encoded_batch(batch.SerializeToString(), trace)
+
+
+def test_root_output_mismatch_blocks_wire_request(http: HttpBoundary, settings: LangfuseSettings) -> None:
+    trace = content_trace()
+    assert export_trace(settings, trace) is None
+    batch = ExportTraceServiceRequest.FromString(http.request().body)
+    root = next(span for span in batch.resource_spans[0].scope_spans[0].spans if not span.parent_span_id)
+    output = next(item for item in root.attributes if item.key == "langfuse.observation.output")
+    output.value.string_value = "wrong"
+    with pytest.raises(ValueError):
+        validate_encoded_batch(batch.SerializeToString(), trace)
+
+
+def test_worker_rejects_inconsistent_reply_state(http: HttpBoundary, settings: LangfuseSettings) -> None:
+    from sillytherin.observability.langfuse_worker import validate_reply_content
+    with pytest.raises(ValueError):
+        validate_reply_content(content_trace().content, SpanOutcome.FAILED)
+    assert not http.attempts
+
+
+def test_worker_rejects_non_string_content(http: HttpBoundary, settings: LangfuseSettings) -> None:
+    from dataclasses import asdict
+
+    from sillytherin.observability.langfuse_worker import trace_message
+    payload = asdict(content_trace())
+    payload["content"]["message"] = 42
+    with pytest.raises(ValueError):
+        trace_message.validate_python(payload)
+    assert not http.attempts
+
+
+def test_worker_rejects_unknown_content_property(http: HttpBoundary, settings: LangfuseSettings) -> None:
+    from dataclasses import asdict
+
+    from sillytherin.observability.langfuse_worker import trace_message
+    payload = asdict(content_trace())
+    payload["content"]["extra"] = "private"
+    with pytest.raises(ValueError):
+        trace_message.validate_python(payload)
+    assert not http.attempts
+
+
+# Destination with content
+
+
+def test_content_export_uses_only_configured_tls_endpoint(http: HttpBoundary, settings: LangfuseSettings) -> None:
+    assert export_trace(settings, content_trace()) is None
+    request = http.request()
+    assert request.url == settings.endpoint
+    assert len(http.attempts) == 1
+    assert http.attempts[0][1]["verify"] is True
+
+
+def test_content_export_does_not_follow_vendor_redirect(http: HttpBoundary, settings: LangfuseSettings) -> None:
+    http.status = 302
+    http.response_headers["Location"] = "https://other.example"
+    loss = export_trace(settings, content_trace())
+    assert loss is not None and loss.reason is LossReason.HTTP_REJECTED
+    assert len(http.attempts) == 1
+
+def content_trace(
+    outcome: SpanOutcome = SpanOutcome.SUCCEEDED, state: ReplyState = ReplyState.COMPLETE,
+) -> ReplyTrace:
+    return replace(TEST_TRACE, root=replace(TEST_TRACE.root, outcome=outcome),
+                   content=ReplyContent('{"question":"é"}\nnext', None if state is ReplyState.MISSING else "reply\ntext", state))
+
+
+def attributes(span: Any) -> dict[str, str]:
+    return {item.key: item.value.string_value for item in span.attributes}

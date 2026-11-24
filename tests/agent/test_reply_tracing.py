@@ -15,12 +15,15 @@ from sillytherin.observability.agent_observer import (
     NativeStageObserver,
     observe_answer_wait,
 )
+from sillytherin.observability.answer_capture import AnswerCapture
 from sillytherin.observability.reply_trace import (
     MAX_CHILD_SPANS,
     ApprovalWait,
     RecordingLoss,
+    ReplyContent,
     ReplyRecorder,
     ReplySpan,
+    ReplyState,
     ReplyTrace,
     SpanKind,
     SpanOutcome,
@@ -390,3 +393,83 @@ def test_core_turn_does_not_enable_export_from_environment(
 
     monkeypatch.setattr(NativeStageObserver, "__init__", forbid_observer)
     assert run_one_turn().answer.final == "ok"
+
+
+class ReceiptAnswer:
+    def __init__(self, receipts: tuple[bool, ...] = ()) -> None:
+        self.receipts = iter(receipts)
+        self.delivered: list[str] = []
+
+    async def stream(self, text: str) -> bool:
+        accepted = next(self.receipts, True)
+        if accepted:
+            self.delivered.append(text)
+        return accepted
+
+    async def finish(self, text: str) -> bool:
+        return await self.stream(text)
+
+
+def capture_reply(
+    chunks: tuple[str, ...] = ("prefix",), final: str = "final",
+    outcome: SpanOutcome = SpanOutcome.SUCCEEDED, message: str = "question",
+    receipts: tuple[bool, ...] = (),
+) -> tuple[ReplyContent | None, list[RecordingLoss], ReceiptAnswer]:
+    answer = ReceiptAnswer(receipts)
+    losses: list[RecordingLoss] = []
+    capture = AnswerCapture(answer, losses.append)
+
+    async def deliver() -> None:
+        for chunk in chunks:
+            await capture.stream(chunk)
+        await capture.finish(final)
+
+    asyncio.run(deliver())
+    return capture.seal(message, outcome), losses, answer
+
+
+def test_restart_trace_uses_delivered_restart_reply() -> None:
+    from sillytherin.turn import RESTART_REPLY
+    content, losses, _ = capture_reply(final=RESTART_REPLY)
+    assert content.reply == RESTART_REPLY and not losses
+
+
+def test_empty_model_trace_matches_displayed_fallback() -> None:
+    from sillytherin.turn import EMPTY_ANSWER
+    content, _, _ = capture_reply(chunks=(), final=EMPTY_ANSWER)
+    assert content.reply == EMPTY_ANSWER and content.reply_state is ReplyState.COMPLETE
+
+
+def test_setup_failure_exports_input_without_output() -> None:
+    content, _, _ = capture_reply(chunks=(), outcome=SpanOutcome.FAILED)
+    assert content.message == "question" and content.reply is None
+    assert content.reply_state is ReplyState.MISSING
+
+
+def test_interrupted_delta_is_not_part_of_partial_output() -> None:
+    capture = AnswerCapture(ReceiptAnswer((True, False, True)), lambda loss: pytest.fail(str(loss)))
+    async def deliver() -> None:
+        await capture.stream("one")
+        await capture.stream("dropped")
+        await capture.stream("later")
+    asyncio.run(deliver())
+    assert capture.seal("input", SpanOutcome.CANCELLED).reply == "one"
+
+
+def test_failed_final_publication_keeps_only_delivered_prefix() -> None:
+    class BrokenAnswer(ReceiptAnswer):
+        async def finish(self, text: str) -> bool:
+            raise RuntimeError("send failed")
+    capture = AnswerCapture(BrokenAnswer(), lambda loss: pytest.fail(str(loss)))
+    async def deliver() -> None:
+        await capture.stream("prefix")
+        with pytest.raises(RuntimeError, match="send failed"):
+            await capture.finish("unsent")
+    asyncio.run(deliver())
+    assert capture.seal("input", SpanOutcome.FAILED).reply == "prefix"
+
+
+def test_answer_capture_failure_does_not_change_delivery() -> None:
+    content, losses, answer = capture_reply(chunks=("\ud800",))
+    assert content is None and losses == [RecordingLoss.OBSERVER_FAILED]
+    assert answer.delivered == ["\ud800", "final"]

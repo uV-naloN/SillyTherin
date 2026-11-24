@@ -23,11 +23,11 @@ class Choice:
 
 
 class AnswerView(Protocol):
-    """The reply the model's answer streams into."""
+    """The reply stream. False marks a dropped send, and None supports views without a receipt."""
 
-    async def stream(self, text: str) -> None: ...
+    async def stream(self, text: str) -> bool | None: ...
 
-    async def finish(self, text: str) -> None: ...
+    async def finish(self, text: str) -> bool | None: ...
 
 
 class ThinkingStep(Protocol):
