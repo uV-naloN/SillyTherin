@@ -69,7 +69,7 @@ class NotebookRunner(Protocol):
 class NotebookEditor(Protocol):
     async def edit_failed_cell_for_model(
         self, project_id: str, cell_id: str, source: str, version: int
-    ) -> str: ...
+    ) -> "str | NotebookRunOutcome": ...
 
 
 ConfirmRetry = Callable[[str, str | None], Awaitable[bool]]  # (name, reason) -> Download again?

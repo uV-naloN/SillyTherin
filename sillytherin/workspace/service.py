@@ -28,12 +28,15 @@ from sillytherin.workspace.kernels import (
     NotebookBindings,
     RunResult,
 )
+from sillytherin.workspace.recovery import require_repeatable_correction
 from sillytherin.workspace.store import CellType, Direction
 
 CellStatus = Literal["idle", "queued", "running", "done", "error", "interrupted", "timeout"]
 OutputKind = Literal["stdout", "stderr", "result", "image", "error"]
 
 MODEL_OUTPUT_MAX_CHARS = 4000
+MODEL_CELL_OUTPUT_MAX_CHARS = 2000
+TRUNCATION_NOTICE_MAX_CHARS = 40
 PUSH_INTERVAL = 0.25  # seconds between live output pushes
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 
@@ -250,6 +253,73 @@ def dependency_error_hint(result: RunResult) -> str | None:
     if result.status != "error" or error_name not in {"NameError", "ModuleNotFoundError"}:
         return None
     return f"{error_name}: check the live bindings before correcting this step."
+
+
+def describe_run_provenance(cell: NotebookNode, generation: str | None) -> str:
+    recorded_generation = store.cell_kernel_generation(cell)
+    if recorded_generation is None:
+        return "run unverified" if cell.get("execution_count") else "not run"
+    return "current kernel" if recorded_generation == generation else "old kernel"
+
+
+def render_model_cell(cell: NotebookNode, generation: str | None, version: int, status: CellStatus) -> str:
+    if cell.cell_type == "markdown":
+        return f"[note]\n{_text(cell.source)}"
+    execution_count = cell.get("execution_count")
+    run_label = f", run {execution_count}" if execution_count else ", not run"
+    output = outputs_as_text([output_props(output) for output in cell.get("outputs", [])])
+    rendered_output = f"\n--- output ---\n{trim(output, MODEL_CELL_OUTPUT_MAX_CHARS)}" if output else ""
+    provenance = describe_run_provenance(cell, generation)
+    metadata = f"\n[id={cell.id} version={version} {status}; {provenance}]"
+    return f"[cell{run_label}]\n{_text(cell.source)}{rendered_output}{metadata}"
+
+
+def fit_notebook_context(blocks: list[str], footer: str, max_chars: int) -> str:
+    kept: list[str] = []
+    used = len(footer) + 2
+    for block in reversed(blocks):
+        if used + len(block) + 2 <= max_chars:
+            kept.insert(0, block)
+            used += len(block) + 2
+    dropped = len(blocks) - len(kept)
+    if not dropped:
+        return "\n\n".join(kept + [footer])
+    while kept:
+        heading = f"[{dropped} earlier cells not shown]"
+        context = "\n\n".join([heading] + kept + [footer])
+        if len(context) <= max_chars:
+            return context
+        kept.pop(0)
+        dropped += 1
+    heading = f"[{dropped} earlier cells not shown]"
+    context = f"{heading}\n\n{footer}"
+    return context if len(context) <= max_chars else footer
+
+
+def require_correctable_cell(notebook: NotebookNode, cell_id: str, source: str) -> None:
+    cell = store.find_cell(notebook, cell_id)
+    is_assistant_cell = cell.metadata.get("sillytherin", {}).get("created_by") == "assistant"
+    if cell.cell_type != "code" or not is_assistant_cell or _status(cell) != "error":
+        raise WorkspaceError(ErrorCode.BAD_PAYLOAD, "Only a failed assistant-created code cell can be corrected.")
+    if store.cell_kernel_generation(cell) is None:
+        raise WorkspaceError(ErrorCode.STALE, "The failed cell changed; read the notebook again.")
+    if len(source.encode("utf-8")) > store.MAX_SOURCE_BYTES:
+        raise WorkspaceError(ErrorCode.TOO_LARGE, "A cell can hold at most 100 KB.")
+    if not source.strip():
+        raise WorkspaceError(ErrorCode.BAD_PAYLOAD, "Replacement code must not be blank.")
+    require_repeatable_correction(_text(cell.source), source)
+
+
+def render_run_result(result: RunResult, cell_id: str, version: int) -> str:
+    text = outputs_as_text([output_props(output) for output in result.outputs])
+    label = {"done": "out", "error": "error", "interrupted": "interrupted", "timeout": "timed out"}[result.status]
+    hint = dependency_error_hint(result)
+    prefix = f"{hint}\n" if hint else ""
+    metadata = f"\nCell id: {cell_id}; notebook version: {version}"
+    return prefix + trim(
+        f"[cell {result.execution_count}] {label}: {text or '(no output)'}",
+        MODEL_OUTPUT_MAX_CHARS - len(prefix) - len(metadata) - TRUNCATION_NOTICE_MAX_CHARS,
+    ) + metadata
 
 
 class NotebookService:
@@ -494,36 +564,19 @@ class NotebookService:
 
     async def read_for_model(self, project_id: str, max_chars: int = NOTEBOOK_READ_MAX_CHARS) -> str:
         """Cells, trimmed outputs and variable names as text (notebook_read)."""
-        props = await self.props(project_id)
-        blocks = []
-        for cell in props["cells"]:
-            if cell["type"] == "markdown":
-                blocks.append(f"[note]\n{cell['source']}")
-            else:
-                run = f", run {cell['execution_count']}" if cell["execution_count"] else ", not run"
-                out = outputs_as_text(cell["outputs"])
-                blocks.append(f"[cell{run}]\n{cell['source']}" + (f"\n--- output ---\n{trim(out, 2000)}" if out else ""))
-        bindings = await self.kernels.notebook_bindings(project_id) if props["kernel"] == "idle" else None
+        notebook = store.load_notebook(project_id, self.root)
+        generation = self.kernels.generation(project_id)
+        bindings = await self.kernels.notebook_bindings(project_id) if self.kernels.status(project_id) == "idle" else None
+        if generation != self.kernels.generation(project_id):
+            bindings = None
+            generation = None
+        statuses: dict[str, CellStatus] = dict.fromkeys(self._queued.get(project_id, []), "queued")
+        if running_cell_id := self._running.get(project_id):
+            statuses[running_cell_id] = "running"
+        version = store.get_version(notebook)
+        blocks = [render_model_cell(cell, generation, version, statuses.get(cell.id, _status(cell))) for cell in notebook.cells]
         footer = render_notebook_bindings(bindings, max_chars)
-
-        # Keep the newest cells whole; drop the oldest ones first
-        kept: list[str] = []
-        used = len(footer) + 2
-        for block in reversed(blocks):
-            if used + len(block) + 2 > max_chars:
-                continue
-            kept.insert(0, block)
-            used += len(block) + 2
-        dropped = len(blocks) - len(kept)
-        head = [f"[{dropped} earlier cells not shown]"] if dropped else []
-        if head:
-            while kept and len("\n\n".join(head + kept + [footer])) > max_chars:
-                kept.pop(0)
-                dropped += 1
-                head[0] = f"[{dropped} earlier cells not shown]"
-            if len("\n\n".join(head + kept + [footer])) > max_chars:
-                head = []
-        return "\n\n".join(head + kept + [footer])
+        return fit_notebook_context(blocks, footer, max_chars)
 
     async def diagnose_failed_cell(
         self, project_id: str, cell_id: str, result: RunResult
@@ -546,9 +599,21 @@ class NotebookService:
 
     async def edit_failed_cell_for_model(
         self, project_id: str, cell_id: str, source: str, version: int
-    ) -> str:
-        # TODO: verify ownership and version before replacing and safely rerunning the same cell.
-        raise NotImplementedError("Correct and safely rerun only an assistant-owned failed cell.")
+    ) -> str | NotebookRunOutcome:
+        async with self._edit_lock(project_id):
+            notebook = store.load_notebook(project_id, self.root)
+            if type(version) is not int or version != store.get_version(notebook):
+                raise WorkspaceError(ErrorCode.STALE, "Notebook changed, read it again before correcting.")
+            require_correctable_cell(notebook, cell_id, source)
+        files_dir = store.project_dir(project_id, self.root) / store.FILES_DIR
+        await self.kernels.validate_cell_source(project_id, files_dir, source)
+
+        def replace_source(notebook: NotebookNode) -> None:
+            require_correctable_cell(notebook, cell_id, source)
+            store.update_cell(notebook, cell_id, source)
+
+        await self._change(project_id, version, replace_source)
+        return await self.run_model_cell(project_id, cell_id, source)
 
     async def run_for_model(self, project_id: str, code: str) -> str | NotebookRunOutcome:
         """Add a code cell at the end, run it, return trimmed output text (notebook_run)."""
@@ -559,20 +624,18 @@ class NotebookService:
         def add(nb: NotebookNode) -> None:
             cell = store.add_cell(nb, "code", None)
             store.update_cell(nb, cell.id, code)
+            store.mark_assistant_cell(cell)
             added["id"] = cell.id
 
         await self._change(project_id, None, add)
-        result = await self._run(project_id, added["id"], by="assistant", validated_source=code)
+        return await self.run_model_cell(project_id, added["id"], code)
+
+    async def run_model_cell(self, project_id: str, cell_id: str, source: str) -> str | NotebookRunOutcome:
+        result = await self._run(project_id, cell_id, by="assistant", validated_source=source)
         if result is None:
             return "The cell was deleted before it ran."
-        outcome = await self.diagnose_failed_cell(project_id, added["id"], result)
+        outcome = await self.diagnose_failed_cell(project_id, cell_id, result)
         if outcome is not None:
             return outcome
-        text = outputs_as_text([output_props(o) for o in result.outputs])
-        label = {"done": "out", "error": "error", "interrupted": "interrupted", "timeout": "timed out"}[result.status]
-        hint = dependency_error_hint(result)
-        prefix = f"{hint}\n" if hint else ""
-        return prefix + trim(
-            f"[cell {result.execution_count}] {label}: {text or '(no output)'}",
-            MODEL_OUTPUT_MAX_CHARS - len(prefix),
-        )
+        notebook = store.load_notebook(project_id, self.root)
+        return render_run_result(result, cell_id, store.get_version(notebook))

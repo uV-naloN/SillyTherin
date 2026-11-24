@@ -192,8 +192,7 @@ def bump_version(nb: NotebookNode) -> int:
 
 
 def mark_assistant_cell(cell: NotebookNode) -> None:
-    # TODO: mark only a cell the assistant just created.
-    raise NotImplementedError("Mark a new cell as assistant-owned.")
+    cell.metadata.setdefault("sillytherin", {})["created_by"] = "assistant"
 
 
 def record_kernel_generation(cell: NotebookNode, generation: str) -> None:
@@ -287,7 +286,8 @@ def clear_cell_outputs(nb: NotebookNode, cell_id: str) -> None:
         raise WorkspaceError(ErrorCode.NOT_CODE, "Notes don't have outputs.")
     cell.outputs = []
     cell.execution_count = None
-    cell.metadata.pop("sillytherin", None)
+    clear_kernel_generation(cell)
+    cell.metadata.get("sillytherin", {}).pop("status", None)
 
 
 def clear_outputs(nb: NotebookNode) -> None:
@@ -296,4 +296,5 @@ def clear_outputs(nb: NotebookNode) -> None:
         if cell.cell_type == "code":
             cell.outputs = []
             cell.execution_count = None
-            cell.metadata.pop("sillytherin", None)
+            clear_kernel_generation(cell)
+            cell.metadata.get("sillytherin", {}).pop("status", None)

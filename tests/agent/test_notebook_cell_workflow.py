@@ -1,6 +1,7 @@
 """Notebook steps and recovery through scripted assistant turns."""
 
 import asyncio
+from pathlib import Path
 from types import SimpleNamespace
 
 import nbformat
@@ -12,7 +13,8 @@ from sillytherin.workspace import actions, store
 from sillytherin.workspace.kernels import CellCompilationError
 from sillytherin.workspace.service import NotebookService
 from tests.agent.conftest import history_of, ready_chat, run_one_turn
-from tests.scripted_chat_model import text_chunk, tool_call_chunk
+from tests.conftest import FakeKernels
+from tests.scripted_chat_model import ScriptedChatModel, text_chunk, tool_call_chunk
 
 
 @pytest.fixture
@@ -431,113 +433,280 @@ def test_unrun_earlier_definition_does_not_prove_restart(scripted, notebook_proj
     assert kernels.executed == [DEPENDENT_STEP]
 
 
-def test_typo_correction_edits_same_failed_cell() -> None:
-    # Given a failed assistant cell with a misspelling and a live correct name.
-    # When the assistant corrects its repeatable step.
-    # Then edit and rerun the same cell without adding a second cell.
-    # Demonstrates in-place correction of an assistant mistake.
-    assert False, "Correct only the existing failed cell."
+NotebookAgentProject = tuple[str, Path, FakeKernels, NotebookService]
 
 
-def test_missing_old_name_does_not_rewrite_setup() -> None:
-    # Given a failed cell references an earlier name lost on restart.
-    # When the assistant diagnoses the missing name.
-    # Then retain the failed cell and ask the user to restore earlier cells.
-    # Demonstrates that recovery does not paste setup into a new cell.
-    assert False, "Ask the user to restore lost notebook state."
+def seed_failed_step(project: NotebookAgentProject, source: str = "len(dta)") -> tuple[str, int]:
+    project_id, root, kernels, service = project
+    kernels.results[source] = ("error", [runtime_error("NameError")])
+    asyncio.run(service.run_for_model(project_id, source))
+    notebook = store.load_notebook(project_id, root)
+    return notebook.cells[-1].id, store.get_version(notebook)
 
 
-def test_package_error_is_not_restart() -> None:
-    # Given a failed cell reports a missing package.
-    # When the assistant diagnoses the error.
-    # Then leave the cell and report the package blocker without installing or replaying.
-    # Demonstrates that package availability is distinct from kernel state.
-    assert False, "Report package failures without a restart claim."
+def prepare_lost_state(project: NotebookAgentProject) -> None:
+    project_id, root, kernels, service = project
+    add_user_cell(project_id, root, SETUP_SOURCE)
+    execute_setup_and_restart(service, project_id, 0)
+    kernels.results[DEPENDENT_STEP] = ("error", [missing_df_output()])
 
 
-def test_unknown_effects_do_not_retry_failed_cell() -> None:
-    # Given a failed cell might have changed a file.
-    # When the assistant considers editing or rerunning it.
-    # Then preserve the cell and file and request confirmation before another run.
-    # Demonstrates that uncertain effects are not repeated.
-    assert False, "Avoid retrying unknown side effects."
+def test_typo_correction_edits_same_failed_cell(
+    scripted: ScriptedChatModel, notebook_project: NotebookAgentProject,
+) -> None:
+    project_id, root, kernels, _ = notebook_project
+    kernels.vars = ["data"]
+    cell_id, version = seed_failed_step(notebook_project)
+    scripted.scripts += [
+        [script_call("notebook_read")],
+        [script_call("notebook_edit", {"cell_id": cell_id, "code": "len(data)", "version": version})],
+        [text_chunk("Corrected the name in the same cell.")],
+    ]
+    result = run_one_turn()
+    cell, = store.load_notebook(project_id, root).cells
+    assert cell.id == cell_id and cell.source == "len(data)"
+    assert cell.metadata.sillytherin.status == "done"
+    assert kernels.executed == ["len(dta)", "len(data)"]
+    assert f"id={cell_id} version={version}" in str(scripted.requests[1]["messages"])
+    assert result.answer.final == "Corrected the name in the same cell."
 
 
-def test_after_run_all_completes_existing_failed_step() -> None:
-    # Given the user restored prior state and Run all reached the failed new cell.
-    # When that cell succeeds and the user asks again.
-    # Then make no edit, run or new cell.
-    # Demonstrates that the completed step is not duplicated.
-    assert False, "Recognize a step already completed by Run all."
+def test_missing_old_name_does_not_rewrite_setup(
+    scripted: ScriptedChatModel, notebook_project: NotebookAgentProject,
+) -> None:
+    project_id, root, kernels, _ = notebook_project
+    prepare_lost_state(notebook_project)
+    scripted.scripts += [[script_call("notebook_run", {"code": DEPENDENT_STEP})],
+                         [script_call("notebook_run", {"code": SETUP_SOURCE})]]
+    result = run_one_turn()
+    assert result.answer.final == RESTART_MESSAGE
+    assert len(scripted.requests) == 1
+    assert saved_sources(project_id, root) == [SETUP_SOURCE, DEPENDENT_STEP]
+    assert kernels.executed == [SETUP_SOURCE, DEPENDENT_STEP]
 
 
-def test_partial_run_all_does_not_claim_restore() -> None:
-    # Given Run all stopped before restoring the needed name.
-    # When the assistant reviews the existing failed step.
-    # Then explain the blocker without replaying setup or adding a duplicate.
-    # Demonstrates that a partial restore is not success.
-    assert False, "Explain an incomplete notebook restoration."
+def test_package_error_is_not_restart(scripted: ScriptedChatModel, notebook_project: NotebookAgentProject) -> None:
+    project_id, root, kernels, _ = notebook_project
+    prepare_lost_state(notebook_project)
+    source = "import missing_package"
+    kernels.results[source] = ("error", [runtime_error("ModuleNotFoundError")])
+    scripted.scripts += [[script_call("notebook_run", {"code": source})],
+                         [text_chunk("The package is unavailable.")]]
+    result = run_one_turn()
+    assert result.answer.final == "The package is unavailable."
+    assert "ModuleNotFoundError" in str(scripted.requests[1]["messages"])
+    assert saved_sources(project_id, root) == [SETUP_SOURCE, source]
+    assert kernels.executed == [SETUP_SOURCE, source]
 
 
-def test_run_all_error_remains_visible() -> None:
-    # Given an earlier setup cell fails during the user's Run all.
-    # When the assistant checks the notebook.
-    # Then retain the panel error and do not run more earlier cells.
-    # Demonstrates that the user sees the first restoration failure.
-    assert False, "Preserve the user's Run all error."
+def test_unknown_effects_do_not_retry_failed_cell(
+    scripted: ScriptedChatModel, notebook_project: NotebookAgentProject,
+) -> None:
+    project_id, root, kernels, _ = notebook_project
+    cell_id, version = seed_failed_step(notebook_project, "unknown_helper()")
+    before = store.load_notebook(project_id, root)
+    scripted.scripts += [[script_call("notebook_edit", {"cell_id": cell_id, "code": "len(data)", "version": version})],
+                         [text_chunk("Please review and run the cell in the notebook.")]]
+    run_one_turn()
+    assert "persistent or unknown effects" in str(scripted.requests[1]["messages"])
+    assert store.load_notebook(project_id, root) == before
+    assert kernels.executed == ["unknown_helper()"]
 
 
-def test_failure_state_is_scoped_to_active_project() -> None:
-    # Given another project has a failed cell and this project has live state.
-    # When this project's assistant runs a step.
-    # Then touch only this project without a restart claim.
-    # Demonstrates isolation between notebook projects.
-    assert False, "Scope diagnosis to the active project."
+def restore_failed_step(project: NotebookAgentProject) -> None:
+    project_id, root, kernels, service = project
+    prepare_lost_state(project)
+    asyncio.run(service.run_for_model(project_id, DEPENDENT_STEP))
+    del kernels.results[DEPENDENT_STEP]
+    notebook = store.load_notebook(project_id, root)
+    asyncio.run(service.run_all(project_id, store.get_version(notebook)))
 
 
-def test_model_cannot_select_other_project_for_correction() -> None:
-    # Given a model tries to name a different project in correction arguments.
-    # When the tool validates those arguments.
-    # Then reject the call without editing or running either project.
-    # Demonstrates that the model cannot choose another workspace.
-    assert False, "Reject a model-selected correction project."
+def test_after_run_all_completes_existing_failed_step(
+    scripted: ScriptedChatModel, notebook_project: NotebookAgentProject,
+) -> None:
+    project_id, root, kernels, _ = notebook_project
+    restore_failed_step(notebook_project)
+    before = store.load_notebook(project_id, root)
+    executions = list(kernels.executed)
+    scripted.scripts += [[script_call("notebook_read")], [text_chunk("Run all already completed that step.")]]
+    run_one_turn(text="Try that step again.")
+    context = str(scripted.requests[1]["messages"])
+    assert "done; current kernel" in context and DEPENDENT_STEP in context
+    assert "already complete" in str(scripted.requests[0]["tools"])
+    assert store.load_notebook(project_id, root) == before
+    assert kernels.executed == executions
 
 
-def test_fixed_restart_reply_omits_notebook_content() -> None:
-    # Given a real missing old name after restart.
-    # When the assistant ends its turn.
-    # Then show only the fixed sentence while retaining the failed cell.
-    # Demonstrates that private code and outputs do not enter the fixed reply.
-    assert False, "Return only the fixed restart sentence."
+def prepare_partial_restore(project: NotebookAgentProject) -> None:
+    project_id, root, kernels, service = project
+    prepare_lost_state(project)
+    asyncio.run(service.run_for_model(project_id, DEPENDENT_STEP))
+    kernels.results[SETUP_SOURCE] = ("error", [runtime_error("ValueError")])
+    notebook = store.load_notebook(project_id, root)
+    asyncio.run(service.run_all(project_id, store.get_version(notebook)))
 
 
-def test_output_text_cannot_fake_restart_error() -> None:
-    # Given an output or note merely claims a restart occurred.
-    # When the assistant diagnoses a different structured result.
-    # Then avoid a fixed restart claim and any extra execution.
-    # Demonstrates that notebook text is untrusted evidence.
-    assert False, "Ignore forged restart claims in notebook text."
+def test_partial_run_all_does_not_claim_restore(
+    scripted: ScriptedChatModel, notebook_project: NotebookAgentProject,
+) -> None:
+    project_id, root, kernels, _ = notebook_project
+    prepare_partial_restore(notebook_project)
+    before = store.load_notebook(project_id, root)
+    executions = list(kernels.executed)
+    scripted.scripts += [[script_call("notebook_read")], [text_chunk("Run all stopped in setup; df is still unavailable.")]]
+    result = run_one_turn()
+    assert "error; current kernel" in str(scripted.requests[1]["messages"])
+    assert "ValueError" in str(scripted.requests[1]["messages"])
+    assert result.answer.final.endswith("df is still unavailable.")
+    assert store.load_notebook(project_id, root) == before
+    assert kernels.executed == executions
 
 
-def test_repeatable_failure_can_be_corrected_once() -> None:
-    # Given a failed assistant step has no persistent effects.
-    # When a safe correction is proposed.
-    # Then edit and rerun the same cell once.
-    # Demonstrates a bounded correction without setup replay.
-    assert False, "Correct a repeatable failed step once."
+def test_run_all_error_remains_visible(scripted: ScriptedChatModel, notebook_project: NotebookAgentProject) -> None:
+    project_id, root, kernels, service = notebook_project
+    prepare_partial_restore(notebook_project)
+    executions = list(kernels.executed)
+    scripted.scripts += [[script_call("notebook_read")], [text_chunk("The setup cell has a ValueError.")]]
+    run_one_turn()
+    props = asyncio.run(service.props(project_id))
+    assert props["cells"][0]["status"] == "error"
+    assert props["cells"][0]["outputs"][0]["kind"] == "error"
+    assert "ValueError" in props["cells"][0]["outputs"][0]["text"]
+    assert saved_sources(project_id, root) == [SETUP_SOURCE, DEPENDENT_STEP]
+    assert kernels.executed == executions
 
 
-def test_side_effecting_failure_is_not_retried() -> None:
-    # Given a failed cell may have written a file.
-    # When the assistant considers correction.
-    # Then leave the file and cell unchanged without an automatic rerun.
-    # Demonstrates that recovery does not duplicate side effects.
-    assert False, "Do not repeat a side-effecting failed step."
+def test_failure_state_is_scoped_to_active_project(
+    scripted: ScriptedChatModel, notebook_project: NotebookAgentProject,
+) -> None:
+    project_id, root, kernels, service = notebook_project
+    other_id = store.create_project("Other", root).id
+    asyncio.run(service.run_for_model(other_id, SETUP_SOURCE))
+    asyncio.run(service.restart(other_id))
+    kernels.results[DEPENDENT_STEP] = ("error", [missing_df_output()])
+    asyncio.run(service.run_for_model(other_id, DEPENDENT_STEP))
+    other_before = store.load_notebook(other_id, root)
+    del kernels.results[DEPENDENT_STEP]
+    kernels.vars = ["df"]
+    scripted.scripts += [[script_call("notebook_run", {"code": DEPENDENT_STEP})], [text_chunk("The step succeeded.")]]
+    result = run_one_turn()
+    assert result.answer.final == "The step succeeded."
+    assert store.load_notebook(other_id, root) == other_before
+    assert saved_sources(project_id, root) == [DEPENDENT_STEP]
+    assert kernels.executed == [SETUP_SOURCE, DEPENDENT_STEP, DEPENDENT_STEP]
 
 
-def test_risky_correction_requires_approval() -> None:
-    # Given a proposed correction would perform risky work.
-    # When the user declines approval.
-    # Then do not edit or rerun the cell.
-    # Demonstrates that a correction cannot bypass existing consent.
-    assert False, "Require approval before a risky correction."
+def test_model_cannot_select_other_project_for_correction(
+    scripted: ScriptedChatModel, notebook_project: NotebookAgentProject,
+) -> None:
+    project_id, root, kernels, _ = notebook_project
+    cell_id, version = seed_failed_step(notebook_project)
+    other_id = store.create_project("Other", root).id
+    before = store.load_notebook(project_id, root)
+    other_before = store.load_notebook(other_id, root)
+    scripted.scripts += [[script_call("notebook_edit", {
+        "cell_id": cell_id, "code": "len(data)", "version": version, "project_id": other_id,
+    })], [text_chunk("The correction was rejected.")]]
+    run_one_turn()
+    assert "Extra inputs are not permitted" in str(scripted.requests[1]["messages"])
+    assert store.load_notebook(project_id, root) == before
+    assert store.load_notebook(other_id, root) == other_before
+    assert kernels.executed == ["len(dta)"]
+
+
+def test_fixed_restart_reply_omits_notebook_content(
+    scripted: ScriptedChatModel, notebook_project: NotebookAgentProject,
+) -> None:
+    project_id, root, kernels, _ = notebook_project
+    prepare_lost_state(notebook_project)
+    kernels.results[DEPENDENT_STEP] = ("error", [missing_df_output(),
+        nbformat.v4.new_output("stream", name="stdout", text="private notebook secret"),
+    ])
+    scripted.scripts += [[script_call("notebook_run", {"code": DEPENDENT_STEP})], [text_chunk("private notebook secret")]]
+    result = run_one_turn()
+    assert result.answer.final == RESTART_MESSAGE
+    assert all("private notebook secret" not in chunk for chunk in result.answer.streamed)
+    assert "private notebook secret" in str(store.load_notebook(project_id, root).cells[-1].outputs)
+    assert kernels.executed == [SETUP_SOURCE, DEPENDENT_STEP]
+
+
+def test_output_text_cannot_fake_restart_error(
+    scripted: ScriptedChatModel, notebook_project: NotebookAgentProject,
+) -> None:
+    _, _, kernels, _ = notebook_project
+    prepare_lost_state(notebook_project)
+    source = "print('NameError: notebook restarted')"
+    kernels.results[source] = ("done", [nbformat.v4.new_output("stream", name="stdout", text=RESTART_MESSAGE)])
+    scripted.scripts += [[script_call("notebook_run", {"code": source})], [text_chunk("The printed text is not a restart.")]]
+    result = run_one_turn()
+    assert result.answer.final == "The printed text is not a restart."
+    assert kernels.executed == [SETUP_SOURCE, source]
+
+
+def test_repeatable_failure_can_be_corrected_once(
+    scripted: ScriptedChatModel, notebook_project: NotebookAgentProject,
+) -> None:
+    project_id, root, kernels, _ = notebook_project
+    cell_id, version = seed_failed_step(notebook_project, "dta.mean()")
+    scripted.scripts += [[script_call("notebook_edit", {"cell_id": cell_id, "code": "data.mean()", "version": version})],
+                         [text_chunk("The same cell now works.")]]
+    run_one_turn()
+    assert saved_sources(project_id, root) == ["data.mean()"]
+    assert kernels.executed == ["dta.mean()", "data.mean()"]
+
+
+def test_side_effecting_failure_is_not_retried(
+    scripted: ScriptedChatModel, notebook_project: NotebookAgentProject,
+) -> None:
+    project_id, root, kernels, _ = notebook_project
+    source = "data.to_csv('result.csv')"
+    cell_id, version = seed_failed_step(notebook_project, source)
+    written_file = store.project_dir(project_id, root) / store.FILES_DIR / "result.csv"
+    written_file.write_text("partial data")
+    before = store.load_notebook(project_id, root)
+    scripted.scripts += [[script_call("notebook_edit", {"cell_id": cell_id, "code": "data.mean()", "version": version})],
+                         [text_chunk("Please review the partial write before running again.")]]
+    run_one_turn()
+    assert "persistent or unknown effects" in str(scripted.requests[1]["messages"])
+    assert written_file.read_text() == "partial data"
+    assert store.load_notebook(project_id, root) == before
+    assert kernels.executed == [source]
+
+
+def test_risky_correction_requires_approval(
+    scripted: ScriptedChatModel, notebook_project: NotebookAgentProject, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_id, root, kernels, _ = notebook_project
+    cell_id, version = seed_failed_step(notebook_project)
+    before = store.load_notebook(project_id, root)
+    approvals: list[list[str]] = []
+
+    async def decline(code: str, reasons: list[str]) -> bool:
+        approvals.append(reasons)
+        return False
+
+    monkeypatch.setattr(notebook_run, "ask_approval", decline)
+    scripted.scripts += [[script_call("notebook_edit", {"cell_id": cell_id, "code": "!ls", "version": version})],
+                         [text_chunk("Skipped the correction.")]]
+    run_one_turn()
+    assert approvals == [["runs a shell command"]]
+    assert store.load_notebook(project_id, root) == before
+    assert kernels.executed == ["len(dta)"]
+
+
+@pytest.mark.parametrize("companion", ["notebook_read", "notebook_run", "notebook_edit"])
+def test_correction_cannot_share_a_round_with_other_notebook_operations(
+    companion: str, scripted: ScriptedChatModel, notebook_project: NotebookAgentProject,
+) -> None:
+    project_id, root, kernels, _ = notebook_project
+    cell_id, version = seed_failed_step(notebook_project)
+    edit_arguments = {"cell_id": cell_id, "code": "len(data)", "version": version}
+    arguments = {"notebook_read": {}, "notebook_run": {"code": "2+2"}, "notebook_edit": edit_arguments}
+    scripted.scripts += [[script_call("notebook_edit", edit_arguments, "edit", 0),
+                          script_call(companion, arguments[companion], "other", 1)], [text_chunk("Blocked.")]]
+    before = store.load_notebook(project_id, root)
+    run_one_turn()
+    assert "Run one notebook cell per round" in str(scripted.requests[1]["messages"])
+    assert store.load_notebook(project_id, root) == before
+    assert kernels.executed == ["len(dta)"]

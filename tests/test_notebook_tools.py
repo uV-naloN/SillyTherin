@@ -4,15 +4,25 @@
 import asyncio
 import base64
 import struct
+from collections.abc import Awaitable, Callable
+from pathlib import Path
+from subprocess import CompletedProcess
+from unittest.mock import AsyncMock, MagicMock
 
 import nbformat
 import pytest
 
 from sillytherin.tools import notebook_read, notebook_run
-from sillytherin.workspace import ErrorCode, WorkspaceError, store
-from sillytherin.workspace.kernels import CellCompilationError, NotebookBindings
-from sillytherin.workspace.service import NotebookService
+from sillytherin.workspace import ErrorCode, WorkspaceError, kernels, store
+from sillytherin.workspace.kernels import (
+    CellCompilationError,
+    KernelRegistry,
+    NotebookBindings,
+    RunResult,
+)
+from sillytherin.workspace.service import NotebookProps, NotebookService
 from tests.chat.fakes import FakeAsker, in_chat
+from tests.conftest import FakeKernels
 from tests.tool_calls import call_tool, failure_text, fake_services
 
 
@@ -61,14 +71,15 @@ class Approver:
 # Baseline: Given the Notebook switch is on · When the model calls `notebook_run({"code": "2+2"})`
 
 
-def test_safe_code_runs_without_asking(project, fake_kernels):
+def test_safe_code_runs_without_asking(project: "NotebookProject", fake_kernels: FakeKernels) -> None:
     # Demonstrates: safe code is automatic
     svc, pid, root, pushes = project
     fake_kernels.results["2+2"] = ("done", [nbformat.v4.new_output("execute_result", {"text/plain": "4"}, execution_count=1)])
     approve = Approver(True)
     result = run(call_tool(notebook_run.notebook_run, {"code": "2+2"}, fake_services(notebook=svc, project_id=pid, approve_run=approve)))
     assert approve.asked == []
-    assert result.content == "[cell 1] out: 4"
+    assert result.content.startswith("[cell 1] out: 4\nCell id:")
+    assert "notebook version: 2" in result.content
     cells = store.load_notebook(pid, root).cells
     assert [c.source for c in cells] == ["2+2"] and cells[0].execution_count == 1
     assert pushes and pushes[-1]["cells"][0]["outputs"][0]["text"] == "4"
@@ -286,116 +297,241 @@ def test_assistant_cell_compiles_before_save_and_panel_push(project, fake_kernel
     assert pushes
 
 
-def test_empty_notebook_runs_independent_step() -> None:
-    # Given a restarted kernel and no earlier code cells.
-    # When the assistant runs an independent calculation.
-    # Then add and run just that cell without a restart message.
-    # Demonstrates normal work in an empty notebook.
-    assert False, "Run an independent step in an empty notebook."
+NotebookProject = tuple[NotebookService, str, Path, list[NotebookProps]]
 
 
-def test_independent_step_runs_with_stale_old_cells() -> None:
-    # Given old setup cells remain saved after a restart.
-    # When the assistant runs a step with no earlier dependency.
-    # Then add only that new step without replaying setup.
-    # Demonstrates that stale results do not block independent work.
-    assert False, "Allow independent work despite old results."
+def fail_assistant_cell(project: NotebookProject, fake_kernels: FakeKernels, source: str = "len(dta)") -> tuple[str, int]:
+    service, project_id, root, _ = project
+    fake_kernels.results[source] = ("error", [
+        nbformat.v4.new_output("error", ename="NameError", evalue="name 'dta' is not defined", traceback=[]),
+    ])
+    run(service.run_for_model(project_id, source))
+    notebook = store.load_notebook(project_id, root)
+    return notebook.cells[-1].id, store.get_version(notebook)
 
 
-def test_dependent_step_fails_without_setup_replay() -> None:
-    # Given the new step uses a missing earlier binding.
-    # When its one new cell fails.
-    # Then keep it and report the restart without any further execution.
-    # Demonstrates that a failed dependent step never replays setup.
-    assert False, "Keep one failed cell and avoid setup replay."
+def test_empty_notebook_runs_independent_step(project: NotebookProject, fake_kernels: FakeKernels) -> None:
+    service, project_id, root, _ = project
+    run(service.restart(project_id))
+    result = run(service.run_for_model(project_id, "2**10"))
+    assert "out:" in result
+    assert fake_kernels.executed == ["2**10"]
+    cell, = store.load_notebook(project_id, root).cells
+    assert cell.metadata.sillytherin.created_by == "assistant"
 
 
-def test_assistant_correction_updates_only_own_failed_cell() -> None:
-    # Given a failed assistant-owned cell and a matching notebook version.
-    # When a safe correction is requested.
-    # Then change and rerun only that cell.
-    # Demonstrates ownership-limited correction.
-    assert False, "Update only the assistant's failed cell."
+def test_independent_step_runs_with_stale_old_cells(project: NotebookProject, fake_kernels: FakeKernels) -> None:
+    service, project_id, root, _ = project
+    run(service.run_for_model(project_id, "data = [1, 2]"))
+    run(service.restart(project_id))
+    before = store.load_notebook(project_id, root).cells[0]
+    result = run(service.run_for_model(project_id, "2**10"))
+    assert "out:" in result
+    assert store.load_notebook(project_id, root).cells[0] == before
+    assert fake_kernels.executed == ["data = [1, 2]", "2**10"]
 
 
-def test_user_cell_cannot_be_corrected_by_model() -> None:
-    # Given the target cell belongs to the user.
-    # When the assistant requests a correction.
-    # Then reject it without editing or running any cell.
-    # Demonstrates that user work is not model-editable.
-    assert False, "Reject corrections of user-created cells."
+def test_dependent_step_fails_without_setup_replay(project: NotebookProject, fake_kernels: FakeKernels) -> None:
+    service, project_id, root, _ = project
+    run(service.run_for_model(project_id, "data = [1, 2]"))
+    run(service.restart(project_id))
+    fake_kernels.results["len(data)"] = ("error", [
+        nbformat.v4.new_output("error", ename="NameError", evalue="name 'data' is not defined", traceback=[]),
+    ])
+    from sillytherin.workspace.service import NotebookRunOutcome
+    assert run(service.run_for_model(project_id, "len(data)")) is NotebookRunOutcome.RESTART_REQUIRED
+    assert fake_kernels.executed == ["data = [1, 2]", "len(data)"]
+    assert len(store.load_notebook(project_id, root).cells) == 2
 
 
-def test_stale_version_rejects_correction() -> None:
-    # Given the user changed the notebook after the failed run.
-    # When the assistant submits an older version with its correction.
-    # Then report a stale version and preserve the user's edits.
-    # Demonstrates protection against concurrent changes.
-    assert False, "Reject a stale same-cell correction."
+def test_assistant_correction_updates_only_own_failed_cell(project: NotebookProject, fake_kernels: FakeKernels) -> None:
+    service, project_id, root, _ = project
+    cell_id, version = fail_assistant_cell(project, fake_kernels)
+    result = run(service.edit_failed_cell_for_model(project_id, cell_id, "len(data)", version))
+    cell, = store.load_notebook(project_id, root).cells
+    assert cell.id == cell_id and cell.source == "len(data)"
+    assert cell.metadata.sillytherin.status == "done"
+    assert "Cell id: " + cell_id in result
+    assert fake_kernels.executed == ["len(dta)", "len(data)"]
 
 
-def test_deleted_or_other_project_cell_rejected() -> None:
-    # Given a cell id is not in the active project anymore.
-    # When the assistant tries to correct that id.
-    # Then reject it without writing or running in either project.
-    # Demonstrates that an id cannot redirect correction across projects.
-    assert False, "Reject an absent or foreign cell id."
+def test_user_cell_cannot_be_corrected_by_model(project: NotebookProject, fake_kernels: FakeKernels) -> None:
+    service, project_id, root, _ = project
+    notebook = store.load_notebook(project_id, root)
+    cell = store.add_cell(notebook, "code", None)
+    cell.source = "len(dta)"
+    cell.metadata.sillytherin = {"status": "error", "kernel_generation": fake_kernels.kernel_generation}
+    store.save_notebook(project_id, notebook, root)
+    with pytest.raises(WorkspaceError, match="assistant-created"):
+        run(service.edit_failed_cell_for_model(project_id, cell.id, "len(data)", 0))
+    assert store.load_notebook(project_id, root) == notebook
+    assert fake_kernels.validated == fake_kernels.executed == []
 
 
-def test_run_records_generation_of_executing_kernel() -> None:
-    # Given a code cell completes in one kernel.
-    # When its output is saved.
-    # Then save the generation returned with that execution, without another run.
-    # Demonstrates that provenance belongs to the actual executing kernel.
-    assert False, "Save the executing kernel's generation."
+def test_stale_version_rejects_correction(project: NotebookProject, fake_kernels: FakeKernels) -> None:
+    service, project_id, root, _ = project
+    cell_id, version = fail_assistant_cell(project, fake_kernels)
+    run(service.add_cell(project_id, version, None, "markdown"))
+    before = store.load_notebook(project_id, root)
+    with pytest.raises(WorkspaceError) as failure:
+        run(service.edit_failed_cell_for_model(project_id, cell_id, "len(data)", version))
+    assert failure.value.code == ErrorCode.STALE
+    assert store.load_notebook(project_id, root) == before
+    assert fake_kernels.executed == ["len(dta)"]
 
 
-def test_user_run_all_updates_only_executed_cells() -> None:
-    # Given Run all stops at an error partway through the notebook.
-    # When completed results are saved.
-    # Then update generations only for cells that ran.
-    # Demonstrates that an untouched later result remains old.
-    assert False, "Keep partial Run all provenance accurate."
+def test_deleted_or_other_project_cell_rejected(project: NotebookProject, fake_kernels: FakeKernels) -> None:
+    service, project_id, root, _ = project
+    other_id = store.create_project("Other", root).id
+    other_project = (service, other_id, root, [])
+    foreign_cell_id, _ = fail_assistant_cell(other_project, fake_kernels)
+    cell_id, version = fail_assistant_cell(project, fake_kernels)
+    run(service.delete_cell(project_id, version, cell_id))
+    before = store.load_notebook(project_id, root)
+    other_before = store.load_notebook(other_id, root)
+    for missing_id in (cell_id, foreign_cell_id):
+        with pytest.raises(WorkspaceError) as failure:
+            run(service.edit_failed_cell_for_model(project_id, missing_id, "len(data)", store.get_version(before)))
+        assert failure.value.code == ErrorCode.NOT_FOUND
+    assert store.load_notebook(project_id, root) == before
+    assert store.load_notebook(other_id, root) == other_before
+    assert fake_kernels.executed == ["len(dta)", "len(dta)"]
 
 
-def test_manual_restart_makes_saved_result_old() -> None:
-    # Given an earlier cell ran and has a saved result.
-    # When the user restarts the kernel.
-    # Then the saved generation differs from the live one without replay.
-    # Demonstrates that displayed results can outlive their variables.
-    assert False, "Distinguish old results after manual restart."
+def test_run_records_generation_of_executing_kernel(
+    project: NotebookProject, fake_kernels: FakeKernels, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, project_id, root, _ = project
+    executed_generation = fake_kernels.kernel_generation
+    original_execute = fake_kernels.execute
+
+    async def restart_after_execution(*arguments: object, **keywords: object) -> RunResult:
+        result = await original_execute(*arguments, **keywords)
+        fake_kernels.kernel_generation = "replacement-kernel"
+        return result
+
+    monkeypatch.setattr(fake_kernels, "execute", restart_after_execution)
+    run(service.run_for_model(project_id, "2+2"))
+    cell, = store.load_notebook(project_id, root).cells
+    assert store.cell_kernel_generation(cell) == executed_generation
+    assert "old kernel" in read(service, project_id)
+    assert fake_kernels.executed == ["2+2"]
 
 
-def test_idle_stop_then_start_makes_saved_result_old() -> None:
-    # Given an earlier result was saved before kernel idle expiry.
-    # When a fresh kernel starts after the idle stop.
-    # Then it has a different generation without rerunning old cells.
-    # Demonstrates that idle expiry invalidates the live namespace.
-    assert False, "Distinguish old results after idle expiry."
+def test_user_run_all_updates_only_executed_cells(project: NotebookProject, fake_kernels: FakeKernels) -> None:
+    service, project_id, root, _ = project
+    for source in ("a = 1", "b = 2", "c = 3"):
+        run(service.run_for_model(project_id, source))
+    old_generation = fake_kernels.kernel_generation
+    run(service.restart(project_id))
+    fake_kernels.results["b = 2"] = ("error", [
+        nbformat.v4.new_output("error", ename="ValueError", evalue="blocked", traceback=[]),
+    ])
+    notebook = store.load_notebook(project_id, root)
+    run(service.run_all(project_id, store.get_version(notebook)))
+    cells = store.load_notebook(project_id, root).cells
+    assert [store.cell_kernel_generation(cell) for cell in cells] == [
+        fake_kernels.kernel_generation, fake_kernels.kernel_generation, old_generation,
+    ]
+    assert fake_kernels.executed == ["a = 1", "b = 2", "c = 3", "a = 1", "b = 2"]
+    assert "error; current kernel" in read(service, project_id)
 
 
-def test_app_restart_makes_saved_result_old() -> None:
-    # Given a notebook result survives the app process.
-    # When a new registry starts its first kernel.
-    # Then that generation differs from the saved one without replay.
-    # Demonstrates that app restart does not restore variables.
-    assert False, "Distinguish old results after app restart."
+@pytest.fixture
+def registry_project(
+    project: NotebookProject, fake_kernels: FakeKernels, monkeypatch: pytest.MonkeyPatch,
+) -> tuple[NotebookService, KernelRegistry, str, Path]:
+    _, project_id, root, _ = project
+    monkeypatch.setattr(kernels, "docker", AsyncMock(return_value=CompletedProcess([], 0, "", "")))
+    client = MagicMock()
+    client.wait_for_ready = AsyncMock()
+    monkeypatch.setattr(kernels, "AsyncKernelClient", lambda: client)
+    monkeypatch.setattr(KernelRegistry, "notebook_bindings", AsyncMock(return_value=NotebookBindings({}, [], False)))
+    monkeypatch.setattr(kernels, "_free_ports", lambda count: list(range(30000, 30000 + count)))
+    registry = KernelRegistry(root=root, idle_minutes=0)
+    run(registry.start(project_id, store.project_dir(project_id, root) / store.FILES_DIR))
+
+    async def execute(
+        project_id: str, code: str, on_output: Callable[[nbformat.NotebookNode], Awaitable[None]], files_dir: Path,
+    ) -> RunResult:
+        generation = registry.generation(project_id)
+        assert generation is not None
+        fake_kernels.kernel_generation = generation
+        return await fake_kernels.execute(project_id, code, on_output, files_dir)
+
+    monkeypatch.setattr(registry, "execute", execute)
+    service = NotebookService(registry, root=root)
+    notebook = store.load_notebook(project_id, root)
+    cell = store.add_cell(notebook, "code", None)
+    cell.source = "data = [1, 2]"
+    store.save_notebook(project_id, notebook, root)
+    run(service.run_all(project_id, 0))
+    return service, registry, project_id, root
 
 
-def test_source_edit_invalidates_run_provenance() -> None:
-    # Given a code cell has run in the current kernel.
-    # When its source is edited without rerunning.
-    # Then clear only that cell's run provenance.
-    # Demonstrates that an old output cannot certify new code.
-    assert False, "Invalidate provenance after source edits."
+def test_manual_restart_makes_saved_result_old(registry_project: tuple[NotebookService, KernelRegistry, str, Path]) -> None:
+    service, registry, project_id, root = registry_project
+    before = store.load_notebook(project_id, root)
+    generation = registry.generation(project_id)
+    run(service.restart(project_id))
+    assert registry.generation(project_id) != generation
+    assert store.load_notebook(project_id, root) == before
+    assert "old kernel" in read(service, project_id)
 
 
-def test_clear_outputs_invalidates_run_provenance() -> None:
-    # Given a code cell has saved outputs and run provenance.
-    # When those outputs are cleared.
-    # Then clear only that cell's run provenance without a run.
-    # Demonstrates that cleared results do not certify live state.
-    assert False, "Invalidate provenance when outputs are cleared."
+def test_idle_stop_then_start_makes_saved_result_old(
+    registry_project: tuple[NotebookService, KernelRegistry, str, Path],
+) -> None:
+    service, registry, project_id, root = registry_project
+    before = store.load_notebook(project_id, root)
+    generation = registry.generation(project_id)
+    registry._kernels[project_id].last_used = 0
+    run(registry.stop_idle())
+    assert registry.generation(project_id) is None
+    run(registry.start(project_id, store.project_dir(project_id, root) / store.FILES_DIR))
+    assert registry.generation(project_id) != generation
+    assert store.load_notebook(project_id, root) == before
+    assert "old kernel" in read(service, project_id)
+
+
+def test_app_restart_makes_saved_result_old(registry_project: tuple[NotebookService, KernelRegistry, str, Path]) -> None:
+    _, registry, project_id, root = registry_project
+    before = store.load_notebook(project_id, root)
+    generation = registry.generation(project_id)
+    replacement = KernelRegistry(root=root, idle_minutes=0)
+    run(replacement.cleanup_leftovers())
+    assert replacement.generation(project_id) is None
+    run(replacement.start(project_id, store.project_dir(project_id, root) / store.FILES_DIR))
+    assert replacement.generation(project_id) != generation
+    assert store.load_notebook(project_id, root) == before
+    assert "old kernel" in read(NotebookService(replacement, root=root), project_id)
+
+
+def test_source_edit_invalidates_run_provenance(project: NotebookProject, fake_kernels: FakeKernels) -> None:
+    service, project_id, root, _ = project
+    for source in ("2+2", "3+3"):
+        run(service.run_for_model(project_id, source))
+    notebook = store.load_notebook(project_id, root)
+    run(service.update_cell(project_id, store.get_version(notebook), notebook.cells[0].id, "4+4"))
+    cells = store.load_notebook(project_id, root).cells
+    assert store.cell_kernel_generation(cells[0]) is None
+    assert store.cell_kernel_generation(cells[1]) == fake_kernels.kernel_generation
+    assert fake_kernels.executed == ["2+2", "3+3"]
+
+
+def test_clear_outputs_invalidates_run_provenance(project: NotebookProject, fake_kernels: FakeKernels) -> None:
+    service, project_id, root, _ = project
+    for source in ("2+2", "3+3"):
+        run(service.run_for_model(project_id, source))
+    notebook = store.load_notebook(project_id, root)
+    run(service.clear_cell_outputs(project_id, store.get_version(notebook), notebook.cells[0].id))
+    notebook = store.load_notebook(project_id, root)
+    assert store.cell_kernel_generation(notebook.cells[0]) is None
+    assert store.cell_kernel_generation(notebook.cells[1]) == fake_kernels.kernel_generation
+    assert notebook.cells[0].metadata.sillytherin.created_by == "assistant"
+    run(service.clear_outputs(project_id, store.get_version(notebook)))
+    assert all(store.cell_kernel_generation(cell) is None for cell in store.load_notebook(project_id, root).cells)
+    assert fake_kernels.executed == ["2+2", "3+3"]
 
 
 def test_invalid_source_does_not_create_or_publish_cell(project, fake_kernels) -> None:
@@ -540,3 +676,141 @@ def test_notebook_text_cannot_supply_run_approval(project, fake_kernels) -> None
     assert len(approve.asked) == 1
     assert fake_kernels.validated == fake_kernels.executed == []
     assert len(store.load_notebook(project_id, root).cells) == 1
+
+
+@pytest.mark.parametrize("version", [True, "2", -1])
+def test_correction_rejects_invalid_versions(
+    version: object, project: NotebookProject, fake_kernels: FakeKernels,
+) -> None:
+    service, project_id, root, _ = project
+    cell_id, _ = fail_assistant_cell(project, fake_kernels)
+    before = store.load_notebook(project_id, root)
+    result = run(call_tool(notebook_run.notebook_edit, {
+        "cell_id": cell_id, "code": "len(data)", "version": version,
+    }, fake_services(notebook=service, project_id=project_id)))
+    assert "Tool failed:" in result.content
+    assert store.load_notebook(project_id, root) == before
+    assert fake_kernels.validated == fake_kernels.executed == ["len(dta)"]
+
+
+@pytest.mark.parametrize("source", [" ", "é" * (store.MAX_SOURCE_BYTES // 2 + 1)])
+def test_invalid_correction_source_preserves_failed_cell(
+    source: str, project: NotebookProject, fake_kernels: FakeKernels,
+) -> None:
+    service, project_id, root, _ = project
+    cell_id, version = fail_assistant_cell(project, fake_kernels)
+    before = store.load_notebook(project_id, root)
+    with pytest.raises(WorkspaceError):
+        run(service.edit_failed_cell_for_model(project_id, cell_id, source, version))
+    assert store.load_notebook(project_id, root) == before
+    assert fake_kernels.validated == fake_kernels.executed == ["len(dta)"]
+
+
+def test_successful_cell_cannot_be_corrected(project: NotebookProject, fake_kernels: FakeKernels) -> None:
+    service, project_id, root, _ = project
+    run(service.run_for_model(project_id, "2+2"))
+    before = store.load_notebook(project_id, root)
+    with pytest.raises(WorkspaceError, match="failed assistant-created"):
+        run(service.edit_failed_cell_for_model(project_id, before.cells[0].id, "3+3", store.get_version(before)))
+    assert store.load_notebook(project_id, root) == before
+    assert fake_kernels.executed == ["2+2"]
+
+
+def test_failed_correction_preflight_preserves_cell(project: NotebookProject, fake_kernels: FakeKernels) -> None:
+    service, project_id, root, _ = project
+    cell_id, version = fail_assistant_cell(project, fake_kernels)
+    before = store.load_notebook(project_id, root)
+    fake_kernels.compilation_error = CellCompilationError("invalid syntax", 1)
+    result = run(call_tool(notebook_run.notebook_edit, {
+        "cell_id": cell_id, "code": "len(data)", "version": version,
+    }, fake_services(notebook=service, project_id=project_id)))
+    assert result.content == "Code did not compile (line 1): invalid syntax"
+    assert store.load_notebook(project_id, root) == before
+    assert fake_kernels.executed == ["len(dta)"]
+
+
+def test_panel_edit_during_correction_preflight_is_preserved(
+    project: NotebookProject, fake_kernels: FakeKernels, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, project_id, root, _ = project
+    cell_id, version = fail_assistant_cell(project, fake_kernels)
+
+    async def user_edits_during_preflight(project_id: str, files_dir: Path, source: str) -> None:
+        await service.update_cell(project_id, version, cell_id, "user_change()")
+
+    monkeypatch.setattr(fake_kernels, "validate_cell_source", user_edits_during_preflight)
+    with pytest.raises(WorkspaceError) as failure:
+        run(service.edit_failed_cell_for_model(project_id, cell_id, "len(data)", version))
+    assert failure.value.code == ErrorCode.STALE
+    assert store.load_notebook(project_id, root).cells[0].source == "user_change()"
+    assert fake_kernels.executed == ["len(dta)"]
+
+
+@pytest.mark.parametrize("source", [
+    "unknown_helper()", "data.to_csv('result.csv')", "data.dropna(inplace=True)",
+    "print('data', file=output_file)", "sorted(data, key=unknown_helper)",
+])
+def test_replacement_with_unknown_effects_is_not_run(
+    source: str, project: NotebookProject, fake_kernels: FakeKernels,
+) -> None:
+    service, project_id, root, _ = project
+    cell_id, version = fail_assistant_cell(project, fake_kernels)
+    before = store.load_notebook(project_id, root)
+    with pytest.raises(WorkspaceError, match="persistent or unknown effects"):
+        run(service.edit_failed_cell_for_model(project_id, cell_id, source, version))
+    assert store.load_notebook(project_id, root) == before
+    assert fake_kernels.validated == fake_kernels.executed == ["len(dta)"]
+
+
+def test_correction_obeys_manual_run_setting(
+    project: NotebookProject, fake_kernels: FakeKernels, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, project_id, root, _ = project
+    cell_id, version = fail_assistant_cell(project, fake_kernels)
+    before = store.load_notebook(project_id, root)
+    monkeypatch.setattr(notebook_run, "MODEL_AUTO_RUN", False)
+    approve = Approver(False)
+    result = run(call_tool(notebook_run.notebook_edit, {
+        "cell_id": cell_id, "code": "len(data)", "version": version,
+    }, fake_services(notebook=service, project_id=project_id, approve_run=approve)))
+    assert result.content == notebook_run.DECLINED
+    assert approve.asked == [[]]
+    assert store.load_notebook(project_id, root) == before
+    assert fake_kernels.executed == ["len(dta)"]
+
+
+def test_read_does_not_claim_fresh_results_when_kernel_changes(
+    project: NotebookProject, fake_kernels: FakeKernels, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, project_id, _, _ = project
+    run(service.run_for_model(project_id, "2+2"))
+
+    async def restart_during_probe(project_id: str) -> NotebookBindings:
+        fake_kernels.kernel_generation = "new-kernel"
+        return NotebookBindings({}, ["stale_name"], False)
+
+    monkeypatch.setattr(fake_kernels, "notebook_bindings", restart_during_probe)
+    text = read(service, project_id)
+    assert "current kernel" not in text
+    assert "stale_name" not in text
+    assert text.endswith("Bindings unavailable")
+
+
+def test_read_marks_running_cell_instead_of_reusing_its_old_success(
+    project: NotebookProject, fake_kernels: FakeKernels, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, project_id, root, _ = project
+    run(service.run_for_model(project_id, "2+2"))
+    notebook = store.load_notebook(project_id, root)
+    observed_reads: list[str] = []
+    original_execute = fake_kernels.execute
+
+    async def inspect_during_execution(*arguments: object, **keywords: object) -> RunResult:
+        observed_reads.append(await service.read_for_model(project_id))
+        return await original_execute(*arguments, **keywords)
+
+    monkeypatch.setattr(fake_kernels, "execute", inspect_during_execution)
+    run(service.run_all(project_id, store.get_version(notebook)))
+    assert "running; current kernel" in observed_reads[0]
+    assert "done; current kernel" not in observed_reads[0]
+    assert fake_kernels.executed == ["2+2", "2+2"]
