@@ -3,10 +3,12 @@
 import asyncio
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
+from enum import StrEnum
 
 from langchain.agents import create_agent
 from langchain.agents.middleware import AgentMiddleware, ModelResponse
 from langchain.agents.middleware import ModelRequest as AgentCall
+from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 from langgraph.graph.state import CompiledStateGraph
 
@@ -93,6 +95,26 @@ class TurnViews:
     settings: SettingsView  # re-sent when the message switches to another model
 
 
+TurnRunner = Callable[[ChatState, UserMessage, TurnViews], Awaitable[None]]
+
+
+class TurnOutcome(StrEnum):
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+def ignore_turn_outcome(_outcome: TurnOutcome) -> None:
+    """Default completion listener for callers that only need the reply."""
+
+
+@dataclass(frozen=True)
+class TurnHooks:
+    callbacks: tuple[BaseCallbackHandler, ...] = ()
+    middleware: tuple[AgentMiddleware, ...] = ()
+    on_completion: Callable[[TurnOutcome], None] = ignore_turn_outcome
+
+
 class CollectedAnswer:
     """Streams to the chat and keeps the text, so a stopped turn still knows what it wrote."""
 
@@ -108,7 +130,13 @@ class CollectedAnswer:
         await self.view.finish(text)
 
 
-async def run_turn(chat: ChatState, message: UserMessage, views: TurnViews) -> None:
+async def run_turn(
+    chat: ChatState,
+    message: UserMessage,
+    views: TurnViews,
+    *,
+    hooks: TurnHooks = TurnHooks(),
+) -> None:
     """Answer one message with the agent, which calls tools round by round up to the round limit.
 
     The chat's history gains the message and the answer; a turn that fails or is
@@ -124,19 +152,23 @@ async def run_turn(chat: ChatState, message: UserMessage, views: TurnViews) -> N
     answer = CollectedAnswer(views.answer)
     progress = Progress(views.progress)
     tool_arguments = ToolArgumentStream()
+    outcome = TurnOutcome.SUCCEEDED
     try:
-        agent = build_agent(request, tool_arguments)
+        agent = build_agent(request, tool_arguments, extra_middleware=hooks.middleware)
         services = build_tool_services(chat)
         added = await stream_agent(
-            agent, to_langchain(history + turn_notes), answer, progress, tool_arguments, services
+            agent, to_langchain(history + turn_notes), answer, progress, tool_arguments, services,
+            extra_callbacks=hooks.callbacks,
         )
         history.extend(from_langchain(tool_round_messages(added)))
         final_text = RESTART_REPLY if notebook_restart_required(added) else answer.text
     except asyncio.CancelledError:
         # Stop: keep what was written, drop the half-finished tool turns
+        outcome = TurnOutcome.CANCELLED
         del history[turn_start:]
         final_text = answer.text
     except Exception as e:  # noqa: BLE001 - any model or tool failure ends the turn with its reason
+        outcome = TurnOutcome.FAILED
         del history[turn_start:]
         final_text = f"Error: {e}"
     finally:
@@ -144,6 +176,7 @@ async def run_turn(chat: ChatState, message: UserMessage, views: TurnViews) -> N
     final_text = final_text or EMPTY_ANSWER
     await views.answer.finish(final_text)
     history.append({"role": "assistant", "content": final_text})
+    hooks.on_completion(outcome)
 
 
 async def apply_picks(chat: ChatState, message: UserMessage, settings_view: SettingsView) -> Picks:
@@ -184,7 +217,12 @@ def build_tool_services(chat: ChatState) -> ToolServices:
     )
 
 
-def build_agent(request: ModelRequest, tool_arguments: ToolArgumentStream) -> CompiledStateGraph:
+def build_agent(
+    request: ModelRequest,
+    tool_arguments: ToolArgumentStream,
+    *,
+    extra_middleware: tuple[AgentMiddleware, ...] = (),
+) -> CompiledStateGraph:
     middleware = [
         RoundLimit(TOOL_MAX_ROUNDS),
         GuardModelToolCalls(tool_arguments, TOOL_MAX_ROUNDS),
@@ -193,7 +231,8 @@ def build_agent(request: ModelRequest, tool_arguments: ToolArgumentStream) -> Co
         StopOnNotebookRestart(),
     ]
     return create_agent(
-        build_chat_model(request), tools=request.tools, middleware=middleware, context_schema=ToolServices
+        build_chat_model(request), tools=request.tools,
+        middleware=[*extra_middleware, *middleware], context_schema=ToolServices,
     )
 
 

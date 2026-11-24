@@ -10,7 +10,7 @@ from sillytherin import llm, turn
 from sillytherin.chat_start import HISTORY_KEY, PICKS_KEY, SETTINGS_KEY
 from sillytherin.modes import Picks
 from sillytherin.tools import web_search
-from sillytherin.turn import TurnViews, UserMessage, run_turn
+from sillytherin.turn import TurnRunner, TurnViews, UserMessage, run_turn
 from sillytherin.workspace import actions
 from tests.chat.fakes import (
     FakeAnswerView,
@@ -78,13 +78,15 @@ def searches(monkeypatch) -> list[dict]:
     return seen
 
 
-def run_one_turn(chat: FakeChatState | None = None, text: str = "hi") -> TurnRun:
+def run_one_turn(
+    chat: FakeChatState | None = None, text: str = "hi", *, run_reply: TurnRunner = run_turn
+) -> TurnRun:
     chat = chat or ready_chat()
     picks = chat.get(PICKS_KEY)
     answer, progress = FakeAnswerView(), FakeProgressView()
     views = TurnViews(answer=answer, progress=progress, asker=FakeAsker(answer=None), settings=None)
     with in_chat(chat):
-        asyncio.run(run_turn(chat, UserMessage(text=text, model=picks.model, effort=picks.effort), views))
+        asyncio.run(run_reply(chat, UserMessage(text=text, model=picks.model, effort=picks.effort), views))
     return TurnRun(chat, answer, progress)
 
 

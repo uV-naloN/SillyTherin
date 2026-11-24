@@ -2,8 +2,8 @@
 
 import asyncio
 import subprocess
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator, Callable
+from contextlib import AbstractAsyncContextManager, asynccontextmanager, nullcontext
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -31,6 +31,7 @@ class ServerSettings:
 
 
 NO_PAGE_YET = "The SillyTherin page isn't built yet."
+ServerLifespan = Callable[[], AbstractAsyncContextManager[None]]
 _background: set[asyncio.Task[None]] = set()  # keeps the start-up cleanups alive until they finish
 
 
@@ -78,13 +79,16 @@ async def serve_asset(request: Request, settings: ServerSettings, file_path: str
     return FileResponse(wanted)
 
 
-def create_app(settings: ServerSettings, sessions: ChatSessions) -> FastAPI:
+def create_app(
+    settings: ServerSettings, sessions: ChatSessions, *, additional_lifespan: ServerLifespan = nullcontext
+) -> FastAPI:
     actions.settings_widgets = switches_for  # an account change re-sends Settings to every chat
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         await run_startup_cleanup()
-        yield
+        async with additional_lifespan():
+            yield
         await stop_kernels()
 
     app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)

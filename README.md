@@ -96,6 +96,28 @@ Open <http://127.0.0.1:8000>. The app is being moved to its own web page: until 
 
 Restart the app after changing any of these files. Projects, notebooks and datasets are stored in `workspaces/`, which is excluded from version control.
 
+### Optional Langfuse reply tracing
+
+The normal install does not require the Langfuse SDK or any Langfuse credentials.
+To opt in, install the SDK in the app's virtual environment:
+
+```bash
+.venv/bin/python -m pip install -r requirements-langfuse.txt
+```
+
+In `.env`, set `SILLYTHERIN_LANGFUSE_ENABLED=true`,
+`SILLYTHERIN_LANGFUSE_REGION` to `eu`, `us`, or `jp`, and set
+`LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` for the approved Cloud project.
+Restart the app. Remove the enable flag and restart to stop exporting.
+
+Traces contain only timing and outcome metadata. Approval waiting counts toward
+the reply total, not tool duration. If export fails or the queue fills, the reply
+still completes and the server log records a reason and affected trace count.
+
+Use synthetic replies and tools to check a live test project. For the separate
+SDK test suite, run `.venv/bin/python -m pytest integration/langfuse` after
+installing the optional requirements. Those tests do not send network requests.
+
 ## Security
 
 SillyTherin executes code, so it only serves `localhost` and refuses to start on any other host. It also refuses requests from any other website open in your browser. Do not expose it on a network (for example with `--host 0.0.0.0`) unless you first add authentication.

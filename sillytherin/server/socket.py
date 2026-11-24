@@ -4,6 +4,7 @@ import asyncio
 import logging
 import secrets
 from collections.abc import Awaitable, Callable
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from functools import partial
 from typing import Any
@@ -40,6 +41,7 @@ from sillytherin.server.events import (
 )
 from sillytherin.server.guard import is_allowed_host, is_allowed_origin
 from sillytherin.server.web_chat import (
+    AnswerWaitScope,
     MemoryChatState,
     OpenPrompts,
     SocketAnswerView,
@@ -52,7 +54,7 @@ from sillytherin.server.web_chat import (
     SocketToaster,
 )
 from sillytherin.settings import keep_chat_choices
-from sillytherin.turn import TurnViews, UserMessage, run_turn
+from sillytherin.turn import TurnRunner, TurnViews, UserMessage, run_turn
 from sillytherin.workspace import ErrorCode, actions
 from sillytherin.workspace.kaggle.dataset_downloads import (
     DOWNLOAD_ACTION,
@@ -129,6 +131,7 @@ class OpenChat:
     turn: asyncio.Task[None] | None = None  # the reply being written, if any
     tasks: set[asyncio.Task[None]] = field(default_factory=set)  # panel actions still running
     kaggle: KaggleSocketSelections = field(default_factory=KaggleSocketSelections)
+    run_reply: TurnRunner = run_turn
 
     def reset_kaggle_socket(self) -> None:
         self.kaggle.cancel()
@@ -146,7 +149,9 @@ class OpenChat:
         return self.turn is not None and not self.turn.done()
 
 
-def new_open_chat() -> OpenChat:
+def new_open_chat(
+    *, run_reply: TurnRunner = run_turn, answer_wait: AnswerWaitScope = nullcontext
+) -> OpenChat:
     state = MemoryChatState(secrets.token_urlsafe(CHAT_ID_BYTES))
     outbox = ChatOutbox()
     prompts = OpenPrompts()
@@ -158,19 +163,30 @@ def new_open_chat() -> OpenChat:
         panel=SocketPanelSink(outbox),
         popup=SocketSignInPopup(outbox),
     )
-    return OpenChat(state=state, outbox=outbox, prompts=prompts, link=link, asker=SocketAsker(outbox, prompts))
+    return OpenChat(
+        state=state, outbox=outbox, prompts=prompts, link=link,
+        asker=SocketAsker(outbox, prompts, answer_wait=answer_wait), run_reply=run_reply,
+    )
 
 
 class ChatSessions:
     """Every open chat by id, so a reconnect finds its chat."""
 
-    def __init__(self, grace_seconds: float = RECONNECT_GRACE_SECONDS) -> None:
+    def __init__(
+        self,
+        grace_seconds: float = RECONNECT_GRACE_SECONDS,
+        *,
+        run_reply: TurnRunner = run_turn,
+        answer_wait: AnswerWaitScope = nullcontext,
+    ) -> None:
         self.grace_seconds = grace_seconds
         self._chats: dict[str, OpenChat] = {}
         self._closers: dict[str, asyncio.TimerHandle] = {}
+        self._run_reply = run_reply
+        self._answer_wait = answer_wait
 
     def open_new(self) -> OpenChat:
-        chat = new_open_chat()
+        chat = new_open_chat(run_reply=self._run_reply, answer_wait=self._answer_wait)
         self._chats[chat.chat_id] = chat
         return chat
 
@@ -306,7 +322,7 @@ async def on_chat_send(chat: OpenChat, event: ChatSend) -> None:
         settings=chat.link.settings,
     )
     message = UserMessage(text=event.text, model=event.model, effort=event.effort)
-    chat.turn = asyncio.create_task(in_chat(chat, run_turn(chat.state, message, views)))
+    chat.turn = asyncio.create_task(in_chat(chat, chat.run_reply(chat.state, message, views)))
 
 
 async def on_chat_stop(chat: OpenChat, event: ChatStop) -> None:

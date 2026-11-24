@@ -1,0 +1,2 @@
+# Optional dependency for the Langfuse export worker.
+langfuse==5.2.0

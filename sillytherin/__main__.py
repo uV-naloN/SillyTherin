@@ -1,11 +1,14 @@
 """How the app starts; run it with `python -m sillytherin`."""
 
 import argparse
+import os
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from fastapi import FastAPI
+
     from sillytherin.server.app import ServerSettings
 
 DEFAULT_HOST = "127.0.0.1"
@@ -39,6 +42,22 @@ def server_settings(arguments: argparse.Namespace, page_dir: Path) -> "ServerSet
     return ServerSettings(port=arguments.port, page_dir=page_dir, extra_origins=extra_origins)
 
 
+def create_runtime_app(settings: "ServerSettings") -> "FastAPI":
+    from sillytherin.server.app import create_app
+    from sillytherin.server.socket import ChatSessions
+
+    if os.environ.get("SILLYTHERIN_LANGFUSE_ENABLED") != "true":
+        return create_app(settings, ChatSessions())
+
+    from sillytherin.observability.langfuse import configure_observability
+
+    observability = configure_observability(os.environ)
+    if observability is None:
+        return create_app(settings, ChatSessions())
+    sessions = ChatSessions(run_reply=observability.run_reply, answer_wait=observability.answer_wait)
+    return create_app(settings, sessions, additional_lifespan=observability.lifespan)
+
+
 def main(argv: list[str] | None = None) -> None:
     arguments = read_arguments(argv)
     # Imported here: config and the database must be checked before anything else loads them
@@ -55,11 +74,10 @@ def main(argv: list[str] | None = None) -> None:
 
     import uvicorn
 
-    from sillytherin.server.app import create_app
     from sillytherin.server.events import MAX_FRAME_BYTES
-    from sillytherin.server.socket import ChatSessions
 
-    app = create_app(server_settings(arguments, ROOT / "frontend" / "dist"), ChatSessions())
+    settings = server_settings(arguments, ROOT / "frontend" / "dist")
+    app = create_runtime_app(settings)
     uvicorn.run(app, host=arguments.host, port=arguments.port, ws="wsproto", ws_max_size=MAX_FRAME_BYTES)
 
 
