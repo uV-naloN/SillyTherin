@@ -78,10 +78,28 @@ def edit_step_title(args: dict) -> str:
 )
 async def notebook_edit(
     cell_id: str, code: str, version: int, runtime: ToolRuntime[ToolServices]
-) -> tuple[str, str]:
-    """Correct one failed assistant-created cell in the active project."""
-    # TODO: request approval and delegate a safe correction to the notebook service.
-    raise NotImplementedError("Edit and safely rerun the assistant's failed notebook cell.")
+) -> tuple[str, str | NotebookRunOutcome]:
+    """Correct one failed assistant-created cell in the active project.
+
+    Read the notebook after a failure, then use that cell's id and current notebook version.
+    Correct a repeatable calculation in place instead of adding a duplicate. Persistent or unknown effects
+    require the user to review and run the cell in the notebook. Never rewrite earlier setup to restore state.
+    """
+    services = runtime.context
+    risk_reasons = risk.check(code)
+    needs_user_approval = (risk_reasons and RISKY_CODE_NEEDS_APPROVAL) or not MODEL_AUTO_RUN
+    if needs_user_approval and not await services.approve_run(code, risk_reasons):
+        return DECLINED, f"```python\n{code}\n```\n\nSkipped."
+    try:
+        result = await services.notebook.edit_failed_cell_for_model(services.project_id, cell_id, code, version)
+    except CellCompilationError as error:
+        return compilation_failure_result(error)
+    except WorkspaceError as error:
+        raise ToolException(error.message) from error
+    if result is NotebookRunOutcome.RESTART_REQUIRED:
+        return "Earlier notebook state needs to be restored.", result
+    _remember_looks(code, services)
+    return result, f"```python\n{code}\n```\n\n```\n{result}\n```"
 
 
 @tool(
@@ -98,8 +116,9 @@ async def notebook_run(code: str, runtime: ToolRuntime[ToolServices]) -> tuple[s
     its path; write a new copy only when the user asks for one.
     Add only one meaningful new step per cell and per tool round. Reuse live imports and variables from notebook_read,
     including user-run cells; avoid repeated setup and unrequested diagnostics. The first cell may set up needed data.
-    After a runtime error, read current state before a targeted correction. Retry only repeatable steps with no
-    persistent or unknown effects; never replay a file write, database change or uncertain helper automatically.
+    After a runtime error, read current state and use notebook_edit on that failed cell instead of adding a duplicate.
+    Retry only repeatable steps with no persistent or unknown effects; never replay a file write,
+    database change or uncertain helper automatically.
     Failed cells remain in the notebook. If state is unavailable or a package is missing, report the blocker;
     do not install packages or replay earlier cells.
     """

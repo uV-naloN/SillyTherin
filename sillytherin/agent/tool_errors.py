@@ -15,6 +15,8 @@ TOOL_FAILURE_PREFIX = "Tool failed: "
 INVALID_TOOL_ARGUMENTS = f"{TOOL_FAILURE_PREFIX}Invalid tool arguments."
 UNEXPECTED_TOOL_FAILURE = "Could not complete the tool call."
 MAX_TOOL_ERROR_CHARS = 2000
+NOTEBOOK_WRITE_TOOLS = frozenset({"notebook_run", "notebook_edit"})
+NOTEBOOK_STATE_TOOLS = NOTEBOOK_WRITE_TOOLS | {"notebook_read"}
 
 ToolCallHandler = Callable[[ToolCallRequest], Awaitable[ToolMessage | Command]]
 
@@ -62,7 +64,7 @@ def explain_expected_failure(error: ToolException) -> str:
 
 
 def is_conflicting_notebook_write(request: ToolCallRequest) -> bool:
-    if request.tool_call["name"] != "notebook_run":
+    if request.tool_call["name"] not in NOTEBOOK_WRITE_TOOLS:
         return False
     messages = request.state.get("messages", []) if isinstance(request.state, dict) else []
     for message in reversed(messages):
@@ -71,7 +73,7 @@ def is_conflicting_notebook_write(request: ToolCallRequest) -> bool:
         calls = message.tool_calls
         if not any(call["id"] == request.tool_call["id"] for call in calls):
             return False
-        notebook_calls = sum(call["name"] in {"notebook_read", "notebook_run"} for call in calls)
+        notebook_calls = sum(call["name"] in NOTEBOOK_STATE_TOOLS for call in calls)
         return notebook_calls > 1
     return False
 
