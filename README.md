@@ -98,21 +98,40 @@ Restart the app after changing any of these files. Projects, notebooks and datas
 
 ### Optional Langfuse reply tracing
 
-The normal install does not require the Langfuse SDK or any Langfuse credentials.
-Enabling tracing exports real submitted messages and replies to the configured project.
-These may include secrets and private notebook or document text. Configure project
-access and retention before enabling it.
+Tracing is off by default. Use a Langfuse Cloud development project for local testing.
+Trace data can include submitted messages, model inputs and replies, and private notebook
+or document text. Configure project access and retention before enabling it, and keep
+the project keys in your local `.env`.
 
-To opt in, install the SDK in the app's virtual environment:
+Install the tracing dependency into the same virtual environment that runs SillyTherin.
 
 ```bash
 .venv/bin/python -m pip install -r requirements-langfuse.txt
 ```
 
-In `.env`, set `SILLYTHERIN_LANGFUSE_ENABLED=true`,
-`SILLYTHERIN_LANGFUSE_REGION` to `eu`, `us`, or `jp`, and set
-`LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` for the approved Cloud project.
-Restart the app. Remove the enable flag and restart to stop exporting.
+Add these settings to `.env` and replace the placeholders with keys from the same
+Langfuse Cloud project. Set the region to `eu`, `us`, or `jp` to match that project.
+
+```dotenv
+SILLYTHERIN_LANGFUSE_ENABLED=true
+SILLYTHERIN_LANGFUSE_REGION=eu
+LANGFUSE_PUBLIC_KEY=your-project-public-key
+LANGFUSE_SECRET_KEY=your-project-secret-key
+```
+
+Restart SillyTherin with `.venv/bin/python -m sillytherin`. For a single traced run on
+Linux or macOS, keep the region and keys in `.env`, omit the enable flag from that
+file, and use this command to start the server.
+
+```bash
+SILLYTHERIN_LANGFUSE_ENABLED=true .venv/bin/python -m sillytherin
+```
+
+To verify tracing, send `Hello` in SillyTherin and find the new `reply.turn` trace
+in your Langfuse project. Check that its input and output match the prompt and
+reply. If the trace is missing, check the SillyTherin terminal for export warnings.
+To disable tracing, remove the enable flag from `.env` and restart, or restart
+without the environment prefix if you enabled tracing for one run.
 
 Traces contain the submitted message, handed-off reply, timing and outcome.
 Stopped turns have a cancelled outcome and error status, with partial or missing
@@ -130,6 +149,8 @@ installing the optional requirements. Those tests do not send network requests.
 SillyTherin executes code, so it only serves `localhost` and refuses to start on any other host. It also refuses requests from any other website open in your browser. Do not expose it on a network (for example with `--host 0.0.0.0`) unless you first add authentication.
 
 ## Development
+
+To inspect local model calls and replies, see [Optional Langfuse reply tracing](#optional-langfuse-reply-tracing).
 
 Install the development dependencies, then run the tests and the linter:
 
