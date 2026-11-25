@@ -2,7 +2,7 @@
 // is one pure function the tests can check without a socket or a page.
 import { create } from "zustand";
 import { effortAfterModelChange, effortLevelsOf, restoredPicks, type Picks } from "@/chat/lib/effortLevels";
-import type { Choice, ChatLine, Picker, ServerEvent, SessionReady, SettingSwitch, ToastKind } from "@/chat/events";
+import type { Choice, ChatLine, Picker, ReplyInterruptionReason, ServerEvent, SessionReady, SettingSwitch, ToastKind } from "@/chat/events";
 import type { ConnectionStatus } from "@/chat/connection";
 import type { NotebookProps } from "@/panel/types";
 import { newer } from "@/panel/lib/newer";
@@ -25,6 +25,7 @@ export interface AnswerView {
   text: string;
   isStreaming: boolean;
   group: WorkGroupView | null;
+  interruptionReason?: ReplyInterruptionReason | null;
 }
 
 export interface UserLine { id: string; role: "user"; text: string }
@@ -99,8 +100,21 @@ function linesToMessages(lines: ChatLine[]): MessageView[] {
   return lines.map((line, index) =>
     line.role === "user"
       ? { id: `line-${index}`, role: "user", text: line.text }
-      : { id: `line-${index}`, role: "assistant", text: line.text, isStreaming: false, group: null },
+      : {
+        id: `line-${index}`, role: "assistant", text: line.text, isStreaming: false, group: null,
+        interruptionReason: line.interruption_reason,
+      },
   );
+}
+
+function restoreInterruptedAnswer(messages: MessageView[], lines: ChatLine[]): MessageView[] {
+  return messages.map((message, index) => {
+    const line = lines[index];
+    if (message.role !== "assistant" || !message.isStreaming || line?.role !== "assistant" || !line.interruption_reason) {
+      return message;
+    }
+    return { ...message, text: line.text, isStreaming: false, interruptionReason: line.interruption_reason };
+  });
 }
 
 function sessionReady(state: ChatState, event: SessionReady): ChatState {
@@ -110,7 +124,7 @@ function sessionReady(state: ChatState, event: SessionReady): ChatState {
     ...state,
     chatId: event.chat_id,
     status: "open",
-    messages: isSameChat ? state.messages : linesToMessages(event.messages),
+    messages: isSameChat ? restoreInterruptedAnswer(state.messages, event.messages) : linesToMessages(event.messages),
     prompts: isSameChat ? state.prompts : [],
     kagglePrompts: [],
     pickers: event.pickers,
@@ -160,7 +174,9 @@ export function applyEvent(state: ChatState, event: ServerEvent): ChatState {
     case "reply.delta":
       return updateAnswer(state, event.message_id, (a) => ({ ...a, text: a.text + event.text }));
     case "reply.ended":
-      return updateAnswer(withAnswer(state, event.message_id), event.message_id, (a) => ({ ...a, text: event.text, isStreaming: false }));
+      return updateAnswer(withAnswer(state, event.message_id), event.message_id, (answer) => ({
+        ...answer, text: event.text, isStreaming: false, interruptionReason: event.interruption_reason,
+      }));
     case "group.label":
       return updateGroup(state, event.message_id, (g) => ({ ...g, label: event.label }));
     case "thinking.delta":

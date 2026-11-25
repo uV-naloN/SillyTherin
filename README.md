@@ -96,6 +96,25 @@ Open <http://127.0.0.1:8000>. The app is being moved to its own web page: until 
 
 Restart the app after changing any of these files. Projects, notebooks and datasets are stored in `workspaces/`, which is excluded from version control.
 
+### OpenRouter relay errors
+
+If the chat reports that OpenRouter couldn’t route the request, check
+[OpenRouter status](https://status.openrouter.ai/) and retry through the existing
+composer once the service recovers. If a tool already ran, review its result
+before submitting the same action again.
+
+For troubleshooting, compare the HTTP status from an authenticated
+`GET /api/v1/key` with the status and error from an authenticated
+`POST /api/v1/chat/completions` with an empty JSON object. A key check of 200
+means that endpoint accepted the key. A matching relay 400 on the chat
+endpoint reproduces the symptom without a chat prompt. If the error persists,
+share the timestamp with timezone, method, path, status and fixed error
+message with [OpenRouter support](https://openrouter.ai/support/). Keep keys,
+authorization headers and conversation contents out of the report.
+
+The server logs
+`OpenRouter chat request failed reason=relay_failed http_status=400`.
+
 ### Optional Langfuse reply tracing
 
 Tracing is off by default. Use a Langfuse Cloud development project for local testing.

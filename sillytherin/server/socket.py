@@ -278,7 +278,11 @@ async def resumed_chat_ready(chat: OpenChat) -> SessionReady:
 def visible_messages(history: list[dict]) -> list[ChatLine]:
     """What the user saw: their messages and the answers, without system notes or tool turns."""
     is_shown = {"user", "assistant"}
-    return [ChatLine(role=m["role"], text=m["content"]) for m in history if m.get("role") in is_shown and m.get("content") and not m.get("tool_calls")]
+    return [
+        ChatLine(role=line["role"], text=line["content"], interruption_reason=line.get("interruption_reason"))
+        for line in history
+        if line.get("role") in is_shown and line.get("content") and not line.get("tool_calls")
+    ]
 
 
 async def read_events(websocket: WebSocket, chat: OpenChat) -> None:

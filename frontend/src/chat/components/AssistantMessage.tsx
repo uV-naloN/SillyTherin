@@ -23,6 +23,11 @@ export function AssistantMessage({ answer, prompts = [], onAnswer = () => {} }: 
         ))}
         {isWaiting && <span className="text-sm text-muted-foreground">…</span>}
         {answer.text && <Answer text={answer.text} />}
+        {answer.interruptionReason === "openrouter_relay_failed" && (
+          <p role="status" className="text-sm text-muted-foreground">
+            This reply was interrupted because OpenRouter couldn’t route the request. You can send your message again in a moment.
+          </p>
+        )}
         {answer.text && !answer.isStreaming && (
           <div className="-ml-2 flex items-center text-xs text-muted-foreground">
             <CopyButton text={answer.text} label="Copy answer" />

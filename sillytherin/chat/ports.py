@@ -12,6 +12,7 @@ from sillytherin.chat.widgets import Picker, SettingSwitch
 from sillytherin.workspace.service import NotebookProps
 
 ToastKind = Literal["info", "success", "warning", "error"]
+ReplyInterruptionReason = Literal["openrouter_relay_failed"]
 
 
 @dataclass(frozen=True)
@@ -27,7 +28,7 @@ class AnswerView(Protocol):
 
     async def stream(self, text: str) -> bool | None: ...
 
-    async def finish(self, text: str) -> bool | None: ...
+    async def finish(self, text: str, *, interruption_reason: ReplyInterruptionReason | None = None) -> bool | None: ...
 
 
 class ThinkingStep(Protocol):

@@ -2,6 +2,7 @@
 
 import json
 from dataclasses import dataclass, field
+from http import HTTPStatus
 from uuid import UUID
 
 from langchain.agents.middleware import AgentMiddleware, AgentState
@@ -11,12 +12,14 @@ from langchain_core.outputs import ChatGenerationChunk
 from langchain_core.tools import BaseTool
 from langchain_openrouter import ChatOpenRouter
 from langgraph.runtime import Runtime
+from openrouter.errors import BadRequestResponseError
 
 from sillytherin.agent.round_limit import tool_rounds_this_turn
 from sillytherin.config import OPENROUTER_API_KEY
 
 APP_TITLE = "SillyTherin"  # how OpenRouter names the app on the account's activity page
 INVALID_ARGUMENTS_FIELD = "__invalid_arguments__"
+OPENROUTER_RELAY_ERROR_MESSAGE = "Request path cannot be relayed"
 
 
 @dataclass(frozen=True)
@@ -123,3 +126,10 @@ def build_chat_model(request: ModelRequest) -> ChatOpenRouter:
         app_title=APP_TITLE,
         app_url=None,
     )
+
+
+def is_openrouter_relay_failure(error: Exception) -> bool:
+    if not isinstance(error, BadRequestResponseError) or error.status_code != HTTPStatus.BAD_REQUEST:
+        return False
+    response_error = error.data.error
+    return response_error.code == HTTPStatus.BAD_REQUEST and response_error.message == OPENROUTER_RELAY_ERROR_MESSAGE

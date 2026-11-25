@@ -7,9 +7,17 @@ refused rather than converted, and fields the page may not set are dropped.
 from enum import StrEnum
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    TypeAdapter,
+    ValidationError,
+    model_serializer,
+)
 
-from sillytherin.chat.ports import Choice, ToastKind
+from sillytherin.chat.ports import Choice, ReplyInterruptionReason, ToastKind
 from sillytherin.chat.widgets import Picker, SettingSwitch
 
 MAX_MESSAGE_CHARS = 100_000
@@ -91,13 +99,26 @@ class ServerEvent(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-class ChatLine(BaseModel):
+class ReplyContentFields(BaseModel):
+    text: str
+    interruption_reason: ReplyInterruptionReason | None = Field(
+        default=None, description="Marks a partial answer that ended with a provider relay error.",
+    )
+
+    @model_serializer(mode="wrap")
+    def serialize_reply_content(self, serialize: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        fields = serialize(self)
+        if self.interruption_reason is None:
+            fields.pop("interruption_reason", None)
+        return fields
+
+
+class ChatLine(ReplyContentFields):
     """One message already in the chat, so a reconnected page can redraw it."""
 
     model_config = ConfigDict(frozen=True)
 
     role: Literal["user", "assistant"]
-    text: str
 
 
 class SessionReady(ServerEvent):
@@ -128,12 +149,11 @@ class ReplyDelta(ServerEvent):
     text: str
 
 
-class ReplyEnded(ServerEvent):
+class ReplyEnded(ServerEvent, ReplyContentFields):
     """The reply's final text, including a partial answer after Stop or an "Error: …" text."""
 
     type: Literal["reply.ended"] = "reply.ended"
     message_id: str
-    text: str
 
 
 class GroupLabel(ServerEvent):

@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 
 from sillytherin.chat.current import ChatContext, current_chat
-from sillytherin.chat.ports import Choice, ToastKind
+from sillytherin.chat.ports import Choice, ReplyInterruptionReason, ToastKind
 
 
 @dataclass
@@ -56,12 +56,14 @@ class FakeProgressView:
 class FakeAnswerView:
     streamed: list[str] = field(default_factory=list)
     final: str | None = None
+    interruption_reason: ReplyInterruptionReason | None = None
 
     async def stream(self, text: str) -> None:
         self.streamed.append(text)
 
-    async def finish(self, text: str) -> None:
+    async def finish(self, text: str, *, interruption_reason: ReplyInterruptionReason | None = None) -> None:
         self.final = text
+        self.interruption_reason = interruption_reason
 
 
 @dataclass

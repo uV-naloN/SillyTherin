@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from sillytherin.chat.ports import AnswerView
+from sillytherin.chat.ports import AnswerView, ReplyInterruptionReason
 from sillytherin.observability.reply_trace import (
     MAX_REPLY_CONTENT_BYTES,
     RecordingLoss,
@@ -42,8 +42,11 @@ class AnswerCapture:
             self._has_failed = True
         return accepted
 
-    async def finish(self, text: str) -> bool | None:
-        accepted = await self._answer.finish(text)
+    async def finish(self, text: str, *, interruption_reason: ReplyInterruptionReason | None = None) -> bool | None:
+        if interruption_reason is None:
+            accepted = await self._answer.finish(text)
+        else:
+            accepted = await self._answer.finish(text, interruption_reason=interruption_reason)
         try:
             if accepted is not False:
                 self._terminal_overflow = content_size(text) > MAX_REPLY_CONTENT_BYTES

@@ -84,3 +84,31 @@ describe("Answers", () => {
     expect(list.scrollTop).toBe(100);
   });
 });
+
+
+const INTERRUPTED_NOTICE =
+  "This reply was interrupted because OpenRouter couldn’t route the request. You can send your message again in a moment.";
+
+it("shows_relay_interruption_below_partial_answer", () => {
+  render(<AssistantMessage answer={answer({ text: "Partial answer", interruptionReason: "openrouter_relay_failed" })} />);
+  const body = screen.getByText("Partial answer");
+  const status = screen.getByRole("status");
+  expect(status.textContent).toBe(INTERRUPTED_NOTICE);
+  expect(body.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+it("shows_relay_interruption_after_unclosed_code_fence", () => {
+  const { container } = render(
+    <AssistantMessage answer={answer({ text: "```python\nprint('part')", interruptionReason: "openrouter_relay_failed" })} />,
+  );
+  expect(container.querySelector("pre")?.textContent).toBe("print('part')");
+  const status = screen.getByRole("status");
+  expect(status.textContent).toBe(INTERRUPTED_NOTICE);
+  expect(status.closest("pre")).toBeNull();
+});
+
+it("omits_interruption_footer_for_ordinary_answer", () => {
+  render(<AssistantMessage answer={answer({ text: INTERRUPTED_NOTICE })} />);
+  expect(screen.getByText(INTERRUPTED_NOTICE)).toBeTruthy();
+  expect(screen.queryByRole("status")).toBeNull();
+});

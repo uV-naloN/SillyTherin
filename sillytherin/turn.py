@@ -1,6 +1,7 @@
 """One chat turn: the user's message in, the model's streamed answer and tool steps out."""
 
 import asyncio
+import logging
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
@@ -18,6 +19,7 @@ from sillytherin.agent.model import (
     ModelRequest,
     ToolArgumentStream,
     build_chat_model,
+    is_openrouter_relay_failure,
 )
 from sillytherin.agent.round_limit import RoundLimit
 from sillytherin.agent.stream import stream_agent
@@ -27,6 +29,7 @@ from sillytherin.chat.ports import (
     Asker,
     ChatState,
     ProgressView,
+    ReplyInterruptionReason,
     SettingsView,
 )
 from sillytherin.chat_start import (
@@ -55,6 +58,8 @@ from sillytherin.workspace.datasets.links import find_pasted_links
 from sillytherin.workspace.service import NotebookRunOutcome
 
 EMPTY_ANSWER = "(The model returned an empty response.)"
+OPENROUTER_RELAY_NOTICE = "OpenRouter couldn’t route this request. Try sending your message again in a moment."
+log = logging.getLogger("uvicorn.error").getChild("turn")
 
 
 RESTART_REPLY = "The notebook was restarted, so earlier results are gone. Press Run all in the notebook, then ask me again."
@@ -130,6 +135,12 @@ class CollectedAnswer:
         await self.view.finish(text)
 
 
+def describe_openrouter_relay_failure(streamed_text: str) -> tuple[str, ReplyInterruptionReason | None]:
+    if streamed_text:
+        return streamed_text, "openrouter_relay_failed"
+    return OPENROUTER_RELAY_NOTICE, None
+
+
 async def run_turn(
     chat: ChatState,
     message: UserMessage,
@@ -153,6 +164,7 @@ async def run_turn(
     progress = Progress(views.progress)
     tool_arguments = ToolArgumentStream()
     outcome = TurnOutcome.SUCCEEDED
+    interruption_reason: ReplyInterruptionReason | None = None
     try:
         agent = build_agent(request, tool_arguments, extra_middleware=hooks.middleware)
         services = build_tool_services(chat)
@@ -167,15 +179,24 @@ async def run_turn(
         outcome = TurnOutcome.CANCELLED
         del history[turn_start:]
         final_text = answer.text
-    except Exception as e:  # noqa: BLE001 - any model or tool failure ends the turn with its reason
+    except Exception as error:  # noqa: BLE001 - any model or tool failure ends the turn with its reason
         outcome = TurnOutcome.FAILED
         del history[turn_start:]
-        final_text = f"Error: {e}"
+        if is_openrouter_relay_failure(error):
+            log.warning("OpenRouter chat request failed reason=relay_failed http_status=400")
+            final_text, interruption_reason = describe_openrouter_relay_failure(answer.text)
+        else:
+            final_text = f"Error: {error}"
     finally:
         await progress.finish()
     final_text = final_text or EMPTY_ANSWER
-    await views.answer.finish(final_text)
-    history.append({"role": "assistant", "content": final_text})
+    assistant_message = {"role": "assistant", "content": final_text}
+    if interruption_reason is None:
+        await views.answer.finish(final_text)
+    else:
+        await views.answer.finish(final_text, interruption_reason=interruption_reason)
+        assistant_message["interruption_reason"] = interruption_reason
+    history.append(assistant_message)
     hooks.on_completion(outcome)
 
 

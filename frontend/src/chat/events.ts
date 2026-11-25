@@ -31,9 +31,12 @@ export interface SettingSwitch {
   description: string; // what it does, or why it is greyed out
 }
 
+export type ReplyInterruptionReason = "openrouter_relay_failed";
+
 export interface ChatLine {
   role: "user" | "assistant";
   text: string;
+  interruption_reason?: ReplyInterruptionReason | null;
 }
 
 // ---- page → server
@@ -59,7 +62,12 @@ export interface SessionReady {
 export interface ChatClosed { type: "chat.closed" }
 export interface ReplyStarted { type: "reply.started"; message_id: string }
 export interface ReplyDelta { type: "reply.delta"; message_id: string; text: string }
-export interface ReplyEnded { type: "reply.ended"; message_id: string; text: string }
+export interface ReplyEnded {
+  type: "reply.ended";
+  message_id: string;
+  text: string;
+  interruption_reason?: ReplyInterruptionReason | null;
+}
 export interface GroupLabel { type: "group.label"; message_id: string; label: string }
 export interface GroupDone { type: "group.done"; message_id: string; label: string }
 export interface ThinkingDelta { type: "thinking.delta"; message_id: string; text: string }
