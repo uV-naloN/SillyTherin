@@ -146,21 +146,46 @@ file, and use this command to start the server.
 SILLYTHERIN_LANGFUSE_ENABLED=true .venv/bin/python -m sillytherin
 ```
 
-To verify tracing, send `Hello` in SillyTherin and find the new `reply.turn` trace
-in your Langfuse project. Check that its input and output match the prompt and
-reply. If the trace is missing, check the SillyTherin terminal for export warnings.
+To verify tracing, look for `Langfuse worker ready` in the terminal, send `Hello` in
+SillyTherin, and find the new `reply.turn` trace in your Langfuse project. Check that
+its input and output match the prompt and reply. If the trace is missing, check the
+SillyTherin terminal for export warnings.
 To disable tracing, remove the enable flag from `.env` and restart, or restart
 without the environment prefix if you enabled tracing for one run.
 
 Traces contain the submitted message, handed-off reply, timing and outcome.
-Stopped turns have a cancelled outcome and error status, with partial or missing
-reply text. Each text field is limited to 64 KiB UTF-8. Oversized traces are
-dropped with a content-free diagnostic. Existing traces keep their original data.
-Approval waiting counts toward the reply total and is excluded from tool duration. If export fails or the queue fills, the reply
-still completes and the server log records a reason and affected trace count.
+Model observations include each call's input and response, including available
+tool-call requests and provider-returned reasoning. Interrupted calls show their
+input, any received response fragments and their outcome. Each text field is
+limited to 64 KiB UTF-8. Model exchange capture and the complete OTLP export are
+limited to 256 KiB. Oversized traces are dropped with a content-free diagnostic.
+These tracing limits do not reduce the context sent to the model. Existing traces
+keep their original data.
+Approval waiting counts toward the reply total and is excluded from tool duration.
 
-Use synthetic replies and tools to check a live test project. For the separate
-SDK test suite, run `.venv/bin/python -m pytest integration/langfuse` after
+#### Worker logs and controls
+
+The worker runs inside the SillyTherin server lifecycle. Watch the terminal
+running `.venv/bin/python -m sillytherin` for `Langfuse worker ready pid=...`
+and `Langfuse trace export` warnings. The logs contain failure codes, affected
+trace counts and HTTP status codes when available.
+
+| Log entry | What to check |
+|---|---|
+| `dependency_missing` | Install `requirements-langfuse.txt` in the same virtual environment used to start SillyTherin. |
+| `readiness_timeout`, `initialization_failed`, `process_failed` | Check for the startup failure followed by a new worker PID on a later reply. |
+| `http_rejected` with 401 or 403 | Check that the project keys and `SILLYTHERIN_LANGFUSE_REGION` belong to the same Langfuse Cloud project. |
+| `connection_failed` or `export_timeout` | Check connectivity from the SillyTherin host to the selected Langfuse Cloud region. |
+| `invalid_trace` or `delivery_unconfirmed` | Check whether the trace exceeded the export limits. If delivery is unconfirmed, look in the Langfuse project for the trace before assuming it was lost. |
+
+A startup failure pauses worker launches for 10 seconds. The first completed
+reply after the pause triggers another launch. If the worker exits while idle,
+the next trace starts a replacement before sending. An export timeout stops
+the worker, and a later reply starts a replacement. Chat continues during exporter
+failures. Restart SillyTherin to restart the worker immediately. Set
+`SILLYTHERIN_LANGFUSE_ENABLED=false` and restart to turn tracing off.
+
+For the separate SDK test suite, run `.venv/bin/python -m pytest integration/langfuse` after
 installing the optional requirements. Those tests do not send network requests.
 
 ## Security
