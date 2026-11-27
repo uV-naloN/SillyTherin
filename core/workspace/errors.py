@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from core.errors import SillytherinError
+from core.shared.errors import SillytherinError
 
 
 class ErrorCode:

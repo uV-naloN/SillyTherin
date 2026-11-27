@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Protocol
 
 from pydantic import SecretStr, TypeAdapter
 
-from core.errors import SillytherinError
+from core.shared.errors import SillytherinError
 from observability.dtos.langfuse import (
     ExportLoss,
     LangfuseSettings,

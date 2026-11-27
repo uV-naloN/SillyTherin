@@ -1,6 +1,6 @@
 import pytest
 
-from core.best_effort import best_effort
+from core.shared.best_effort import best_effort
 
 
 def test_a_failure_inside_the_block_is_handed_to_the_reaction_and_the_caller_goes_on() -> None:

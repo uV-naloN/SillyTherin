@@ -25,7 +25,6 @@ from pathlib import Path
 
 import httpx
 
-from core.clock import utc_now
 from core.config import WORKSPACES_DIR
 from core.contracts.datasets import (
     DatasetPlan,
@@ -42,6 +41,7 @@ from core.contracts.kaggle import (
     KaggleImportSelection,
 )
 from core.contracts.notebook import DatasetProps, NotebookProps
+from core.shared.clock import utc_now
 from core.workspace import store
 from core.workspace.datasets import links, sources
 from core.workspace.datasets import store as ds

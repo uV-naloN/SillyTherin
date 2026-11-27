@@ -9,9 +9,9 @@ from langchain_core.messages import ToolMessage
 from langgraph.errors import GraphBubbleUp
 
 from core.agent.tool_errors import TOOL_FAILURE_PREFIX, UNEXPECTED_TOOL_FAILURE
-from core.best_effort import best_effort
 from core.chat.ports import ToolStep
 from core.progress import Progress
+from core.shared.best_effort import best_effort
 from core.tools import native_tool_step_title
 
 UNAVAILABLE_TOOL = "This tool is not available for this reply."

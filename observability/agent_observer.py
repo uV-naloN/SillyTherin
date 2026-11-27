@@ -13,7 +13,7 @@ from langchain_core.callbacks import AsyncCallbackHandler
 from langchain_core.messages import BaseMessage, ToolMessage
 from langgraph.types import Command
 
-from core.best_effort import best_effort
+from core.shared.best_effort import best_effort
 from core.tools import NOTEBOOK_TOOLS, TOOLS
 from observability.dtos.reply_trace import (
     ModelExchange,

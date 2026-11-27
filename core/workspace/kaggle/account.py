@@ -11,8 +11,8 @@ from dataclasses import dataclass
 
 import httpx
 
-from core.clock import utc_now
 from core.contracts.kaggle import KaggleAccountStatus
+from core.shared.clock import utc_now
 from core.workspace.errors import ErrorCode, WorkspaceError
 from core.workspace.kaggle import oauth
 from core.workspace.kaggle.callback import CallbackListener

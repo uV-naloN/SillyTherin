@@ -28,7 +28,7 @@ from core.db.schema import (
     project_datasets,
     projects,
 )
-from core.errors import SillytherinError
+from core.shared.errors import SillytherinError
 from core.workspace import store
 from core.workspace.datasets.dtos.store import ProjectDataset
 from core.workspace.errors import ErrorCode, WorkspaceError

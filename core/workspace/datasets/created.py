@@ -22,9 +22,9 @@ from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING, BinaryIO, Literal
 
-from core.clock import utc_now
 from core.config import CREATED_DATA_EXTENSIONS, WORKSPACES_DIR
 from core.contracts.notebook import DatasetPanelStatus, DatasetProps
+from core.shared.clock import utc_now
 from core.workspace import store
 from core.workspace.datasets import created_store as cds
 from core.workspace.datasets import store as ds

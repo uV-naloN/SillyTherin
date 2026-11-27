@@ -2,9 +2,9 @@
 
 from collections.abc import Callable
 
-from core.best_effort import best_effort
 from core.chat.ports import AnswerView
 from core.contracts.chat import ReplyInterruptionReason
+from core.shared.best_effort import best_effort
 from observability.dtos.reply_trace import (
     MAX_REPLY_CONTENT_BYTES,
     RecordingLoss,

@@ -6,7 +6,7 @@ from dataclasses import dataclass, replace
 from typing import Protocol
 from uuid import UUID
 
-from core.best_effort import best_effort
+from core.shared.best_effort import best_effort
 from observability.dtos.reply_trace import (
     ModelExchange,
     RecordingLoss,

@@ -13,7 +13,7 @@ from typing import Literal
 
 import httpx
 
-from core.errors import SillytherinError
+from core.shared.errors import SillytherinError
 from core.workspace.kaggle.dtos.oauth import OAuthClient, PkcePair, TokenGrant
 
 OAUTH_CLIENT_NAME = "SillyTherin"  # what Kaggle's approval page and kaggle.com → Settings show

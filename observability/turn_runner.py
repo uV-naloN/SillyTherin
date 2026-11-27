@@ -5,9 +5,9 @@ from collections.abc import Callable
 from dataclasses import replace
 from typing import Protocol
 
-from core.best_effort import best_effort
 from core.chat.ports import ChatState
 from core.contracts.chat import UserMessage
+from core.shared.best_effort import best_effort
 from core.turn import TurnHooks, TurnOutcome, TurnViews
 from observability.agent_observer import (
     NativeStageObserver,

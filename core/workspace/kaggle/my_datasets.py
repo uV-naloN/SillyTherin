@@ -10,7 +10,7 @@ from typing import Protocol
 import httpx
 
 from core.contracts.kaggle import KaggleAccountStatus
-from core.errors import SillytherinError
+from core.shared.errors import SillytherinError
 from core.workspace.kaggle.account import SIGNED_OUT_NOTICE, HttpFactory
 from core.workspace.kaggle.dtos._my_datasets import (
     ListingState,
