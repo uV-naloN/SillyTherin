@@ -1,7 +1,7 @@
 // One answer: its work group, its questions, the answer text and Copy.
 import { Answer, CopyButton } from "@/chat/components/Answer";
 import { PromptCard } from "@/chat/components/PromptCard";
-import { WorkGroup } from "@/chat/components/WorkGroup";
+import { WorkGroup, type WorkStatus } from "@/chat/components/WorkGroup";
 import type { AnswerView, PromptView } from "@/chat/store";
 import mark from "@/assets/favicon.svg";
 
@@ -11,17 +11,24 @@ export interface AssistantMessageProps {
   onAnswer?: (askId: string, choiceId: string) => void;
 }
 
+function workStatus(answer: AnswerView, prompts: PromptView[]): WorkStatus {
+  if (prompts.some((prompt) => prompt.outcome === "open")) return "waiting";
+  if (answer.interruptionReason) return "interrupted";
+  if (answer.isStreaming && !answer.group?.isDone) return "running";
+  return "finished";
+}
+
 export function AssistantMessage({ answer, prompts = [], onAnswer = () => {} }: AssistantMessageProps): JSX.Element {
-  const isWaiting = answer.isStreaming && !answer.text && !answer.group;
+  const status = workStatus(answer, prompts);
+  const showActivity = answer.group || status === "waiting" || (status === "running" && !answer.text);
   return (
     <div className="st-enter flex items-start gap-3">
       <img src={mark} alt="" className="mt-0.5 size-7 shrink-0" />
       <div className="flex min-w-0 flex-1 flex-col gap-3">
-        {answer.group && <WorkGroup group={answer.group} />}
+        {showActivity && <WorkGroup group={answer.group} status={status} />}
         {prompts.map((prompt) => (
           <PromptCard key={prompt.askId} prompt={prompt} onAnswer={onAnswer} />
         ))}
-        {isWaiting && <span className="text-sm text-muted-foreground">…</span>}
         {answer.text && <Answer text={answer.text} />}
         {answer.interruptionReason === "openrouter_relay_failed" && (
           <p role="status" className="text-sm text-muted-foreground">

@@ -25,6 +25,8 @@
   --border: 240 5.9% 90%;
   --input: 240 5.9% 90%;
   --ring: 210 79% 46%;
+  --warning: 34 85% 29%;
+  --success: 142 72% 29%;
   --radius: 0.6rem;
   --font-sans: "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: ui-monospace, Menlo, Consolas, "DejaVu Sans Mono", monospace;
@@ -52,6 +54,8 @@
   --border: 240 3.7% 15.9%;
   --input: 240 3.7% 15.9%;
   --ring: 207 90% 61%;
+  --warning: 35 90% 68%;
+  --success: 142 69% 58%;
 }
 
 @theme inline {
@@ -74,6 +78,7 @@
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
+  --color-warning: hsl(var(--warning));
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
   --radius-lg: var(--radius);
@@ -130,6 +135,63 @@
 .dark .st-code .tok-operator { color: hsl(280 90% 76%); }
 .dark .st-code .tok-definition { color: hsl(215 100% 75%); }
 
+.st-activity {
+  --activity-status-color: hsl(var(--muted-foreground));
+  --activity-indicator-color: hsl(var(--success));
+}
+.st-activity[data-status="running"] {
+  --activity-status-color: hsl(var(--primary));
+  --activity-indicator-color: hsl(var(--primary));
+}
+.st-activity[data-status="waiting"] {
+  --activity-status-color: hsl(var(--warning));
+  --activity-indicator-color: hsl(var(--warning));
+}
+.st-activity[data-status="interrupted"] {
+  --activity-status-color: hsl(var(--warning));
+  --activity-indicator-color: hsl(var(--warning));
+}
+.st-activity-indicator { background: var(--activity-indicator-color); }
+.st-activity-badge {
+  color: var(--activity-status-color);
+  background: color-mix(in srgb, var(--activity-status-color) 10%, transparent);
+}
+.st-activity-step {
+  --activity-step-color: hsl(var(--muted-foreground));
+  --activity-marker-color: hsl(var(--success));
+}
+.st-activity-step[data-status="running"] {
+  --activity-step-color: hsl(var(--primary));
+  --activity-marker-color: hsl(var(--primary));
+}
+.st-activity-step[data-status="failed"],
+.st-activity-step[data-status="skipped"] {
+  --activity-step-color: hsl(var(--warning));
+  --activity-marker-color: hsl(var(--warning));
+}
+.st-activity-step::before {
+  content: "";
+  position: absolute;
+  top: 0.72rem;
+  left: -1.18rem;
+  z-index: 1;
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 2px solid var(--activity-marker-color);
+  border-radius: 50%;
+  background: hsl(var(--card));
+}
+.st-activity-step[data-status="running"]::before { background: var(--activity-marker-color); }
+.st-activity-step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 1rem;
+  bottom: -0.9rem;
+  left: -0.96rem;
+  width: 1px;
+  background: hsl(var(--border));
+}
+
 /* ---- Motion: short and calm. Everything below stops when the system asks for reduced motion. */
 @keyframes st-fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes st-fade-in { from { opacity: 0; } to { opacity: 1; } }
@@ -137,11 +199,14 @@
 @keyframes st-zoom-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
 @keyframes st-zoom-out { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.96); } }
 @keyframes st-slide-in { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
-@keyframes st-expand { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 
 .st-enter { animation: st-fade-up 220ms ease-out both; }
-.st-expand { animation: st-expand 180ms ease-out both; }
 .st-toast { animation: st-slide-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .st-agent-mode-menu[data-state="open"] { animation: st-fade-up 160ms ease-out both; }
+  .st-agent-mode-menu[data-state="closed"] { animation: st-fade-out 100ms ease-in both; }
+}
 
 @layer base {
   button, a, [role="option"], [role="separator"] {
