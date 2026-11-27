@@ -9,13 +9,13 @@ from itertools import pairwise
 import httpx
 import pytest
 
-from sillytherin.workspace import store
-from sillytherin.workspace.datasets import links
-from sillytherin.workspace.datasets import sources as src
-from sillytherin.workspace.datasets import store as ds
-from sillytherin.workspace.datasets.dtos.settings import DatasetsSettings
-from sillytherin.workspace.datasets.service import DatasetService
-from sillytherin.workspace.errors import ErrorCode, WorkspaceError
+from core.workspace import store
+from core.workspace.datasets import links
+from core.workspace.datasets import sources as src
+from core.workspace.datasets import store as ds
+from core.workspace.datasets.dtos.settings import DatasetsSettings
+from core.workspace.datasets.service import DatasetService
+from core.workspace.errors import ErrorCode, WorkspaceError
 from tests.conftest import FakeFreeDisk, catalog_client, fake_lookup
 
 LINK = "https://example.org/data/iris.csv"

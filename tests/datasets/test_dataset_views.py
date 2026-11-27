@@ -10,17 +10,17 @@ import os
 
 import pytest
 
-from sillytherin.workspace.datasets.dtos._views import ViewFile
-from sillytherin.workspace.datasets.dtos.pool import PoolEntry, PoolFile
-from sillytherin.workspace.datasets.dtos.store import ProjectDataset
-from sillytherin.workspace.datasets.pool import POOL_DIR, DatasetPool
-from sillytherin.workspace.datasets.views import (
+from core.workspace.datasets.dtos._views import ViewFile
+from core.workspace.datasets.dtos.pool import PoolEntry, PoolFile
+from core.workspace.datasets.dtos.store import ProjectDataset
+from core.workspace.datasets.pool import POOL_DIR, DatasetPool
+from core.workspace.datasets.views import (
     VIEW_FAILED_MESSAGE,
     VIEWS_DIR,
     ProjectViews,
     visible_pool_files,
 )
-from sillytherin.workspace.errors import ErrorCode, WorkspaceError
+from core.workspace.errors import ErrorCode, WorkspaceError
 
 
 @pytest.mark.parametrize(

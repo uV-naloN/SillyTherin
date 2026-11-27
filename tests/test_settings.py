@@ -1,5 +1,5 @@
-from sillytherin.contracts.kaggle import KaggleAccountStatus
-from sillytherin.settings import (
+from core.contracts.kaggle import KaggleAccountStatus
+from core.settings import (
     NO_REASONING_REASON,
     NO_TOOLS_REASON,
     build_widgets,
@@ -59,7 +59,7 @@ def test_no_tools_reach_a_model_without_tools():
 
 
 def test_each_switch_adds_its_own_tools():
-    from sillytherin.tools import chosen_tools
+    from core.tools import chosen_tools
 
     names = lambda s: [tool.name for tool in chosen_tools(s)]
     assert names({}) == []

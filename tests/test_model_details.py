@@ -2,9 +2,9 @@
 
 import asyncio
 
-from sillytherin import llm
-from sillytherin.chat_start import pickers_for
-from sillytherin.contracts.chat import ModelInfo, Picks
+from core import llm
+from core.chat_start import pickers_for
+from core.contracts.chat import ModelInfo, Picks
 
 THINKS_AND_TOOLS = ModelInfo(id="vendor/smart", name="Smart", params=frozenset({"reasoning", "tools"}))
 TOOLS_ONLY = ModelInfo(id="vendor/tools", name="Tools", params=frozenset({"tools"}))

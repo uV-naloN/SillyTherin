@@ -7,19 +7,19 @@ import httpx
 import pytest
 from starlette.testclient import TestClient
 
-from sillytherin import config, llm, turn
-from sillytherin.contracts.chat import ModelInfo
-from sillytherin.server import app as server_app
-from sillytherin.server.app import create_app
-from sillytherin.server.dtos.app import ServerSettings
-from sillytherin.server.socket import ChatSessions
-from sillytherin.workspace import actions
-from sillytherin.workspace.datasets.dtos.settings import DatasetsSettings
-from sillytherin.workspace.datasets.service import DatasetService
-from sillytherin.workspace.kaggle.account import KaggleAccountService
-from sillytherin.workspace.kaggle.token_file import TokenFile
-from sillytherin.workspace.panel import PanelRegistry
-from sillytherin.workspace.service import NotebookService
+from core import config, llm, turn
+from core.contracts.chat import ModelInfo
+from core.server import app as server_app
+from core.server.app import create_app
+from core.server.dtos.app import ServerSettings
+from core.server.socket import ChatSessions
+from core.workspace import actions
+from core.workspace.datasets.dtos.settings import DatasetsSettings
+from core.workspace.datasets.service import DatasetService
+from core.workspace.kaggle.account import KaggleAccountService
+from core.workspace.kaggle.token_file import TokenFile
+from core.workspace.panel import PanelRegistry
+from core.workspace.service import NotebookService
 from tests.kaggle.fakes import FakeListener
 from tests.scripted_chat_model import (  # noqa: F401 - shared with the socket tests
     HANG,

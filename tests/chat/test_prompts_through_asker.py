@@ -5,11 +5,11 @@ import json
 
 import pytest
 
-from sillytherin.contracts.datasets import DatasetPlan, PlannedFile
-from sillytherin.tools import dataset_delete, dataset_download, notebook_run
-from sillytherin.workspace import store
-from sillytherin.workspace.errors import ErrorCode
-from sillytherin.workspace.service import NotebookService
+from core.contracts.datasets import DatasetPlan, PlannedFile
+from core.tools import dataset_delete, dataset_download, notebook_run
+from core.workspace import store
+from core.workspace.errors import ErrorCode
+from core.workspace.service import NotebookService
 from tests.chat.fakes import FakeAsker, in_chat
 from tests.conftest import FakeDatasetService
 from tests.datasets.test_dataset_tools import STARTED

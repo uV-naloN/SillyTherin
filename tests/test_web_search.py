@@ -3,8 +3,8 @@
 import pytest
 from ddgs.exceptions import DDGSException
 
-from sillytherin.config import SEARCH_MAX_RESULTS
-from sillytherin.tools import web_search
+from core.config import SEARCH_MAX_RESULTS
+from core.tools import web_search
 
 HIT = {"title": "Iris", "href": "https://example.org/iris", "body": "Flower measurements"}
 

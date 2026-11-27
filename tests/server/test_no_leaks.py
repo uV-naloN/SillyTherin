@@ -2,10 +2,10 @@
 
 import json
 
-from sillytherin import config
-from sillytherin.server import socket as chat_socket
-from sillytherin.server.events import ChatStop
-from sillytherin.tools import web_search
+from core import config
+from core.server import socket as chat_socket
+from core.server.events import ChatStop
+from core.tools import web_search
 from tests.server.conftest import (
     events_until,
     open_tab,

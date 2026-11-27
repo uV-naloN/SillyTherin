@@ -11,15 +11,15 @@ from alembic.runtime.migration import MigrationContext
 from sqlalchemy import inspect, text
 from sqlalchemy.exc import IntegrityError
 
-from sillytherin.db import engine as db
-from sillytherin.db.schema import metadata
-from sillytherin.workspace import store
-from sillytherin.workspace.datasets import store as ds
-from sillytherin.workspace.datasets.dtos.pool import PoolEntry, PoolFile
-from sillytherin.workspace.datasets.dtos.store import ProjectDataset
-from sillytherin.workspace.datasets.pool import DatasetPool
-from sillytherin.workspace.dtos._kernels import ContainerMounts
-from sillytherin.workspace.kernels import KernelRegistry
+from core.db import engine as db
+from core.db.schema import metadata
+from core.workspace import store
+from core.workspace.datasets import store as ds
+from core.workspace.datasets.dtos.pool import PoolEntry, PoolFile
+from core.workspace.datasets.dtos.store import ProjectDataset
+from core.workspace.datasets.pool import DatasetPool
+from core.workspace.dtos._kernels import ContainerMounts
+from core.workspace.kernels import KernelRegistry
 
 APP_TABLES = {"projects", "pool_entries", "pool_files", "project_datasets", "project_dataset_files"}
 UNKNOWN_REVISION = "9999"

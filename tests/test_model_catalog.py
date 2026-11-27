@@ -2,8 +2,8 @@
 
 import asyncio
 
-from sillytherin import llm
-from sillytherin.contracts.chat import ModelInfo
+from core import llm
+from core.contracts.chat import ModelInfo
 
 
 def test_catalog_keeps_only_models_that_answer_in_text():

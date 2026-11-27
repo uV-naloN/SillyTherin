@@ -4,10 +4,10 @@ import asyncio
 
 import pytest
 
-from sillytherin import llm
-from sillytherin.agent import model as model_module
-from sillytherin.agent.model import APP_TITLE, build_chat_model
-from sillytherin.contracts.chat import ModelRequest
+from core import llm
+from core.agent import model as model_module
+from core.agent.model import APP_TITLE, build_chat_model
+from core.contracts.chat import ModelRequest
 from tests.agent.conftest import THINKS_AND_TOOLS
 from tests.network_fakes import fake_openrouter
 

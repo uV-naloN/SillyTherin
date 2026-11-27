@@ -8,13 +8,13 @@ from uuid import uuid4
 
 from langchain_core.messages import ToolMessage
 
-from sillytherin.agent.tool_progress import NativeToolProgress
-from sillytherin.contracts.chat import Picker, PickerChoices, Picks, SettingSwitch
-from sillytherin.contracts.kaggle import KaggleAccountStatus
-from sillytherin.modes import build_modes
-from sillytherin.progress import Progress
-from sillytherin.settings import NO_REASONING_REASON, NO_TOOLS_REASON, build_widgets
-from sillytherin.tools import web_search
+from core.agent.tool_progress import NativeToolProgress
+from core.contracts.chat import Picker, PickerChoices, Picks, SettingSwitch
+from core.contracts.kaggle import KaggleAccountStatus
+from core.modes import build_modes
+from core.progress import Progress
+from core.settings import NO_REASONING_REASON, NO_TOOLS_REASON, build_widgets
+from core.tools import web_search
 from tests.chat.fakes import FakeProgressView
 
 # ---- Business code runs without Chainlit · unit
@@ -76,7 +76,7 @@ def test_build_modes_returns_our_own_pickers():
 
 
 def test_nothing_imports_chainlit():
-    # Given every module under sillytherin/ and tests/, and the requirements files
+    # Given every module under core/, observability/ and tests/, and the requirements files
     # When their imports and requirements are read
     # Then none imports or requires chainlit
     # Demonstrates: Chainlit is fully gone
@@ -91,7 +91,7 @@ REPO = Path(__file__).resolve().parents[2]
 
 
 def python_sources() -> list[Path]:
-    return sorted([*(REPO / "sillytherin").rglob("*.py"), *(REPO / "tests").rglob("*.py"), *REPO.glob("*.py")])
+    return sorted([*(REPO / "core").rglob("*.py"), *(REPO / "observability").rglob("*.py"), *(REPO / "tests").rglob("*.py"), *REPO.glob("*.py")])
 
 
 def imports_chainlit(path: Path) -> bool:

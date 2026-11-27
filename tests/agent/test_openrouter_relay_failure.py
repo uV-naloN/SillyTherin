@@ -9,10 +9,10 @@ import pytest
 from openrouter.errors import BadRequestResponseError
 from openrouter.errors.badrequestresponse_error import BadRequestResponseErrorData
 
-from sillytherin.agent.model import build_chat_model, is_openrouter_relay_failure
-from sillytherin.chat.ports import ChatState
-from sillytherin.contracts.chat import ModelRequest, UserMessage
-from sillytherin.turn import TurnHooks, TurnOutcome, TurnViews, run_turn
+from core.agent.model import build_chat_model, is_openrouter_relay_failure
+from core.chat.ports import ChatState
+from core.contracts.chat import ModelRequest, UserMessage
+from core.turn import TurnHooks, TurnOutcome, TurnViews, run_turn
 from tests.agent.conftest import THINKS_AND_TOOLS, history_of, run_one_turn
 from tests.scripted_chat_model import (
     HANG,
@@ -52,7 +52,7 @@ def capture_provider_error(
         response.request = request
         return response
 
-    monkeypatch.setattr("sillytherin.agent.model.OPENROUTER_API_KEY", "synthetic-test-key")
+    monkeypatch.setattr("core.agent.model.OPENROUTER_API_KEY", "synthetic-test-key")
     monkeypatch.setattr(httpx.Client, "send", send)
     model = build_chat_model(ModelRequest(THINKS_AND_TOOLS, [], {}))
     with pytest.raises(Exception) as failure:

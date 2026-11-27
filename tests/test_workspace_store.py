@@ -8,10 +8,10 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-from sillytherin.contracts.notebook import PROJECT_ID_RE
-from sillytherin.db.engine import database_for
-from sillytherin.workspace import store
-from sillytherin.workspace.errors import ErrorCode, WorkspaceError
+from core.contracts.notebook import PROJECT_ID_RE
+from core.db.engine import database_for
+from core.workspace import store
+from core.workspace.errors import ErrorCode, WorkspaceError
 
 
 @pytest.fixture
@@ -114,7 +114,7 @@ def test_duplicate_name_gets_unique_id(root):
 
 def test_switch_project_changes_session_and_panel(root, service_factory):
     # Demonstrates: the bottom bar switches projects
-    from sillytherin.workspace import actions
+    from core.workspace import actions
 
     store.create_project("P", root)
     store.create_project("Q", root)
@@ -126,7 +126,7 @@ def test_switch_project_changes_session_and_panel(root, service_factory):
 
 
 def test_create_project_from_bar_switches_to_it(root, service_factory):
-    from sillytherin.workspace import actions
+    from core.workspace import actions
 
     store.create_project("P", root)
     service = service_factory(root)
@@ -138,7 +138,7 @@ def test_create_project_from_bar_switches_to_it(root, service_factory):
 
 
 def test_switch_to_missing_project_is_rejected(root, service_factory):
-    from sillytherin.workspace import actions
+    from core.workspace import actions
 
     store.create_project("P", root)
     service = service_factory(root)

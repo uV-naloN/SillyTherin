@@ -7,13 +7,13 @@ from collections.abc import Iterable
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-OWN_PACKAGES = {"sillytherin", "tests"}
+OWN_PACKAGES = {"core", "observability", "tests"}
 IMPORT_NAME = {"python-dotenv": "dotenv", "langchain-openrouter": "langchain_openrouter"}
 # Packages chosen by name at run time instead of imported: uvicorn is started with ws="wsproto"
 USED_BY_NAME = {"wsproto": 'ws="wsproto"'}
 # Imported, and installed by a listed package: LangChain's own parts, and FastAPI's web layer
 COMES_WITH_LISTED = {"langchain_core", "langgraph", "langsmith", "starlette"}
-LANGFUSE_WORKER = REPO / "sillytherin/observability/langfuse_worker.py"
+LANGFUSE_WORKER = REPO / "observability/langfuse_worker.py"
 COMES_WITH_LANGFUSE = {"google", "opentelemetry", "requests"}
 
 # ---- Dependencies are exact · unit
@@ -25,8 +25,13 @@ def listed_packages(requirements: str = "requirements.txt") -> set[str]:
     return {re.split(r"[<>=!~ #\[]", line, maxsplit=1)[0] for line in lines if line.strip() and not line.startswith("#")}
 
 
+def app_source_paths() -> Iterable[Path]:
+    for package in ("core", "observability"):
+        yield from (REPO / package).rglob("*.py")
+
+
 def default_module_paths() -> Iterable[Path]:
-    yield from (path for path in (REPO / "sillytherin").rglob("*.py") if path != LANGFUSE_WORKER)
+    yield from (path for path in app_source_paths() if path != LANGFUSE_WORKER)
     yield from (REPO / "tests").rglob("*.py")
 
 
@@ -42,7 +47,7 @@ def imported_modules(paths: Iterable[Path]) -> set[str]:
 
 
 def app_source_text() -> str:
-    return "\n".join(path.read_text() for path in (REPO / "sillytherin").rglob("*.py"))
+    return "\n".join(path.read_text() for path in app_source_paths())
 
 
 def test_every_requirement_is_imported() -> None:

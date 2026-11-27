@@ -82,7 +82,7 @@ docker build -f docker/kernel.Dockerfile -t sillytherin-kernel:1 docker
 ### Running
 
 ```bash
-.venv/bin/python -m sillytherin
+.venv/bin/python -m core
 ```
 
 Open <http://127.0.0.1:8000>. The app is being moved to its own web page: until that page is built, the server runs but shows no chat page (use the `main` branch for the current app).
@@ -138,12 +138,12 @@ LANGFUSE_PUBLIC_KEY=your-project-public-key
 LANGFUSE_SECRET_KEY=your-project-secret-key
 ```
 
-Restart SillyTherin with `.venv/bin/python -m sillytherin`. For a single traced run on
+Restart SillyTherin with `.venv/bin/python -m core`. For a single traced run on
 Linux or macOS, keep the region and keys in `.env`, omit the enable flag from that
 file, and use this command to start the server.
 
 ```bash
-SILLYTHERIN_LANGFUSE_ENABLED=true .venv/bin/python -m sillytherin
+SILLYTHERIN_LANGFUSE_ENABLED=true .venv/bin/python -m core
 ```
 
 To verify tracing, look for `Langfuse worker ready` in the terminal, send `Hello` in
@@ -166,7 +166,7 @@ Approval waiting counts toward the reply total and is excluded from tool duratio
 #### Worker logs and controls
 
 The worker runs inside the SillyTherin server lifecycle. Watch the terminal
-running `.venv/bin/python -m sillytherin` for `Langfuse worker ready pid=...`
+running `.venv/bin/python -m core` for `Langfuse worker ready pid=...`
 and `Langfuse trace export` warnings. The logs contain failure codes, affected
 trace counts and HTTP status codes when available.
 
@@ -213,7 +213,7 @@ npm test
 npm run build    # writes the page to frontend/dist, which is committed
 ```
 
-For live reload, start the app with `python -m sillytherin --dev`, run `npm run dev` in `frontend`, and open <http://localhost:5173>.
+For live reload, start the app with `python -m core --dev`, run `npm run dev` in `frontend`, and open <http://localhost:5173>.
 
 Contributions are welcome. Please open an issue to discuss larger changes before submitting a pull request.
 

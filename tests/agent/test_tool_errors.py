@@ -7,15 +7,15 @@ import pytest
 from langchain.agents.middleware import ToolCallRequest
 from langgraph.errors import GraphBubbleUp
 
-from sillytherin.agent.tool_errors import (
+from core.agent.tool_errors import (
     INVALID_TOOL_ARGUMENTS,
     MAX_TOOL_ERROR_CHARS,
     TOOL_FAILURE_PREFIX,
     ToolErrorBoundary,
 )
-from sillytherin.chat_start import HISTORY_KEY
-from sillytherin.tools import dataset_delete, dataset_download, notebook_run, web_search
-from sillytherin.workspace.errors import ErrorCode, WorkspaceError
+from core.chat_start import HISTORY_KEY
+from core.tools import dataset_delete, dataset_download, notebook_run, web_search
+from core.workspace.errors import ErrorCode, WorkspaceError
 from tests.agent.conftest import history_of, run_one_turn
 from tests.scripted_chat_model import ScriptedChatModel, text_chunk, tool_call_chunk
 from tests.tool_calls import (

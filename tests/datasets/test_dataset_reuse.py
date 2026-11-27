@@ -10,17 +10,17 @@ import json
 
 import pytest
 
-from sillytherin.tools import (
+from core.tools import (
     dataset_download,
     dataset_list,
     dataset_search,
     notebook_run,
 )
-from sillytherin.workspace import store
-from sillytherin.workspace.datasets.created import CreatedDatasets
-from sillytherin.workspace.datasets.describe import describe_need
-from sillytherin.workspace.datasets.load_code import load_code
-from sillytherin.workspace.datasets.service import DatasetService
+from core.workspace import store
+from core.workspace.datasets.created import CreatedDatasets
+from core.workspace.datasets.describe import describe_need
+from core.workspace.datasets.load_code import load_code
+from core.workspace.datasets.service import DatasetService
 from tests.conftest import FakeDatasetService
 from tests.tool_calls import call_tool, failure_text, fake_services, tool_defined_in
 
@@ -220,7 +220,7 @@ SEARCH_RESULTS = [
 @pytest.fixture
 def ws(tmp_path, monkeypatch):
     """Projects p1, p2, no DNS, and a catalog search that answers SEARCH_RESULTS."""
-    from sillytherin.workspace.datasets import sources as src
+    from core.workspace.datasets import sources as src
     from tests.conftest import fake_lookup
 
     monkeypatch.setattr(src, "lookup_host", fake_lookup)
@@ -538,7 +538,7 @@ def undescribed_xls(**over) -> dict:
 
 def download_in(records, *, looked=None, session_id="s1", args=None, ref="hf:scikit-learn/iris", pasted=frozenset()):
     """dataset_download with a fake service; returns (svc, the result or the error as a dict)."""
-    from sillytherin.tools.datasets.describe import ChatLooks
+    from core.tools.datasets.describe import ChatLooks
 
     svc = FakeDatasetService()
     svc.records = records
@@ -568,7 +568,7 @@ def test_reading_it_with_notebook_run_lets_the_download_go():
     # Positive · Changed: a notebook_run in this chat named its path / file name
     # Then: the download starts
     # Demonstrates: one look is enough; a new copy can still be downloaded after it
-    from sillytherin.tools.datasets.describe import ChatLooks
+    from core.tools.datasets.describe import ChatLooks
 
     for code in ('pd.read_excel("/work/data.xls").head()', "df = pd.read_excel('DATA.XLS')"):
         looked = ChatLooks()
@@ -612,7 +612,7 @@ def test_a_look_in_another_chat_doesnt_count():
     # Negative · Changed: looked at in chat s2, download from s1
     # Then: `LOOK_FIRST`
     # Demonstrates: the check is per chat
-    from sillytherin.tools.datasets.describe import ChatLooks
+    from core.tools.datasets.describe import ChatLooks
 
     looked = ChatLooks()
     looked.remember("s2", "p1", undescribed_xls()["dataset_id"])

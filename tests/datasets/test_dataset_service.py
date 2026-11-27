@@ -18,20 +18,20 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
-from sillytherin.contracts.datasets import DatasetPlan, PlannedFile
-from sillytherin.contracts.kaggle import KaggleApprovalOffer, KaggleImportSelection
-from sillytherin.workspace import actions, store
-from sillytherin.workspace.datasets import sources as src
-from sillytherin.workspace.datasets import store as ds
-from sillytherin.workspace.datasets.dtos.pool import PoolEntry, PoolFile
-from sillytherin.workspace.datasets.dtos.settings import DatasetsSettings
-from sillytherin.workspace.datasets.dtos.store import ProjectDataset
-from sillytherin.workspace.datasets.pool import DatasetPool, find_pool_file
-from sillytherin.workspace.datasets.service import DatasetService
-from sillytherin.workspace.datasets.views import VIEW_FAILED_MESSAGE, VIEWS_DIR
-from sillytherin.workspace.errors import ErrorCode, WorkspaceError
-from sillytherin.workspace.kaggle.dtos.downloads import KaggleFileDownload
-from sillytherin.workspace.service import NotebookService
+from core.contracts.datasets import DatasetPlan, PlannedFile
+from core.contracts.kaggle import KaggleApprovalOffer, KaggleImportSelection
+from core.workspace import actions, store
+from core.workspace.datasets import sources as src
+from core.workspace.datasets import store as ds
+from core.workspace.datasets.dtos.pool import PoolEntry, PoolFile
+from core.workspace.datasets.dtos.settings import DatasetsSettings
+from core.workspace.datasets.dtos.store import ProjectDataset
+from core.workspace.datasets.pool import DatasetPool, find_pool_file
+from core.workspace.datasets.service import DatasetService
+from core.workspace.datasets.views import VIEW_FAILED_MESSAGE, VIEWS_DIR
+from core.workspace.errors import ErrorCode, WorkspaceError
+from core.workspace.kaggle.dtos.downloads import KaggleFileDownload
+from core.workspace.service import NotebookService
 from tests.conftest import FakeChats, FakeFreeDisk, FakeKernels, fake_lookup
 from tests.tool_calls import call_tool, fake_services
 
@@ -1050,7 +1050,7 @@ def test_delete_while_downloading_is_busy(root):
 
 def test_model_delete_declined_keeps_dataset(root):
     # Changed: tool, approve → False · Then: DECLINED; everything kept · Demonstrates: the model can't delete without you
-    from sillytherin.tools import dataset_delete
+    from core.tools import dataset_delete
 
     async def scenario():
         env = Env(root)
@@ -1567,7 +1567,7 @@ def test_no_code_references_removed_formats():
     # Changed: grep the package for datasets.json, .dataset-pool.json, load_records, migrate_project (vulture runs separately)
     # Then: no hits
     # Demonstrates: the removal is complete
-    package = Path(__file__).resolve().parents[2] / "sillytherin"
+    package = Path(__file__).resolve().parents[2] / "core"
     hits = [
         f"{path.relative_to(package)}: {name}"
         for path in package.rglob("*.py")

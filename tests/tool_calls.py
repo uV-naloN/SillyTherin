@@ -8,16 +8,16 @@ from langchain.tools import ToolRuntime
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import BaseTool
 
-from sillytherin.tools import (
+from core.tools import (
     dataset_delete,
     dataset_describe,
     dataset_download,
     notebook_run,
 )
-from sillytherin.tools.shared.services import ToolServices
+from core.tools.shared.services import ToolServices
 
 TEST_CALL_ID = "call-1"
-DATASET_TOOLS_PACKAGE = "sillytherin.tools.datasets"
+DATASET_TOOLS_PACKAGE = "core.tools.datasets"
 
 
 def tool_defined_in(module: ModuleType) -> BaseTool:
@@ -49,7 +49,7 @@ async def call_tool_output(tool: BaseTool, arguments: dict, services: ToolServic
 
 def failure_text(message: ToolMessage) -> str:
     """What a failed call told the model, without the shared failure prefix."""
-    from sillytherin.agent.tool_errors import TOOL_FAILURE_PREFIX
+    from core.agent.tool_errors import TOOL_FAILURE_PREFIX
 
     assert message.status == "error", message.content
     return message.content.removeprefix(TOOL_FAILURE_PREFIX)

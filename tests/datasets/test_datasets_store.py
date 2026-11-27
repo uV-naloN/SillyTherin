@@ -6,15 +6,15 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-from sillytherin.config import DATABASE_FILE
-from sillytherin.db.engine import database_for
-from sillytherin.workspace import store
-from sillytherin.workspace.datasets import store as ds
-from sillytherin.workspace.datasets.dtos.created import CreatedDataset, FileSnapshot
-from sillytherin.workspace.datasets.dtos.pool import PoolEntry, PoolFile
-from sillytherin.workspace.datasets.dtos.store import ProjectDataset
-from sillytherin.workspace.datasets.pool import DatasetPool
-from sillytherin.workspace.errors import WorkspaceError
+from core.config import DATABASE_FILE
+from core.db.engine import database_for
+from core.workspace import store
+from core.workspace.datasets import store as ds
+from core.workspace.datasets.dtos.created import CreatedDataset, FileSnapshot
+from core.workspace.datasets.dtos.pool import PoolEntry, PoolFile
+from core.workspace.datasets.dtos.store import ProjectDataset
+from core.workspace.datasets.pool import DatasetPool
+from core.workspace.errors import WorkspaceError
 
 
 @pytest.fixture
@@ -277,7 +277,7 @@ def test_delete_ignores_tampered_rows(root, pool):
 
 @pytest.fixture
 def project_with_both_kinds(root):
-    from sillytherin.workspace.datasets import created_store as cds
+    from core.workspace.datasets import created_store as cds
 
     pool = DatasetPool(root)
     pool.add_entry(PoolEntry("hf-x@1", "huggingface", "o/x", None, "X", None, None, [PoolFile("a.csv", 1, None, True)]))
@@ -293,7 +293,7 @@ def test_saving_downloaded_datasets_keeps_created_rows(project_with_both_kinds):
     # Changed: `save_project_datasets(p, [...])`
     # Then: `file-iris-csv` row still there
     # Demonstrates: a download can't wipe created cards
-    from sillytherin.workspace.datasets import created_store as cds
+    from core.workspace.datasets import created_store as cds
 
     root = project_with_both_kinds
     ds.save_project_datasets("p1", [], root)

@@ -7,14 +7,14 @@ import pytest
 from langchain_core.messages import BaseMessage
 from langgraph.graph.state import CompiledStateGraph
 
-from sillytherin import turn
-from sillytherin.agent.model import ToolArgumentStream
-from sillytherin.progress import Progress
-from sillytherin.tools import dataset_list
-from sillytherin.tools.shared.services import ToolServices
-from sillytherin.workspace import actions, store
-from sillytherin.workspace.datasets.created import CreatedDatasets
-from sillytherin.workspace.datasets.service import DatasetService
+from core import turn
+from core.agent.model import ToolArgumentStream
+from core.progress import Progress
+from core.tools import dataset_list
+from core.tools.shared.services import ToolServices
+from core.workspace import actions, store
+from core.workspace.datasets.created import CreatedDatasets
+from core.workspace.datasets.service import DatasetService
 from tests.agent.conftest import ready_chat, run_one_turn
 from tests.scripted_chat_model import ScriptedChatModel
 from tests.tool_calls import call_tool

@@ -10,17 +10,22 @@ import pytest
 from langchain_core.messages import AIMessageChunk, HumanMessage
 from langchain_core.outputs import ChatGenerationChunk
 
-from sillytherin import turn
-from sillytherin.agent import stream
-from sillytherin.chat.ports import ChatState
-from sillytherin.chat_start import HISTORY_KEY, PICKS_KEY
-from sillytherin.contracts.chat import UserMessage
-from sillytherin.observability.agent_observer import (
+from core import turn
+from core.agent import stream
+from core.chat.ports import ChatState
+from core.chat_start import HISTORY_KEY, PICKS_KEY
+from core.contracts.chat import UserMessage
+from core.server.events import AskOpened, ServerEvent
+from core.server.web_chat import OpenPrompts, SocketAsker
+from core.tools import web_search
+from core.tools.shared.approval import RUN_OR_SKIP
+from core.turn import TurnHooks, TurnViews, run_turn
+from observability.agent_observer import (
     NativeStageObserver,
     observe_answer_wait,
 )
-from sillytherin.observability.answer_capture import AnswerCapture
-from sillytherin.observability.dtos.reply_trace import (
+from observability.answer_capture import AnswerCapture
+from observability.dtos.reply_trace import (
     RecordingLoss,
     ReplyContent,
     ReplySpan,
@@ -29,18 +34,13 @@ from sillytherin.observability.dtos.reply_trace import (
     SpanKind,
     SpanOutcome,
 )
-from sillytherin.observability.reply_trace import (
+from observability.reply_trace import (
     MAX_CHILD_SPANS,
     ApprovalWait,
     ReplyRecorder,
     TraceClock,
 )
-from sillytherin.observability.turn_runner import ObservedTurnRunner
-from sillytherin.server.events import AskOpened, ServerEvent
-from sillytherin.server.web_chat import OpenPrompts, SocketAsker
-from sillytherin.tools import web_search
-from sillytherin.tools.shared.approval import RUN_OR_SKIP
-from sillytherin.turn import TurnHooks, TurnViews, run_turn
+from observability.turn_runner import ObservedTurnRunner
 from tests.agent.conftest import ready_chat, run_one_turn
 from tests.chat.fakes import FakeAnswerView, FakeAsker, FakeProgressView, in_chat
 from tests.scripted_chat_model import (
@@ -435,13 +435,13 @@ def capture_reply(
 
 
 def test_restart_trace_uses_delivered_restart_reply() -> None:
-    from sillytherin.turn import RESTART_REPLY
+    from core.turn import RESTART_REPLY
     content, losses, _ = capture_reply(final=RESTART_REPLY)
     assert content.reply == RESTART_REPLY and not losses
 
 
 def test_empty_model_trace_matches_displayed_fallback() -> None:
-    from sillytherin.turn import EMPTY_ANSWER
+    from core.turn import EMPTY_ANSWER
     content, _, _ = capture_reply(chunks=(), final=EMPTY_ANSWER)
     assert content.reply == EMPTY_ANSWER and content.reply_state is ReplyState.COMPLETE
 

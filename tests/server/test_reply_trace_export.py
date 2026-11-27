@@ -10,16 +10,22 @@ from types import SimpleNamespace
 import pytest
 from starlette.testclient import TestClient
 
-from sillytherin.observability import langfuse
-from sillytherin.observability.agent_observer import observe_answer_wait
-from sillytherin.observability.answer_capture import AnswerCapture
-from sillytherin.observability.dtos.langfuse import (
+from core.server.app import create_app
+from core.server.dtos.app import ServerSettings
+from core.server.events import ServerEvent
+from core.server.socket import ChatSessions
+from core.server.web_chat import SocketAnswerView
+from core.turn import run_turn
+from observability import langfuse
+from observability.agent_observer import observe_answer_wait
+from observability.answer_capture import AnswerCapture
+from observability.dtos.langfuse import (
     ExportLoss,
     LangfuseSettings,
     LossReason,
     WorkerStartupFailure,
 )
-from sillytherin.observability.dtos.reply_trace import (
+from observability.dtos.reply_trace import (
     MAX_REPLY_CONTENT_BYTES,
     RecordingLoss,
     ReplyContent,
@@ -29,20 +35,14 @@ from sillytherin.observability.dtos.reply_trace import (
     SpanKind,
     SpanOutcome,
 )
-from sillytherin.observability.langfuse import (
+from observability.langfuse import (
     EXPORT_QUEUE_CAPACITY,
     LangfuseSupervisor,
     configure_observability,
     read_settings,
 )
-from sillytherin.observability.reply_trace import TraceClock
-from sillytherin.observability.turn_runner import ObservedTurnRunner
-from sillytherin.server.app import create_app
-from sillytherin.server.dtos.app import ServerSettings
-from sillytherin.server.events import ServerEvent
-from sillytherin.server.socket import ChatSessions
-from sillytherin.server.web_chat import SocketAnswerView
-from sillytherin.turn import run_turn
+from observability.reply_trace import TraceClock
+from observability.turn_runner import ObservedTurnRunner
 from tests.conftest import FakeKernels
 from tests.scripted_chat_model import ScriptedChatModel, text_chunk
 from tests.server.conftest import OWN_PAGE, PORT, events_until, open_tab, send_message

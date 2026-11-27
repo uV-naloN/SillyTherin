@@ -3,8 +3,8 @@
 import os
 import stat
 
-from sillytherin.workspace.kaggle.dtos.token_file import SavedSignIn
-from sillytherin.workspace.kaggle.token_file import TokenFile
+from core.workspace.kaggle.dtos.token_file import SavedSignIn
+from core.workspace.kaggle.token_file import TokenFile
 from tests.kaggle.fakes import CLIENT_ID, REFRESH_TOKEN, USERNAME
 
 SIGN_IN = SavedSignIn(client_id=CLIENT_ID, refresh_token=REFRESH_TOKEN, username=USERNAME, connected_at="2026-11-19T10:00:00Z")

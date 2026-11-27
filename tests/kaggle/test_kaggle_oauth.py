@@ -9,8 +9,8 @@ import urllib.parse
 import httpx
 import pytest
 
-from sillytherin.workspace.kaggle import oauth
-from sillytherin.workspace.kaggle.dtos.oauth import OAuthClient
+from core.workspace.kaggle import oauth
+from core.workspace.kaggle.dtos.oauth import OAuthClient
 from tests.kaggle.fakes import (
     ACCESS_TOKEN,
     CLIENT_ID,

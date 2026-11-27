@@ -9,9 +9,9 @@ from types import ModuleType
 import pytest
 from langchain_core.tools import BaseTool
 
-from sillytherin.chat_start import HISTORY_KEY, PICKS_KEY
-from sillytherin.contracts.chat import UserMessage
-from sillytherin.tools import (
+from core.chat_start import HISTORY_KEY, PICKS_KEY
+from core.contracts.chat import UserMessage
+from core.tools import (
     NOTEBOOK_TOOLS,
     TOOLS,
     dataset_delete,
@@ -24,9 +24,9 @@ from sillytherin.tools import (
     read_page,
     web_search,
 )
-from sillytherin.turn import TurnViews, run_turn
-from sillytherin.workspace import actions
-from sillytherin.workspace.errors import ErrorCode, WorkspaceError
+from core.turn import TurnViews, run_turn
+from core.workspace import actions
+from core.workspace.errors import ErrorCode, WorkspaceError
 from tests.agent.conftest import ready_chat
 from tests.chat.fakes import (
     FakeAnswerView,

@@ -11,14 +11,14 @@ from langchain_core.messages import ToolMessage
 from langchain_core.tools import BaseTool, ToolException
 from langchain_openrouter.chat_models import _convert_message_to_dict
 
-from sillytherin import turn
-from sillytherin.agent.tool_errors import INVALID_TOOL_ARGUMENTS
-from sillytherin.agent.tool_progress import NativeToolProgress
-from sillytherin.chat_start import HISTORY_KEY, PICKS_KEY
-from sillytherin.contracts.chat import UserMessage
-from sillytherin.contracts.datasets import DatasetPlan
-from sillytherin.progress import Progress
-from sillytherin.tools import (
+from core import turn
+from core.agent.tool_errors import INVALID_TOOL_ARGUMENTS
+from core.agent.tool_progress import NativeToolProgress
+from core.chat_start import HISTORY_KEY, PICKS_KEY
+from core.contracts.chat import UserMessage
+from core.contracts.datasets import DatasetPlan
+from core.progress import Progress
+from core.tools import (
     chosen_tools,
     dataset_delete,
     dataset_describe,
@@ -30,11 +30,11 @@ from sillytherin.tools import (
     read_page,
     web_search,
 )
-from sillytherin.turn import TurnViews
-from sillytherin.workspace import actions, store
-from sillytherin.workspace.datasets.service import DatasetService
-from sillytherin.workspace.errors import ErrorCode, WorkspaceError
-from sillytherin.workspace.service import NotebookService
+from core.turn import TurnViews
+from core.workspace import actions, store
+from core.workspace.datasets.service import DatasetService
+from core.workspace.errors import ErrorCode, WorkspaceError
+from core.workspace.service import NotebookService
 from tests.agent.conftest import (
     EVERY_SWITCH_ON,
     PLAIN,
@@ -114,7 +114,7 @@ async def run_native_call(tool: BaseTool, arguments: dict) -> ToolMessage:
 
 
 def in_chat_state() -> FakeChatState:
-    from sillytherin.chat.current import this_chat
+    from core.chat.current import this_chat
 
     return this_chat().state
 

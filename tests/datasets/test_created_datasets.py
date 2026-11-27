@@ -18,23 +18,23 @@ import pyarrow.parquet as pq
 import pytest
 from openpyxl.worksheet._read_only import ReadOnlyWorksheet
 
-from sillytherin.config import CREATED_DATA_EXTENSIONS
-from sillytherin.workspace import store
-from sillytherin.workspace.datasets import created as created_module
-from sillytherin.workspace.datasets import created_store as cds
-from sillytherin.workspace.datasets import store as ds
-from sillytherin.workspace.datasets.created import (
+from core.config import CREATED_DATA_EXTENSIONS
+from core.workspace import store
+from core.workspace.datasets import created as created_module
+from core.workspace.datasets import created_store as cds
+from core.workspace.datasets import store as ds
+from core.workspace.datasets.created import (
     CreatedDatasets,
     compare_with_stored,
     missing_notice,
     read_columns,
 )
-from sillytherin.workspace.datasets.dtos.created import CreatedDataset, FileSnapshot
-from sillytherin.workspace.datasets.dtos.pool import PoolEntry, PoolFile
-from sillytherin.workspace.datasets.dtos.store import ProjectDataset
-from sillytherin.workspace.datasets.pool import DatasetPool
-from sillytherin.workspace.datasets.service import DatasetService
-from sillytherin.workspace.errors import ErrorCode, WorkspaceError
+from core.workspace.datasets.dtos.created import CreatedDataset, FileSnapshot
+from core.workspace.datasets.dtos.pool import PoolEntry, PoolFile
+from core.workspace.datasets.dtos.store import ProjectDataset
+from core.workspace.datasets.pool import DatasetPool
+from core.workspace.datasets.service import DatasetService
+from core.workspace.errors import ErrorCode, WorkspaceError
 
 IRIS_CSV = "sepal_length,species\n5.1,setosa\n4.9,setosa\n"  # 41 bytes
 
@@ -302,7 +302,7 @@ def test_created_csv_load_code_runs_in_kernel(root, created):
     # Changed: real kernel (`@pytest.mark.docker`)
     # Then: runs without error, `df.shape` > 0
     # Demonstrates: the code truly works
-    from sillytherin.workspace.kernels import KernelRegistry
+    from core.workspace.kernels import KernelRegistry
 
     async def noop(_output):
         pass

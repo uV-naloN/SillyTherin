@@ -12,7 +12,7 @@ import re
 
 import pytest
 
-import sillytherin.config  # noqa: F401 — loads .env, so the key there counts
+import core.config  # noqa: F401 — loads .env, so the key there counts
 from tests.conftest import FakeDatasetService
 from tests.datasets.test_dataset_reuse import (
     IRIS_COLUMNS,
@@ -41,7 +41,7 @@ class Chat:
     """One scripted conversation: the real model, fake tools, every call recorded."""
 
     def __init__(self, records: list[dict]):
-        from sillytherin.tools.datasets.describe import ChatLooks
+        from core.tools.datasets.describe import ChatLooks
 
         self.svc = FakeDatasetService()
         self.svc.records = records
@@ -56,10 +56,10 @@ class Chat:
     async def ask(self, user_text: str) -> str:
         from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 
-        from sillytherin.agent.model import build_chat_model
-        from sillytherin.config import MODEL, SYSTEM_PROMPT
-        from sillytherin.contracts.chat import ModelRequest
-        from sillytherin.tools import NOTEBOOK_TOOLS, TOOLS
+        from core.agent.model import build_chat_model
+        from core.config import MODEL, SYSTEM_PROMPT
+        from core.contracts.chat import ModelRequest
+        from core.tools import NOTEBOOK_TOOLS, TOOLS
 
         # A model per chat: a shared one is tied to the event loop of the first test
         tools = [*TOOLS, *NOTEBOOK_TOOLS]
@@ -76,12 +76,12 @@ class Chat:
         return ""
 
     async def tool(self, name: str, args: dict) -> str:
-        from sillytherin.tools import dataset_list
+        from core.tools import dataset_list
 
         if name == "dataset_list":
             return (await call_tool(dataset_list.dataset_list, {}, fake_services(datasets=self.svc, project_id="p1"))).content
         if name == "dataset_search":  # the real tool (marks, reminders) with canned catalog answers
-            from sillytherin.tools import dataset_search
+            from core.tools import dataset_search
 
             async def canned(query, task="", language=""):
                 return [dict(r) for r in SEARCH_RESULTS], []
@@ -92,7 +92,7 @@ class Chat:
             finally:
                 dataset_search.search = real_search
         if name == "dataset_download":  # the real tool: a broken copy gets the "Download again?" question, answered No
-            from sillytherin.tools import dataset_download
+            from core.tools import dataset_download
 
             async def say_no(name, reason):
                 self.retry_questions.append(name)
@@ -103,7 +103,7 @@ class Chat:
             except ValueError as e:
                 return f"Tool failed: {e}"
         if name == "notebook_run":  # the real tool, so looks at undescribed data are recorded
-            from sillytherin.tools import notebook_run
+            from core.tools import notebook_run
 
             return (await call_tool(notebook_run.notebook_run, args, fake_services(notebook=self.notebook, project_id="p1", approve_run=yes_to_code, datasets=self.svc, chat_id="s1", looked=self.looked))).content
         if name == "dataset_describe":

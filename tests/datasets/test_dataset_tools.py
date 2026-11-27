@@ -7,15 +7,15 @@ import json
 import httpx
 import pytest
 
-from sillytherin.contracts.datasets import DatasetPlan, PlannedFile
-from sillytherin.tools import chosen_tools, dataset_download, dataset_list
-from sillytherin.tools import dataset_search as search
-from sillytherin.workspace import store
-from sillytherin.workspace.datasets import sources as src
-from sillytherin.workspace.datasets.dtos.settings import DatasetsSettings
-from sillytherin.workspace.datasets.links import find_pasted_links
-from sillytherin.workspace.datasets.service import DatasetService
-from sillytherin.workspace.errors import ErrorCode, WorkspaceError
+from core.contracts.datasets import DatasetPlan, PlannedFile
+from core.tools import chosen_tools, dataset_download, dataset_list
+from core.tools import dataset_search as search
+from core.workspace import store
+from core.workspace.datasets import sources as src
+from core.workspace.datasets.dtos.settings import DatasetsSettings
+from core.workspace.datasets.links import find_pasted_links
+from core.workspace.datasets.service import DatasetService
+from core.workspace.errors import ErrorCode, WorkspaceError
 from tests.chat.fakes import FakeChatState, in_chat
 from tests.conftest import FakeDatasetService, FakeFreeDisk, fake_lookup
 from tests.tool_calls import call_tool, failure_text, fake_services
@@ -23,7 +23,7 @@ from tests.tool_calls import call_tool, failure_text, fake_services
 
 @pytest.mark.parametrize("ref", ["kaggle:ana/sample", "https://www.kaggle.com/api/v1/datasets/download/ana/sample"])
 def test_model_cannot_download_from_kaggle_inputs(ref: str) -> None:
-    from sillytherin.workspace.datasets.links import parse_dataset_ref
+    from core.workspace.datasets.links import parse_dataset_ref
 
     with pytest.raises(WorkspaceError) as error:
         parse_dataset_ref(ref)

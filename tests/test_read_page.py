@@ -1,9 +1,9 @@
 import pytest
 from langchain_core.tools import ToolException
 
-from sillytherin.config import READ_PAGE_MAX_CHARS
-from sillytherin.tools import TOOLS, read_page
-from sillytherin.tools.read_page import check_public_url, fetch_page_text
+from core.config import READ_PAGE_MAX_CHARS
+from core.tools import TOOLS, read_page
+from core.tools.read_page import check_public_url, fetch_page_text
 
 
 @pytest.mark.parametrize(

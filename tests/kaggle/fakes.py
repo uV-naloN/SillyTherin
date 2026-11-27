@@ -8,9 +8,9 @@ from typing import ClassVar
 
 import httpx
 
-from sillytherin.workspace.kaggle import oauth
-from sillytherin.workspace.kaggle.dtos.callback import CallbackResult
-from sillytherin.workspace.kaggle.my_datasets import LIST_DATASETS_URL
+from core.workspace.kaggle import oauth
+from core.workspace.kaggle.dtos.callback import CallbackResult
+from core.workspace.kaggle.my_datasets import LIST_DATASETS_URL
 
 ACCESS_TOKEN = "AT-SECRET-0001"
 REFRESHED_ACCESS_TOKEN = "AT-SECRET-0002"

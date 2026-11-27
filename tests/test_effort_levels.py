@@ -2,17 +2,17 @@
 
 import asyncio
 
-from sillytherin import llm
-from sillytherin.chat_start import pickers_for
-from sillytherin.config import check_levels
-from sillytherin.contracts.chat import ModelInfo, PickerChoices, Picks
-from sillytherin.modes import (
+from core import llm
+from core.chat_start import pickers_for
+from core.config import check_levels
+from core.contracts.chat import ModelInfo, PickerChoices, Picks
+from core.modes import (
     EFFORT_MODE_ID,
     MODEL_MODE_ID,
     chosen_picks,
     effort_levels_for,
 )
-from sillytherin.settings import reasoning_body
+from core.settings import reasoning_body
 
 # ---- Group 1 — levels per model on the server · unit
 # Baseline: config levels default, off, low, medium, high; a model that thinks, lists efforts
