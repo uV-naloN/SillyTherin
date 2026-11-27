@@ -2,10 +2,13 @@
 
 import asyncio
 import inspect
+import json
 from dataclasses import dataclass, field
 from uuid import uuid4
 
 import pytest
+from langchain_core.messages import AIMessageChunk, HumanMessage
+from langchain_core.outputs import ChatGenerationChunk
 
 from sillytherin import turn
 from sillytherin.agent import stream
@@ -473,3 +476,193 @@ def test_answer_capture_failure_does_not_change_delivery() -> None:
     content, losses, answer = capture_reply(chunks=("\ud800",))
     assert content is None and losses == [RecordingLoss.OBSERVER_FAILED]
     assert answer.delivered == ["\ud800", "final"]
+
+
+def test_model_children_pair_round_messages_and_responses(
+    scripted: ScriptedChatModel, searches: list[dict],
+) -> None:
+    timing = TimingHarness()
+    scripted.scripts = [
+        [tool_call_chunk("web_search", {"query": "Find the source"})],
+        [text_chunk("The source says hello.")],
+    ]
+
+    reply = run_one_turn(text="hello", run_reply=timing.runner())
+
+    assert reply.answer.final == "The source says hello."
+    assert searches == [{"query": "Find the source"}]
+    trace, = timing.traces
+    model_spans = [span for span in trace.children if span.kind is SpanKind.MODEL]
+    assert len(model_spans) == 2
+    first_exchange, second_exchange = [span.model_exchange for span in model_spans]
+    assert first_exchange is not None and second_exchange is not None
+    first_input = json.loads(first_exchange.input_json)
+    second_input = json.loads(second_exchange.input_json)
+    assert first_input[-1] == {"role": "user", "content": "hello"}
+    assert second_input[-1]["role"] == "tool"
+    assert json.loads(first_exchange.output_json or "{}")["messages"][0]["tool_calls"][0]["name"] == "web_search"
+    assert json.loads(second_exchange.output_json or "{}")["messages"][0]["content"] == "The source says hello."
+
+
+def test_model_exchange_preserves_structured_content_and_returned_reasoning() -> None:
+    # Given the shared valid setup, Use structured messages and returned reasoning.
+    # When the model exchange is observed and exported.
+    # Then All content blocks and supported reasoning fields remain structured and ordered.
+    # Demonstrates Full callback-visible content.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_model_exchange_preserves_empty_completed_message() -> None:
+    # Given the shared valid setup, Last model call yields a real empty result.
+    # When the model exchange is observed and exported.
+    # Then Completed empty assistant message. Chat may deliver its existing fallback.
+    # Demonstrates Empty model output is observable.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_overlapping_model_runs_keep_each_runs_content() -> None:
+    # Given the shared valid setup, Finish overlapping runs in reverse order across two turns, including a repeated UUID across recorders.
+    # When the model exchange is observed and exported.
+    # Then Each child owns its original input/output, and representations exclude sentinels.
+    # Demonstrates Run and turn isolation.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_model_exchange_preserves_raw_tool_fragments_after_argument_recovery() -> None:
+    # Given the shared valid setup, Split an invalid argument across chunks.
+    # When the model exchange is observed and exported.
+    # Then Preserve fragments and any terminal parsed/invalid fields. Tool guard retains its current decision.
+    # Demonstrates Observable raw tool syntax.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_model_callbacks_for_unknown_run_are_ignored() -> None:
+    # Given the shared valid setup, Inject a chunk or terminal event for an unstarted run.
+    # When the model exchange is observed and exported.
+    # Then No extra child and no change to known runs or chat.
+    # Demonstrates Callback ownership.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_duplicate_and_late_model_callbacks_preserve_sealed_content() -> None:
+    # Given the shared valid setup, Replay callbacks with different content.
+    # When the model exchange is observed and exported.
+    # Then First start and terminal values win. Post-seal events change neither snapshot nor count.
+    # Demonstrates Stable lifecycle.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_provider_failure_exports_only_received_model_fragments() -> None:
+    timing = TimingHarness()
+
+    async def interrupted_turn(
+        chat: ChatState, message: UserMessage, views: TurnViews, *, hooks: TurnHooks,
+    ) -> None:
+        observer, = hooks.callbacks
+        run_id = uuid4()
+        await observer.on_chat_model_start({}, [[HumanMessage(content="prompt")]], run_id=run_id)
+        chunks = (
+            AIMessageChunk(content="", additional_kwargs={"reasoning_content": "a thought"}),
+            text_chunk("partial"),
+            tool_call_chunk("web_search", "{"),
+        )
+        for chunk in chunks:
+            await observer.on_llm_new_token("", chunk=ChatGenerationChunk(message=chunk), run_id=run_id)
+        await observer.on_llm_error(RuntimeError("private exception"), run_id=run_id)
+        await views.answer.finish("The request failed")
+        hooks.on_completion(turn.TurnOutcome.FAILED)
+
+    runner = ObservedTurnRunner(interrupted_turn, timing, TraceClock(lambda: 1000, timing.monotonic_ns))
+    assert run_one_turn(run_reply=runner).answer.final == "The request failed"
+    trace, = timing.traces
+    child, = trace.children
+    assert child.outcome is SpanOutcome.FAILED
+    exchange = child.model_exchange
+    assert exchange is not None
+    assert json.loads(exchange.input_json) == [{"role": "user", "content": "prompt"}]
+    assert exchange.output_json is not None
+    reasoning, text, tool = json.loads(exchange.output_json)["chunks"]
+    assert reasoning["reasoning_content"] == "a thought"
+    assert text["content"] == "partial"
+    assert tool["tool_call_fragments"][0]["args"] == "{"
+    assert "private exception" not in exchange.output_json
+
+
+def test_stopping_model_stream_keeps_cancelled_partial_exchange() -> None:
+    # Given the shared valid setup, Replace provider failure with socket Stop.
+    # When the model exchange is observed and exported.
+    # Then Child is cancelled and partial. The socket delivers its normal stopped reply.
+    # Demonstrates Real cancellation.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_unfinished_model_callback_is_interrupted_at_turn_seal() -> None:
+    # Given the shared valid setup, Omit terminal callback.
+    # When the model exchange is observed and exported.
+    # Then Open child ends at turn seal with `interrupted` and exact buffered content.
+    # Demonstrates Abandoned run.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_error_response_content_is_used_when_no_stream_chunks_arrived() -> None:
+    # Given the shared valid setup, Deliver content only in the error callback result.
+    # When the model exchange is observed and exported.
+    # Then Partial contains the actual supplied messages and no diagnostic fields.
+    # Demonstrates Terminal error payload fallback.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_failure_before_output_omits_model_output() -> None:
+    # Given the shared valid setup, Fail before any content.
+    # When the model exchange is observed and exported.
+    # Then Input is present and output omitted with `missing`.
+    # Demonstrates No fabricated output.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_error_metadata_does_not_become_model_output() -> None:
+    # Given the shared valid setup, Provide only an empty HTTP error generation.
+    # When the model exchange is observed and exported.
+    # Then Output omitted. Markers for body, headers and exception stay out of exchange, wire and logs. Existing chat error behavior remains.
+    # Demonstrates Safe missing output.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_model_capture_accepts_exact_utf8_budget() -> None:
+    # Given the shared valid setup, —.
+    # When the model exchange is observed and exported.
+    # Then Exact-byte payload is retained without truncating.
+    # Demonstrates Inclusive capture limit.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_small_model_result_replaces_oversized_pending_text() -> None:
+    # Given the shared valid setup, Overflow only speculative text, then supply a legal terminal result.
+    # When the model exchange is observed and exported.
+    # Then Complete output uses exact terminal result and retains any required in-budget tool fragments.
+    # Demonstrates Bounded scratch storage with success recovery.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_model_capture_drops_turn_when_rounds_exceed_total_budget() -> None:
+    # Given the shared valid setup, Add one byte across otherwise valid model rounds.
+    # When the model exchange is observed and exported.
+    # Then No queued partial trace. Safe `invalid_trace`. Model requests retain their full context and chat and history match the same run with tracing disabled.
+    # Demonstrates Combined tracing budget across children and independent model context.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_interrupted_model_capture_drops_overflowing_prefix() -> None:
+    # Given the shared valid setup, In an interrupted variant, make the retained stream exceed its scratch allowance.
+    # When the model exchange is observed and exported.
+    # Then No trace or truncated prefix sent. Existing stopped reply continues.
+    # Demonstrates Honest incomplete output under pressure.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_model_capture_drops_trace_when_required_tool_fragments_overflow() -> None:
+    # Given the shared valid setup, Overflow raw tool fragments while the terminal result fits.
+    # When the model exchange is observed and exported.
+    # Then No trace and safe loss. Tool guard and chat retain native behavior.
+    # Demonstrates Required raw evidence cannot silently disappear.
+    pytest.fail("TODO: implement this behavior")

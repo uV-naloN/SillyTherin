@@ -1,11 +1,24 @@
 """A chat over its WebSocket: open, stream, tools, panel, Stop, prompts, reconnect and close."""
 
 import time
+from contextlib import ExitStack
 
+import pytest
+from starlette.testclient import TestClient, WebSocketTestSession
+from starlette.websockets import WebSocketDisconnect
+
+from sillytherin.chat.mode import AgentMode
+from sillytherin.chat.ports import ChatState
+from sillytherin.server.events import MAX_FRAME_BYTES
+from sillytherin.server.socket import ChatSessions
 from sillytherin.tools import approval, web_search
+from sillytherin.turn import TurnViews, UserMessage
 from sillytherin.workspace import actions
+from tests.scripted_chat_model import ScriptedChatModel
 from tests.server.conftest import (
     HANG,
+    OWN_HOST,
+    OWN_PAGE,
     events_until,
     next_event_after_probe,
     open_tab,
@@ -232,3 +245,138 @@ def test_closing_the_tab_deletes_the_chat(client, model, sessions, services):
     assert client.portal.call(actions.chats.send, chat_id, "anyone there?") is False
     written = [path for path in services.root.rglob("*") if path.is_file() and secret.encode() in path.read_bytes()]
     assert written == []
+
+
+def select_mode(tab: WebSocketTestSession, mode: AgentMode) -> None:
+    tab.send_json({"type": "agent_mode.set", "mode": mode})
+    assert tab.receive_json() == {"type": "agent_mode.changed", "mode": mode}
+
+
+@pytest.mark.parametrize("blocked_header", ["origin", "host"])
+def test_mode_cannot_be_changed_through_foreign_socket(
+    client: TestClient, blocked_header: str,
+) -> None:
+    with open_tab(client) as tab:
+        chat_id = tab.receive_json()["chat_id"]
+        select_mode(tab, "manual")
+        headers = {"origin": OWN_PAGE, "host": OWN_HOST, blocked_header: "https://foreign.example"}
+        with (
+            pytest.raises(WebSocketDisconnect) as closed,
+            client.websocket_connect(f"/ws/chat?chat_id={chat_id}", headers=headers),
+        ):
+            pytest.fail("A foreign socket opened")
+        assert closed.value.code == 1008
+        with open_tab(client, chat_id) as resumed:
+            assert resumed.receive_json()["agent_mode"] == "manual"
+
+
+def test_ignores_mode_updates_from_replaced_socket(client: TestClient, sessions: ChatSessions) -> None:
+    with ExitStack() as connected, ExitStack() as original_connection:
+        original = original_connection.enter_context(open_tab(client))
+        chat_id = original.receive_json()["chat_id"]
+        select_mode(original, "manual")
+        replacement = connected.enter_context(open_tab(client, chat_id))
+        assert replacement.receive_json()["agent_mode"] == "manual"
+        original.send_json({"type": "agent_mode.set", "mode": "free"})
+        original_connection.close()
+        assert next_event_after_probe(replacement)["code"] == "UNKNOWN_ASK"
+        chat = sessions.resume(chat_id)
+        assert chat is not None and chat.agent_mode == "manual"
+
+
+def test_closes_socket_on_oversized_mode_frame(client: TestClient) -> None:
+    with open_tab(client) as tab:
+        chat_id = tab.receive_json()["chat_id"]
+        select_mode(tab, "manual")
+        tab.send_json({"type": "agent_mode.set", "mode": "f" * MAX_FRAME_BYTES})
+        with pytest.raises(WebSocketDisconnect) as closed:
+            tab.receive_json()
+        assert closed.value.code == 1009
+    with open_tab(client, chat_id) as resumed:
+        assert resumed.receive_json()["agent_mode"] == "manual"
+
+
+def capture_turns(sessions: ChatSessions, monkeypatch: pytest.MonkeyPatch) -> list[UserMessage]:
+    messages: list[UserMessage] = []
+    run_reply = sessions._run_reply
+
+    async def record_turn(state: ChatState, message: UserMessage, views: TurnViews) -> None:
+        messages.append(message)
+        await run_reply(state, message, views)
+
+    monkeypatch.setattr(sessions, "_run_reply", record_turn)
+    return messages
+
+
+def test_accepts_mode_selection_and_snapshots_for_reply(
+    client: TestClient, sessions: ChatSessions, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    messages = capture_turns(sessions, monkeypatch)
+    with open_tab(client) as tab:
+        assert tab.receive_json()["agent_mode"] == "auto"
+        select_mode(tab, "manual")
+        send_message(tab)
+        events_until(tab, "reply.ended")
+    assert [message.agent_mode for message in messages] == ["manual"]
+
+
+def test_repeated_mode_selection_is_idempotent(
+    client: TestClient, sessions: ChatSessions, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    messages = capture_turns(sessions, monkeypatch)
+    with open_tab(client) as tab:
+        chat_id = tab.receive_json()["chat_id"]
+        select_mode(tab, "manual")
+        select_mode(tab, "manual")
+        chat = sessions.resume(chat_id)
+        assert chat is not None and chat.turn is None
+    assert messages == []
+
+
+def test_mode_change_during_reply_applies_to_next_reply(
+    client: TestClient, sessions: ChatSessions, model: ScriptedChatModel, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    messages = capture_turns(sessions, monkeypatch)
+    model.scripts += [[text_chunk("first"), HANG], [text_chunk("second")]]
+    with open_tab(client) as tab:
+        tab.receive_json()
+        select_mode(tab, "manual")
+        send_message(tab, "one")
+        events_until(tab, "reply.delta")
+        select_mode(tab, "free")
+        assert [message.agent_mode for message in messages] == ["manual"]
+        tab.send_json({"type": "chat.stop"})
+        events_until(tab, "reply.ended")
+        send_message(tab, "two")
+        events_until(tab, "reply.ended")
+    assert [message.agent_mode for message in messages] == ["manual", "free"]
+
+
+def test_mode_change_preserves_disabled_tool_settings(
+    client: TestClient, model: ScriptedChatModel,
+) -> None:
+    with open_tab(client) as tab:
+        tab.receive_json()
+        tab.send_json({"type": "settings.update", "values": {"web_search": False}})
+        select_mode(tab, "free")
+        send_message(tab)
+        events_until(tab, "reply.ended")
+    assert "web_search" not in model.tool_names(0)
+
+
+def test_only_same_chat_restores_mode(client: TestClient) -> None:
+    with open_tab(client) as tab:
+        chat_id = tab.receive_json()["chat_id"]
+        select_mode(tab, "free")
+    with open_tab(client, chat_id) as resumed, open_tab(client) as other:
+        snapshot = resumed.receive_json()
+        assert (snapshot["chat_id"], snapshot["agent_mode"]) == (chat_id, "free")
+        assert other.receive_json()["agent_mode"] == "auto"
+
+
+def test_unknown_chat_starts_in_auto(client: TestClient) -> None:
+    with open_tab(client, "unknown") as tab:
+        assert tab.receive_json() == {"type": "chat.closed"}
+        snapshot = tab.receive_json()
+        assert snapshot["chat_id"] != "unknown"
+        assert snapshot["agent_mode"] == "auto"

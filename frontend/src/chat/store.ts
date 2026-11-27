@@ -1,8 +1,9 @@
 // The chat's state. Only applyEvent changes it in answer to the server, so every event's effect
 // is one pure function the tests can check without a socket or a page.
 import { create } from "zustand";
+import type { AgentMode } from "@/chat/events";
 import { effortAfterModelChange, effortLevelsOf, restoredPicks, type Picks } from "@/chat/lib/effortLevels";
-import type { Choice, ChatLine, Picker, ServerEvent, SessionReady, SettingSwitch, ToastKind } from "@/chat/events";
+import type { Choice, ChatLine, Picker, ReplyInterruptionReason, ServerEvent, SessionReady, SettingSwitch, ToastKind } from "@/chat/events";
 import type { ConnectionStatus } from "@/chat/connection";
 import type { NotebookProps } from "@/panel/types";
 import { newer } from "@/panel/lib/newer";
@@ -25,6 +26,7 @@ export interface AnswerView {
   text: string;
   isStreaming: boolean;
   group: WorkGroupView | null;
+  interruptionReason?: ReplyInterruptionReason | null;
 }
 
 export interface UserLine { id: string; role: "user"; text: string }
@@ -60,8 +62,11 @@ export interface ChatState {
   toasts: ToastView[];
   kaggle: KagglePopupView | null;
   picked: { model: string; effort: string };
+  agentMode: AgentMode;
   nextId: number; // for toasts and lines the page adds itself
 }
+
+const DEFAULT_AGENT_MODE: AgentMode = "auto";
 
 export const emptyChat = (): ChatState => ({
   chatId: null,
@@ -77,6 +82,7 @@ export const emptyChat = (): ChatState => ({
   toasts: [],
   kaggle: null,
   picked: { model: "", effort: "" },
+  agentMode: DEFAULT_AGENT_MODE,
   nextId: 1,
 });
 
@@ -99,8 +105,21 @@ function linesToMessages(lines: ChatLine[]): MessageView[] {
   return lines.map((line, index) =>
     line.role === "user"
       ? { id: `line-${index}`, role: "user", text: line.text }
-      : { id: `line-${index}`, role: "assistant", text: line.text, isStreaming: false, group: null },
+      : {
+        id: `line-${index}`, role: "assistant", text: line.text, isStreaming: false, group: null,
+        interruptionReason: line.interruption_reason,
+      },
   );
+}
+
+function restoreInterruptedAnswer(messages: MessageView[], lines: ChatLine[]): MessageView[] {
+  return messages.map((message, index) => {
+    const line = lines[index];
+    if (message.role !== "assistant" || !message.isStreaming || line?.role !== "assistant" || !line.interruption_reason) {
+      return message;
+    }
+    return { ...message, text: line.text, isStreaming: false, interruptionReason: line.interruption_reason };
+  });
 }
 
 function sessionReady(state: ChatState, event: SessionReady): ChatState {
@@ -110,13 +129,14 @@ function sessionReady(state: ChatState, event: SessionReady): ChatState {
     ...state,
     chatId: event.chat_id,
     status: "open",
-    messages: isSameChat ? state.messages : linesToMessages(event.messages),
+    messages: isSameChat ? restoreInterruptedAnswer(state.messages, event.messages) : linesToMessages(event.messages),
     prompts: isSameChat ? state.prompts : [],
     kagglePrompts: [],
     pickers: event.pickers,
     settings: event.settings,
     panel: event.panel,
     picked: pickedFrom(event.pickers, state.picked),
+    agentMode: event.agent_mode ?? DEFAULT_AGENT_MODE,
   };
 }
 
@@ -151,16 +171,20 @@ function streamingAnswerId(state: ChatState): string | null {
 /** The state after one server event; events it can't place leave it unchanged */
 export function applyEvent(state: ChatState, event: ServerEvent): ChatState {
   switch (event.type) {
+    case "agent_mode.changed":
+      return { ...state, agentMode: event.mode };
     case "session.ready":
       return sessionReady(state, event);
     case "chat.closed":
-      return { ...state, chatId: null, messages: [], prompts: [], kagglePrompts: [], notice: RESTART_NOTICE };
+      return { ...state, chatId: null, agentMode: DEFAULT_AGENT_MODE, messages: [], prompts: [], kagglePrompts: [], notice: RESTART_NOTICE };
     case "reply.started":
       return withAnswer(state, event.message_id);
     case "reply.delta":
       return updateAnswer(state, event.message_id, (a) => ({ ...a, text: a.text + event.text }));
     case "reply.ended":
-      return updateAnswer(withAnswer(state, event.message_id), event.message_id, (a) => ({ ...a, text: event.text, isStreaming: false }));
+      return updateAnswer(withAnswer(state, event.message_id), event.message_id, (answer) => ({
+        ...answer, text: event.text, isStreaming: false, interruptionReason: event.interruption_reason,
+      }));
     case "group.label":
       return updateGroup(state, event.message_id, (g) => ({ ...g, label: event.label }));
     case "thinking.delta":

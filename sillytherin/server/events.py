@@ -7,9 +7,18 @@ refused rather than converted, and fields the page may not set are dropped.
 from enum import StrEnum
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    TypeAdapter,
+    ValidationError,
+    model_serializer,
+)
 
-from sillytherin.chat.ports import Choice, ToastKind
+from sillytherin.chat.mode import DEFAULT_AGENT_MODE, AgentMode
+from sillytherin.chat.ports import Choice, ReplyInterruptionReason, ToastKind
 from sillytherin.chat.widgets import Picker, SettingSwitch
 
 MAX_MESSAGE_CHARS = 100_000
@@ -38,6 +47,13 @@ class ChatSend(PageEvent):
     text: str = Field(min_length=1, max_length=MAX_MESSAGE_CHARS)
     model: str = Field(max_length=200)
     effort: str = Field(max_length=MAX_ID_CHARS)
+
+
+class AgentModeSet(PageEvent):
+    model_config = ConfigDict(extra="forbid", strict=True, frozen=True)
+
+    type: Literal["agent_mode.set"]
+    mode: AgentMode
 
 
 class ChatStop(PageEvent):
@@ -70,7 +86,7 @@ class PanelAction(PageEvent):
     payload: dict[str, Any]
 
 
-AnyPageEvent = Annotated[ChatSend | ChatStop | SettingsUpdate | AskAnswer | PanelAction, Field(discriminator="type")]
+AnyPageEvent = Annotated[ChatSend | AgentModeSet | ChatStop | SettingsUpdate | AskAnswer | PanelAction, Field(discriminator="type")]
 
 
 _PAGE_EVENTS: TypeAdapter[PageEvent] = TypeAdapter(AnyPageEvent)
@@ -91,13 +107,26 @@ class ServerEvent(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-class ChatLine(BaseModel):
+class ReplyContentFields(BaseModel):
+    text: str
+    interruption_reason: ReplyInterruptionReason | None = Field(
+        default=None, description="Marks a partial answer that ended with a provider relay error.",
+    )
+
+    @model_serializer(mode="wrap")
+    def serialize_reply_content(self, serialize: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        fields = serialize(self)
+        if self.interruption_reason is None:
+            fields.pop("interruption_reason", None)
+        return fields
+
+
+class ChatLine(ReplyContentFields):
     """One message already in the chat, so a reconnected page can redraw it."""
 
     model_config = ConfigDict(frozen=True)
 
     role: Literal["user", "assistant"]
-    text: str
 
 
 class SessionReady(ServerEvent):
@@ -109,6 +138,12 @@ class SessionReady(ServerEvent):
     pickers: list[Picker]
     settings: list[SettingSwitch]
     panel: dict[str, Any]  # NotebookProps of the chat's project
+    agent_mode: AgentMode = DEFAULT_AGENT_MODE
+
+
+class AgentModeChanged(ServerEvent):
+    type: Literal["agent_mode.changed"] = "agent_mode.changed"
+    mode: AgentMode
 
 
 class ChatClosed(ServerEvent):
@@ -128,12 +163,11 @@ class ReplyDelta(ServerEvent):
     text: str
 
 
-class ReplyEnded(ServerEvent):
+class ReplyEnded(ServerEvent, ReplyContentFields):
     """The reply's final text, including a partial answer after Stop or an "Error: …" text."""
 
     type: Literal["reply.ended"] = "reply.ended"
     message_id: str
-    text: str
 
 
 class GroupLabel(ServerEvent):

@@ -1,5 +1,6 @@
 """Native agent observation belongs to the optional app layer."""
 
+import logging
 from asyncio import CancelledError
 from collections.abc import Awaitable, Callable
 from contextlib import AbstractContextManager, nullcontext
@@ -12,11 +13,17 @@ from langchain_core.callbacks import AsyncCallbackHandler
 from langchain_core.messages import BaseMessage, ToolMessage
 from langgraph.types import Command
 
+from sillytherin.observability.model_capture import (
+    capture_model_chunk,
+    encode_model_input,
+)
 from sillytherin.observability.reply_trace import (
     MODEL_NAME,
     OTHER_TOOL_LABEL,
     SAFE_TOOL_LABELS,
     ApprovalWait,
+    ModelExchange,
+    ModelOutputState,
     ReplyRecorder,
     SpanKind,
     SpanOutcome,
@@ -27,6 +34,7 @@ TOOL_LABELS = {
     tool.name: f"tool.{tool.name}" for tool in (*TOOLS, *NOTEBOOK_TOOLS)
     if f"tool.{tool.name}" in SAFE_TOOL_LABELS
 }
+log = logging.getLogger(__name__)
 current_wait: ContextVar[ApprovalWait | None] = ContextVar("tool_approval_wait", default=None)
 
 
@@ -65,12 +73,41 @@ class NativeStageObserver(AsyncCallbackHandler):
         self, serialized: dict[str, Any], messages: list[list[BaseMessage]], *, run_id: UUID, **kwargs: Any
     ) -> None:
         self.start_stage(run_id, SpanKind.MODEL, MODEL_NAME)
+        if len(messages) != 1:
+            return
+        try:
+            model_messages, = messages
+            exchange = ModelExchange(encode_model_input(model_messages), None, ModelOutputState.MISSING)
+            self._recorder.attach_model_exchange(run_id, exchange)
+        except Exception as error:  # noqa: BLE001 - callback capture cannot change model behavior
+            log.warning("Model trace capture failed at start: %s", type(error).__name__)
+            self._recorder.invalidate()
 
     async def on_llm_end(self, response: object, *, run_id: UUID, **kwargs: Any) -> None:
-        self.finish_stage(run_id, SpanOutcome.SUCCEEDED)
+        self.finish_model_exchange(response, run_id, SpanOutcome.SUCCEEDED)
+
+    async def on_llm_new_token(
+        self, token: str, *, chunk: object = None, run_id: UUID, **kwargs: Any
+    ) -> None:
+        """Capture a response fragment for its model run."""
+        try:
+            projected = capture_model_chunk(chunk, token)
+            if projected is not None:
+                self._recorder.record_model_chunk(run_id, projected)
+        except Exception as error:  # noqa: BLE001 - callback capture cannot change model behavior
+            log.warning("Model trace capture failed for chunk: %s", type(error).__name__)
+            self._recorder.invalidate()
+
+    def finish_model_exchange(self, response: object | None, run_id: UUID, outcome: SpanOutcome) -> None:
+        """Attach one terminal response to its matching model run."""
+        try:
+            self._recorder.finish_model_stage(run_id, outcome, response)
+        except Exception as error:  # noqa: BLE001 - callback capture cannot change model behavior
+            log.warning("Model trace capture failed at finish: %s", type(error).__name__)
+            self._recorder.invalidate()
 
     async def on_llm_error(self, error: BaseException, *, run_id: UUID, **kwargs: Any) -> None:
-        self.finish_stage(run_id, failure_outcome(error))
+        self.finish_model_exchange(kwargs.get("response"), run_id, failure_outcome(error))
 
     async def on_tool_start(
         self, serialized: dict[str, Any], input_str: str, *, run_id: UUID, **kwargs: Any

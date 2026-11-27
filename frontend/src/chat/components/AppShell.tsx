@@ -2,6 +2,7 @@
 // the panel takes the room and the chat is a side column; closed, the page is a full-width chat.
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { AppHeader } from "@/chat/components/AppHeader";
+import { AppSidebar } from "@/chat/components/AppSidebar";
 import { Composer } from "@/chat/components/Composer";
 import { ConnectionBar } from "@/chat/components/ConnectionBar";
 import { KaggleDatasetsWindow } from "@/chat/components/KaggleDatasetsWindow";
@@ -120,15 +121,6 @@ export function AppShell(): JSX.Element {
   return (
     <div className="flex h-full flex-col bg-background text-foreground" data-notebook={isOpen ? "open" : "closed"}>
       <ConnectionBar status={status} />
-      <AppHeader
-        projectName={panel?.project.name ?? null}
-        theme={theme}
-        isNotebookOpen={isOpen}
-        onNewChat={() => window.location.reload()}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        onToggleTheme={() => changeTheme(theme === "dark" ? "light" : "dark")}
-        onToggleNotebook={toggleNotebook}
-      />
       {kaggle && <KaggleSignInDialog popup={kaggle} onClose={() => useChat.getState().closeKaggle()} />}
       {isKaggleWindowOpen && (
         <KaggleDatasetsWindow
@@ -142,45 +134,62 @@ export function AppShell(): JSX.Element {
           onClose={() => setIsKaggleWindowOpen(false)}
         />
       )}
-      <div ref={row} className="flex min-h-0 flex-1 overflow-hidden max-md:flex-col">
-        <main
-          aria-label="Chat"
-          data-width={isOpen ? "narrow" : "full"}
-          style={{ "--chat-width": `${chatWidth}px` } as CSSProperties}
-          className={[
-            "flex min-h-0 min-w-0 flex-col max-md:flex-1",
-            isOpen ? "md:w-[var(--chat-width)] md:shrink-0" : "md:w-full md:shrink-0",
-            isResizing ? "" : "transition-[width] duration-300 ease-out motion-reduce:transition-none",
-          ].join(" ")}
-        >
-          {hasStarted ? <MessageList /> : <StartScreen theme={theme} />}
-          {kagglePrompts.length > 0 && <KaggleChatPrompts prompts={kagglePrompts} />}
-          <Composer isStreaming={isStreaming} onSend={sendMessage} onStop={() => send({ type: "chat.stop" })} commands={commands} />
-        </main>
-        {isOpen && (
-          <PanelDivider
-            width={chatWidth}
-            maxWidth={clampChatWidth(Number.MAX_SAFE_INTEGER, rowSize)}
-            rowLeft={() => row.current?.getBoundingClientRect().left ?? 0}
-            onResize={resizeChat}
-            onResizeDone={rememberWidth}
-            onDraggingChange={setIsResizing}
-          />
-        )}
-        <aside
-          aria-label="Notebook panel"
-          ref={aside}
-          aria-hidden={!isOpen}
-          data-open={isOpen}
-          className={[
-            "min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-card transition-opacity duration-300 ease-out max-md:border-t",
-            isOpen ? "opacity-100" : "pointer-events-none opacity-0 max-md:hidden",
-          ].join(" ")}
-        >
-          <div className="h-full min-w-[360px]">
-            <NotebookPanel props={panel} callAction={callAction} />
-          </div>
-        </aside>
+      <div className="grid min-h-0 flex-1 grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)]">
+        <AppSidebar onNewChat={() => window.location.reload()} onOpenSettings={() => setIsSettingsOpen(true)} />
+        <AppHeader
+          projectName={panel?.project.name ?? null}
+          theme={theme}
+          isNotebookOpen={isOpen}
+          onToggleTheme={() => changeTheme(theme === "dark" ? "light" : "dark")}
+          onToggleNotebook={toggleNotebook}
+        />
+        <div ref={row} className="flex min-h-0 flex-1 overflow-hidden max-md:flex-col">
+          <main
+            aria-label="Chat"
+            data-width={isOpen ? "narrow" : "full"}
+            style={{ "--chat-width": `${chatWidth}px` } as CSSProperties}
+            className={[
+              "flex min-h-0 min-w-0 flex-col max-md:flex-1",
+              isOpen ? "md:w-[var(--chat-width)] md:shrink-0" : "md:w-full md:shrink-0",
+              isResizing ? "" : "transition-[width] duration-300 ease-out motion-reduce:transition-none",
+            ].join(" ")}
+          >
+            {hasStarted ? <MessageList /> : <StartScreen theme={theme} />}
+            {kagglePrompts.length > 0 && <KaggleChatPrompts prompts={kagglePrompts} />}
+            <Composer
+              isStreaming={isStreaming}
+              onSend={sendMessage}
+              onStop={() => send({ type: "chat.stop" })}
+              commands={commands}
+              isConnected={status === "open"}
+              onModeChange={(mode) => send({ type: "agent_mode.set", mode })}
+            />
+          </main>
+          {isOpen && (
+            <PanelDivider
+              width={chatWidth}
+              maxWidth={clampChatWidth(Number.MAX_SAFE_INTEGER, rowSize)}
+              rowLeft={() => row.current?.getBoundingClientRect().left ?? 0}
+              onResize={resizeChat}
+              onResizeDone={rememberWidth}
+              onDraggingChange={setIsResizing}
+            />
+          )}
+          <aside
+            aria-label="Notebook panel"
+            ref={aside}
+            aria-hidden={!isOpen}
+            data-open={isOpen}
+            className={[
+              "min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden max-md:overflow-x-auto bg-card transition-opacity duration-300 ease-out max-md:border-t",
+              isOpen ? "opacity-100" : "pointer-events-none opacity-0 max-md:hidden",
+            ].join(" ")}
+          >
+            <div className="h-full min-w-[360px]">
+              <NotebookPanel props={panel} callAction={callAction} />
+            </div>
+          </aside>
+        </div>
       </div>
       <SettingsDialog
         open={isSettingsOpen}

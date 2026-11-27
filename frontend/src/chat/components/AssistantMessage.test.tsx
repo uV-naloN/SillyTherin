@@ -1,6 +1,6 @@
 // Answers
 // Baseline: Given one finished answer · When it renders
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AssistantMessage } from "@/chat/components/AssistantMessage";
 import { MessageList } from "@/chat/components/MessageList";
@@ -52,8 +52,39 @@ describe("Answers", () => {
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
     expect(screen.queryByText("Web search: hanoi")).toBeNull();
     fireEvent.click(toggle);
-    expect(screen.getByText("Web search: hanoi")).toBeTruthy();
-    expect(screen.getByText("Looking up sources")).toBeTruthy();
+    const timeline = screen.getByRole("list", { name: "Activity timeline" });
+    const tool = within(timeline).getByText("Web search: hanoi").closest("details");
+    expect(tool?.open).toBe(false);
+    expect(tool?.textContent).toContain("3 results");
+    expect(within(timeline).getByText("Looking up sources").closest("details")?.open).toBe(false);
+  });
+
+  it("shows current activity, approval, and tool outcomes from chat events", () => {
+    startChat([
+      { type: "group.label", message_id: "m1", label: "Web search: hanoi" },
+    ]);
+    renderWithChat(<MessageList />);
+    const activity = screen.getByRole("region", { name: "Agent activity" });
+    expect(within(activity).getByText("Web search: hanoi")).toBeTruthy();
+    expect(within(activity).getByText("Running")).toBeTruthy();
+
+    act(() => useChat.getState().apply({
+      type: "ask.opened", ask_id: "q1", markdown: "Allow the search?", choices: [{ id: "allow", label: "Allow" }],
+    }));
+    expect(within(activity).getByText("Needs you")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Allow" })).toBeTruthy();
+
+    act(() => {
+      useChat.getState().apply({ type: "ask.closed", ask_id: "q1", choice: "allow" });
+      useChat.getState().apply({ type: "step.done", message_id: "m1", title: "Web search: hanoi", output: "Failed: Request timed out." });
+    });
+    const timeline = within(activity).getByRole("list", { name: "Activity timeline" });
+    expect(within(timeline).getByText("Failed")).toBeTruthy();
+    expect(within(timeline).getByText("Failed: Request timed out.")).toBeTruthy();
+
+    act(() => useChat.getState().apply({ type: "group.done", message_id: "m1", label: "1 step · 4s" }));
+    expect(within(activity).queryByRole("list", { name: "Activity timeline" })).toBeNull();
+    expect(within(activity).getByText("1 step · 4s")).toBeTruthy();
   });
 
   it("copy puts the answer on the clipboard", async () => {
@@ -83,4 +114,32 @@ describe("Answers", () => {
     act(() => useChat.getState().apply({ type: "reply.delta", message_id: "m1", text: " text" }));
     expect(list.scrollTop).toBe(100);
   });
+});
+
+
+const INTERRUPTED_NOTICE =
+  "This reply was interrupted because OpenRouter couldn’t route the request. You can send your message again in a moment.";
+
+it("shows_relay_interruption_below_partial_answer", () => {
+  render(<AssistantMessage answer={answer({ text: "Partial answer", interruptionReason: "openrouter_relay_failed" })} />);
+  const body = screen.getByText("Partial answer");
+  const status = screen.getByRole("status");
+  expect(status.textContent).toBe(INTERRUPTED_NOTICE);
+  expect(body.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+it("shows_relay_interruption_after_unclosed_code_fence", () => {
+  const { container } = render(
+    <AssistantMessage answer={answer({ text: "```python\nprint('part')", interruptionReason: "openrouter_relay_failed" })} />,
+  );
+  expect(container.querySelector("pre")?.textContent).toBe("print('part')");
+  const status = screen.getByRole("status");
+  expect(status.textContent).toBe(INTERRUPTED_NOTICE);
+  expect(status.closest("pre")).toBeNull();
+});
+
+it("omits_interruption_footer_for_ordinary_answer", () => {
+  render(<AssistantMessage answer={answer({ text: INTERRUPTED_NOTICE })} />);
+  expect(screen.getByText(INTERRUPTED_NOTICE)).toBeTruthy();
+  expect(screen.queryByRole("status")).toBeNull();
 });

@@ -1,6 +1,6 @@
 // Layout and theme
 // Baseline: Given the page after session.ready · When it renders
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { AppShell } from "@/chat/components/AppShell";
 import { START_LINE } from "@/chat/components/StartScreen";
@@ -27,6 +27,17 @@ beforeEach(() => {
 });
 
 describe("Layout and theme", () => {
+  it("puts chat actions in the sidebar and opens settings from there", () => {
+    renderWithChat(<AppShell />);
+    const sidebar = screen.getByRole("complementary", { name: "Workspace sidebar" });
+    const newChat = within(sidebar).getByRole("button", { name: "New chat" });
+    const settings = within(sidebar).getByRole("button", { name: "Settings" });
+    expect(newChat.compareDocumentPosition(settings) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(screen.getByRole("banner")).queryByRole("button", { name: "Settings" })).toBeNull();
+    fireEvent.click(settings);
+    expect(screen.getByRole("dialog", { name: "Settings" })).toBeTruthy();
+  });
+
   it("notebook open: the panel is the focus", () => {
     // Changed: —
     // Then: the panel region is wide, the chat column narrow; the button says Hide notebook

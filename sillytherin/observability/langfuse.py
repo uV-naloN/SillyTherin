@@ -11,7 +11,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import asdict, dataclass
 from enum import StrEnum
-from time import monotonic_ns, time_ns
+from time import monotonic, monotonic_ns, time_ns
 from typing import TYPE_CHECKING, Annotated, Protocol
 
 from pydantic import Field, SecretStr, TypeAdapter
@@ -23,10 +23,11 @@ if TYPE_CHECKING:
     from sillytherin.server.web_chat import AnswerWaitScope
     from sillytherin.turn import TurnRunner
 
-log = logging.getLogger(__name__)
+log = logging.getLogger("uvicorn.error").getChild("langfuse")
 EXPORT_QUEUE_CAPACITY = 32
 EXPORT_TIMEOUT_SECONDS = 15
 WORKER_READINESS_TIMEOUT_SECONDS = 5
+WORKER_START_RETRY_SECONDS = 10
 LOG_SUMMARY_INTERVAL_SECONDS = 60
 OTLP_TRACES_PATH = "/api/public/otel/v1/traces"
 ENABLE_KEY = "SILLYTHERIN_LANGFUSE_ENABLED"
@@ -61,6 +62,17 @@ class LossReason(StrEnum):
     OBSERVER_FAILED = "observer_failed"
     STARTUP_DISABLED = "startup_disabled"
     SHUTDOWN_DISCARDED = "shutdown_discarded"
+
+
+class WorkerStartupFailure(StrEnum):
+    DEPENDENCY_MISSING = "dependency_missing"
+    INITIALIZATION_FAILED = "initialization_failed"
+
+
+class WorkerStartupError(Exception):
+    def __init__(self, reason: WorkerStartupFailure) -> None:
+        super().__init__(reason.value)
+        self.reason = reason
 
 
 @dataclass(frozen=True)
@@ -123,6 +135,9 @@ def configure_observability(environment: Mapping[str, str]) -> ObservabilityLaye
 
 
 class ExportWorker(Protocol):
+    @property
+    def has_exited(self) -> bool: ...
+
     async def wait_ready(self) -> None: ...
 
     async def send(self, trace: ReplyTrace) -> ExportLoss | None: ...
@@ -177,14 +192,22 @@ class ProcessWorker:
         self._process = process
         self._settings = settings
 
+    @property
+    def has_exited(self) -> bool:
+        return self._process.returncode is not None
+
     async def wait_ready(self) -> None:
         await self.write({
             "endpoint": self._settings.endpoint,
             "public_key": self._settings.public_key.get_secret_value(),
             "secret_key": self._settings.secret_key.get_secret_value(),
         })
-        if await self.read() != {"ready": True}:
+        response = await self.read()
+        if isinstance(response, dict) and "startup_error" in response:
+            raise WorkerStartupError(WorkerStartupFailure(response["startup_error"]))
+        if response != {"ready": True}:
             raise ValueError("Export worker failed to start")
+        log.info("Langfuse worker ready pid=%d", self._process.pid)
 
     async def send(self, trace: ReplyTrace) -> ExportLoss | None:
         await self.write(trace_to_message(trace))
@@ -204,6 +227,7 @@ class ProcessWorker:
             raise BrokenPipeError
         line = await self._process.stdout.readline()
         if not line:
+            log.warning("Langfuse worker exited pid=%d exit_code=%d", self._process.pid, await self._process.wait())
             raise BrokenPipeError
         return json.loads(line)
 
@@ -255,10 +279,10 @@ class LangfuseSupervisor:
         self._queue: asyncio.Queue[ReplyTrace] = asyncio.Queue(EXPORT_QUEUE_CAPACITY)
         self._task: asyncio.Task[None] | None = None
         self._worker: ExportWorker | None = None
-        self._unavailable = False
+        self._retry_start_at = 0.0
 
     def offer(self, trace: ReplyTrace) -> None:
-        if self._unavailable:
+        if monotonic() < self._retry_start_at:
             self.report_loss(ExportLoss(LossReason.STARTUP_DISABLED, 1))
             return
         try:
@@ -295,9 +319,8 @@ class LangfuseSupervisor:
 
     async def run(self) -> None:
         try:
-            if not await self.ensure_worker():
-                return
-            while not self._unavailable:
+            await self.ensure_worker()
+            while True:
                 trace = await self._queue.get()
                 try:
                     await self.export(trace)
@@ -308,24 +331,36 @@ class LangfuseSupervisor:
 
     async def ensure_worker(self) -> bool:
         if self._worker is not None:
-            return True
+            if not self._worker.has_exited:
+                return True
+            log.warning("Langfuse worker exited while idle; starting a replacement")
+            await self.stop_worker()
         try:
             async with asyncio.timeout(self._readiness_timeout):
                 self._worker = await self._start_worker(self._settings)
                 await self._worker.wait_ready()
-        except Exception:  # noqa: BLE001 - report only safe local diagnostics
-            self._unavailable = True
-            await self.stop_worker()
-            self.report_loss(ExportLoss(LossReason.STARTUP_DISABLED, self.discard_queued()))
-            return False
-        return True
+        except WorkerStartupError as error:
+            failure = error.reason.value
+        except TimeoutError:
+            failure = "readiness_timeout"
+        except Exception:  # noqa: BLE001 - subprocess failures can contain private diagnostics
+            failure = "process_failed"
+        else:
+            return True
+        self._retry_start_at = monotonic() + WORKER_START_RETRY_SECONDS
+        log.warning("Langfuse worker startup failed reason=%s retry_after_seconds=%d",
+                    failure, WORKER_START_RETRY_SECONDS)
+        await self.stop_worker()
+        self.report_loss(ExportLoss(LossReason.STARTUP_DISABLED, self.discard_queued()))
+        return False
 
     async def export(self, trace: ReplyTrace) -> None:
         try:
             if not await self.ensure_worker() or self._worker is None:
                 self.report_loss(ExportLoss(LossReason.STARTUP_DISABLED, 1))
                 return
-            loss = await asyncio.wait_for(self._worker.send(trace), self._export_timeout)
+            async with asyncio.timeout(self._export_timeout):
+                loss = await self._worker.send(trace)
         except asyncio.CancelledError:
             self.report_loss(ExportLoss(LossReason.SHUTDOWN_DISCARDED, 1))
             raise

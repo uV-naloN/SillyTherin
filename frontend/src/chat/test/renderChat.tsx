@@ -41,6 +41,7 @@ export function sessionReady(overrides: Partial<SessionReady> = {}): SessionRead
       { id: "kaggle_account", label: "Kaggle account", initial: false, disabled: false, description: "Not connected." },
     ],
     panel: props(),
+    agent_mode: "auto",
     ...overrides,
   };
 }

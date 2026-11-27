@@ -8,12 +8,12 @@ import os
 import sys
 from collections import Counter
 from collections.abc import Iterator, Sequence
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from dataclasses import asdict
 from typing import TYPE_CHECKING, Any, Protocol, TextIO
 
 import requests
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 from requests.auth import HTTPBasicAuth
 
 from sillytherin.observability.langfuse import (
@@ -22,6 +22,7 @@ from sillytherin.observability.langfuse import (
     ExportLoss,
     LangfuseSettings,
     LossReason,
+    WorkerStartupFailure,
     resolve_cloud_endpoint,
 )
 from sillytherin.observability.reply_trace import (
@@ -30,6 +31,8 @@ from sillytherin.observability.reply_trace import (
     MODEL_NAME,
     REPLY_NAME,
     SAFE_TOOL_LABELS,
+    ModelExchange,
+    ModelOutputState,
     ReplyContent,
     ReplySpan,
     ReplyState,
@@ -72,6 +75,8 @@ trace_message = TypeAdapter(ReplyTrace)
 class ExportChannel(Protocol):
     def signal_ready(self) -> None: ...
 
+    def signal_startup_failure(self, reason: WorkerStartupFailure) -> None: ...
+
     def receive_trace(self) -> ReplyTrace | None: ...
 
     def send_result(self, loss: ExportLoss | None) -> None: ...
@@ -82,7 +87,15 @@ class SdkExporter(Protocol):
 
 
 def run_export_worker(settings: LangfuseSettings, channel: ExportChannel) -> None:
-    with open_sdk_exporter(settings) as exporter:
+    with ExitStack() as resources:
+        try:
+            exporter = resources.enter_context(open_sdk_exporter(settings))
+        except ImportError:
+            channel.signal_startup_failure(WorkerStartupFailure.DEPENDENCY_MISSING)
+            raise
+        except Exception:
+            channel.signal_startup_failure(WorkerStartupFailure.INITIALIZATION_FAILED)
+            raise
         channel.signal_ready()
         while (trace := channel.receive_trace()) is not None:
             channel.send_result(exporter.export(trace))
@@ -135,6 +148,11 @@ class LangfuseBatchExporter:
         from opentelemetry.context import Context
         from opentelemetry.trace import set_span_in_context
 
+        try:
+            validate_trace_snapshot(trace)
+        except (TypeError, ValueError, RecursionError):
+            return ExportLoss(LossReason.INVALID_TRACE, 1)
+
         self._session.arm(trace)
         try:
             root = start_reply_span(self._tracer, trace, Context())
@@ -170,7 +188,6 @@ def reply_attributes(trace: ReplyTrace) -> dict[str, str]:
     attributes = span_attributes(trace.root)
     if trace.content is None:
         return attributes
-    validate_reply_content(trace.content, trace.root.outcome)
     attributes["langfuse.observation.input"] = trace.content.message
     attributes["langfuse.observation.metadata.reply_state"] = trace.content.reply_state.value
     if trace.content.reply is not None:
@@ -185,16 +202,55 @@ def start_span(tracer: Tracer, snapshot: ReplySpan, context: Context) -> Span:
         snapshot.name, context=context, start_time=snapshot.start_time_unix_nano,
         attributes=span_attributes(snapshot), record_exception=False, set_status_on_exception=False,
     )
-    span.set_status(Status(StatusCode(status_code(snapshot.outcome))))
+    span.set_status(Status(StatusCode(child_status(snapshot))))
     return span
 
 
 def span_attributes(snapshot: ReplySpan) -> dict[str, str]:
-    return {
+    attributes = {
         "langfuse.trace.name": REPLY_NAME,
         "langfuse.observation.type": snapshot.kind.value,
         "langfuse.observation.metadata.outcome": snapshot.outcome.value,
     }
+    if snapshot.model_exchange is not None:
+        attributes.update(model_exchange_attributes(snapshot.model_exchange))
+    return attributes
+
+
+def model_exchange_attributes(exchange: ModelExchange) -> dict[str, str]:
+    """Project an approved model exchange onto Langfuse generation fields."""
+    attributes = {
+        "langfuse.observation.input": exchange.input_json,
+        "langfuse.observation.metadata.output_state": exchange.output_state.value,
+    }
+    if exchange.output_json is not None:
+        attributes["langfuse.observation.output"] = exchange.output_json
+    return attributes
+
+
+def validate_model_exchange(exchange: ModelExchange, outcome: SpanOutcome) -> None:
+    content_size = len(exchange.input_json.encode("utf-8")) + len((exchange.output_json or "").encode("utf-8"))
+    if content_size > MAX_REQUEST_BYTES:
+        raise ValueError("Oversized model exchange")
+
+    if not isinstance(json.loads(exchange.input_json), list):
+        raise TypeError("Invalid model input")
+    if exchange.output_state is ModelOutputState.COMPLETE and outcome is not SpanOutcome.SUCCEEDED:
+        raise ValueError("Inconsistent model outcome")
+    if (exchange.output_json is None) != (exchange.output_state is ModelOutputState.MISSING):
+        raise ValueError("Inconsistent model output state")
+    if exchange.output_json is not None:
+        validate_model_output(exchange.output_json, exchange.output_state)
+
+
+def validate_model_output(output_json: str, state: ModelOutputState) -> None:
+    output = json.loads(output_json)
+    required_field = "messages" if state is ModelOutputState.COMPLETE else "chunks"
+    allowed_fields = {"messages", "tool_call_fragments"} if state is ModelOutputState.COMPLETE else {"chunks"}
+    if not isinstance(output, dict) or required_field not in output or output.keys() - allowed_fields:
+        raise ValueError("Invalid model output")
+    if any(not isinstance(items, list) or not items for items in output.values()):
+        raise ValueError("Invalid model output items")
 
 
 STATUS_CODES = {SpanOutcome.SUCCEEDED: 1, SpanOutcome.FAILED: 2}
@@ -202,6 +258,12 @@ STATUS_CODES = {SpanOutcome.SUCCEEDED: 1, SpanOutcome.FAILED: 2}
 
 def status_code(outcome: SpanOutcome) -> int:
     return STATUS_CODES.get(outcome, 0)
+
+
+def child_status(snapshot: ReplySpan) -> int:
+    if snapshot.model_exchange is not None and snapshot.outcome is not SpanOutcome.SUCCEEDED:
+        return status_code(SpanOutcome.FAILED)
+    return status_code(snapshot.outcome)
 
 
 class GuardedSession(requests.Session):
@@ -225,7 +287,7 @@ class GuardedSession(requests.Session):
         self._attempted = True
         try:
             self.validate_request(request, self.trace)
-        except ValueError:
+        except (TypeError, ValueError, RecursionError):
             self.result = ExportLoss(LossReason.INVALID_TRACE, 1)
             return safe_response(INVALID_REQUEST_STATUS)
         try:
@@ -328,7 +390,7 @@ def validate_encoded_batch(payload: bytes, trace: ReplyTrace) -> None:
     if payload != batch.SerializeToString():
         raise ValueError("Unexpected protobuf representation")
     spans = validated_envelope(batch)
-    validate_snapshot_bounds(trace)
+    validate_trace_snapshot(trace)
     roots = [span for span in spans if not span.parent_span_id]
     if len(roots) != 1 or len(spans) != len(trace.children) + 1:
         raise ValueError("Incomplete SDK batch")
@@ -337,7 +399,7 @@ def validate_encoded_batch(payload: bytes, trace: ReplyTrace) -> None:
     if wire_span_signature(root) != reply_snapshot_signature(trace):
         raise ValueError("Unexpected root span")
     children = Counter(wire_span_signature(span) for span in spans if span.parent_span_id)
-    if children != Counter(snapshot_signature(child, is_root=False) for child in trace.children):
+    if children != Counter(child_snapshot_signature(child) for child in trace.children):
         raise ValueError("Unexpected child spans")
 
 
@@ -347,6 +409,23 @@ def validate_snapshot_bounds(trace: ReplyTrace) -> None:
         raise ValueError("Invalid reply timestamps")
     if any(not start <= span.start_time_unix_nano <= span.end_time_unix_nano <= end for span in trace.children):
         raise ValueError("Invalid stage timestamps")
+
+
+def validate_trace_snapshot(trace: ReplyTrace) -> None:
+    validate_snapshot_bounds(trace)
+    root = trace.root
+    if root.kind is not SpanKind.REPLY or root.name != REPLY_NAME or root.outcome is SpanOutcome.INTERRUPTED:
+        raise ValueError("Invalid reply span")
+    if root.model_exchange is not None or len(trace.children) > MAX_CHILD_SPANS:
+        raise ValueError("Invalid reply stages")
+    if trace.content is not None:
+        validate_reply_content(trace.content, root.outcome)
+    for child in trace.children:
+        validate_child_label(child)
+        if child.model_exchange is not None:
+            if child.kind is not SpanKind.MODEL:
+                raise ValueError("Unexpected model exchange")
+            validate_model_exchange(child.model_exchange, child.outcome)
 
 
 def validate_reply_content(content: ReplyContent, outcome: SpanOutcome) -> None:
@@ -415,29 +494,22 @@ def wire_span_signature(span: WireSpan) -> SpanSignature:
     )
 
 
-def snapshot_signature(snapshot: ReplySpan, *, is_root: bool) -> SpanSignature:
+def child_snapshot_signature(snapshot: ReplySpan) -> SpanSignature:
     from opentelemetry.proto.common.v1.common_pb2 import AnyValue
 
-    if not is_root:
-        validate_child_label(snapshot)
-    elif snapshot.kind is not SpanKind.REPLY or snapshot.name != REPLY_NAME or snapshot.outcome is SpanOutcome.INTERRUPTED:
-        raise ValueError("Invalid reply span")
     attributes = [
         (key, "string_value", AnyValue(string_value=value).SerializeToString())
         for key, value in span_attributes(snapshot).items()
     ]
-    if is_root:
-        attributes.append((ROOT_ATTRIBUTE, "bool_value", AnyValue(bool_value=True).SerializeToString()))
     return (
         snapshot.name, snapshot.start_time_unix_nano, snapshot.end_time_unix_nano,
-        status_code(snapshot.outcome), tuple(sorted(attributes)),
+        child_status(snapshot), tuple(sorted(attributes)),
     )
 
 
 def reply_snapshot_signature(trace: ReplyTrace) -> SpanSignature:
     from opentelemetry.proto.common.v1.common_pb2 import AnyValue
 
-    snapshot_signature(trace.root, is_root=True)
     attributes = [
         (key, "string_value", AnyValue(string_value=value).SerializeToString())
         for key, value in reply_attributes(trace).items()
@@ -464,9 +536,16 @@ class StdioChannel:
     def signal_ready(self) -> None:
         self.write({"ready": True})
 
+    def signal_startup_failure(self, reason: WorkerStartupFailure) -> None:
+        self.write({"startup_error": reason.value})
+
     def receive_trace(self) -> ReplyTrace | None:
-        line = self._reader.readline()
-        return trace_message.validate_json(line) if line else None
+        while line := self._reader.readline():
+            try:
+                return trace_message.validate_json(line)
+            except ValidationError:
+                self.send_result(ExportLoss(LossReason.INVALID_TRACE, 1))
+        return None
 
     def send_result(self, loss: ExportLoss | None) -> None:
         self.write({"ok": True} if loss is None else asdict(loss))

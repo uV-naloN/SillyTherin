@@ -3,11 +3,13 @@ import { useId, useRef, useState, type KeyboardEvent } from "react";
 import { ArrowUp, Square } from "lucide-react";
 import { CommandMenu, commandRowId } from "@/chat/components/CommandMenu";
 import { EffortPicker } from "@/chat/components/EffortPicker";
+import { AgentModePicker } from "@/chat/components/AgentModePicker";
 import { ModelPicker } from "@/chat/components/ModelPicker";
 import { effortPickerFor } from "@/chat/lib/effortLevels";
 import { rememberPicks } from "@/chat/lib/picks";
 import type { SlashCommand } from "@/chat/lib/slashCommands";
 import { useCommandMenu } from "@/chat/components/useCommandMenu";
+import type { AgentMode } from "@/chat/events";
 import { useChat } from "@/chat/store";
 
 const NO_COMMANDS: SlashCommand[] = [];
@@ -18,9 +20,11 @@ export interface ComposerProps {
   onStop: () => void;
   /** Commands the "/" menu offers; without them the box never shows a menu */
   commands?: SlashCommand[];
+  onModeChange?: (mode: AgentMode) => void;
+  isConnected?: boolean;
 }
 
-export function Composer({ isStreaming, onSend, onStop, commands = NO_COMMANDS }: ComposerProps): JSX.Element {
+export function Composer({ isStreaming, onSend, onStop, commands = NO_COMMANDS, onModeChange = () => undefined, isConnected = true }: ComposerProps): JSX.Element {
   const [text, setText] = useState("");
   const box = useRef<HTMLTextAreaElement>(null);
   const menuId = useId();
@@ -28,6 +32,7 @@ export function Composer({ isStreaming, onSend, onStop, commands = NO_COMMANDS }
   const pickers = useChat((s) => s.pickers);
   const picked = useChat((s) => s.picked);
   const pick = useChat((s) => s.pick);
+  const agentMode = useChat((s) => s.agentMode);
   const workspaceId = useChat((s) => s.panel?.project.id ?? null);
   const modelPicker = pickers.find((p) => p.id === "model");
   const effortPicker = effortPickerFor(modelPicker, pickers.find((p) => p.id === "effort"), picked.model);
@@ -80,6 +85,7 @@ export function Composer({ isStreaming, onSend, onStop, commands = NO_COMMANDS }
           {modelPicker && <ModelPicker picker={modelPicker} picked={picked.model} onPick={(id) => pickAndRemember("model", id)} />}
           {effortPicker && <EffortPicker picker={effortPicker} picked={picked.effort} onPick={(id) => pickAndRemember("effort", id)} />}
           <span className="flex-1" />
+          <AgentModePicker mode={agentMode} disabled={!isConnected} onChange={onModeChange} />
           {isStreaming ? (
             <button type="button" onClick={onStop} className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-foreground px-3 text-[13px] font-medium text-background">
               <Square className="size-3 fill-current" aria-hidden />

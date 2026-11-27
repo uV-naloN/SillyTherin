@@ -7,7 +7,13 @@ from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager, nullcontext
 from typing import Literal, Protocol
 
-from sillytherin.chat.ports import Choice, ThinkingStep, ToastKind, ToolStep
+from sillytherin.chat.ports import (
+    Choice,
+    ReplyInterruptionReason,
+    ThinkingStep,
+    ToastKind,
+    ToolStep,
+)
 from sillytherin.chat.widgets import Picker, SettingSwitch
 from sillytherin.server.events import (
     AskClosed,
@@ -86,9 +92,11 @@ class SocketAnswerView:
         accepted = await self._sender.try_send(ReplyDelta(message_id=self._message_id, text=text))
         return self._start_accepted and accepted
 
-    async def finish(self, text: str) -> bool:
+    async def finish(self, text: str, *, interruption_reason: ReplyInterruptionReason | None = None) -> bool:
         await self._start_once()
-        return await self._sender.try_send(ReplyEnded(message_id=self._message_id, text=text))
+        return await self._sender.try_send(
+            ReplyEnded(message_id=self._message_id, text=text, interruption_reason=interruption_reason),
+        )
 
     async def _start_once(self) -> None:
         if not self._has_started:

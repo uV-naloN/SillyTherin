@@ -2,6 +2,7 @@
 
 import asyncio
 import base64
+import json
 import os
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
@@ -31,6 +32,8 @@ from sillytherin.observability.langfuse_worker import (
     validate_encoded_batch,
 )
 from sillytherin.observability.reply_trace import (
+    ModelExchange,
+    ModelOutputState,
     ReplyContent,
     ReplySpan,
     ReplyState,
@@ -134,7 +137,10 @@ def test_successful_export_contains_only_allowed_wire_fields(http: HttpBoundary,
     views = TurnViews(FakeAnswerView(), FakeProgressView(), FakeAsker(None), None)
     asyncio.run(runner(FakeChatState(chat_id=MARKER), UserMessage(MARKER, "", ""), views))
     trace, = sink.traces
-    assert replace(trace, content=None) == TEST_TRACE
+    model, tool = trace.children
+    assert replace(trace, content=None, children=(replace(model, model_exchange=None), tool)) == TEST_TRACE
+    assert model.model_exchange is not None
+    assert model.model_exchange.output_state is ModelOutputState.MISSING
     assert export_trace(settings, trace) is None
     request = http.request()
     assert isinstance(request.body, bytes)
@@ -410,3 +416,133 @@ def content_trace(
 
 def attributes(span: Any) -> dict[str, str]:
     return {item.key: item.value.string_value for item in span.attributes}
+
+
+def test_model_exchange_round_trips_only_approved_callback_fields() -> None:
+    # Given the shared valid setup, —.
+    # When the model exchange is observed and exported.
+    # Then Private IPC round trip preserves structured input/output and omits unrelated provider and callback sentinels. JSON metacharacters remain data.
+    # Demonstrates Typed projection and safe representation.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_worker_rejects_invalid_model_json_and_exports_next_trace(
+    http: HttpBoundary, settings: LangfuseSettings,
+) -> None:
+    model, tool = TEST_TRACE.children
+    exchange = ModelExchange("not-json", None, ModelOutputState.MISSING)
+    malformed = replace(TEST_TRACE, children=(replace(model, model_exchange=exchange), tool))
+    with open_sdk_exporter(settings) as exporter:
+        assert exporter.export(malformed) == ExportLoss(LossReason.INVALID_TRACE, 1)
+        assert not http.attempts
+        assert exporter.export(TEST_TRACE) is None
+    assert len(http.attempts) == 1
+
+
+def test_worker_rejects_model_exchange_on_non_model_span() -> None:
+    # Given the shared valid setup, Place exchange on root or tool independently.
+    # When the model exchange is observed and exported.
+    # Then Rejected before HTTP.
+    # Demonstrates Approved placement.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_worker_rejects_inconsistent_model_output_state() -> None:
+    # Given the shared valid setup, Independently conflict state with outcome or output presence; try empty partial content.
+    # When the model exchange is observed and exported.
+    # Then Rejected before HTTP.
+    # Demonstrates Honest state contract.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_worker_rejects_invalid_model_json_values() -> None:
+    # Given the shared valid setup, Independently introduce nonfinite numbers, excess depth or invalid Unicode.
+    # When the model exchange is observed and exported.
+    # Then Rejected before HTTP with content-free diagnostics.
+    # Demonstrates Safe value and parsing limits.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_worker_rejects_aggregate_model_content_over_budget() -> None:
+    # Given the shared valid setup, Send a valid shape above the per-turn allowance through IPC.
+    # When the model exchange is observed and exported.
+    # Then Rejected before SDK span creation or HTTP.
+    # Demonstrates Defense at worker boundary.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_sdk_exports_distinct_model_exchanges_under_one_root() -> None:
+    # Given the shared valid setup, —.
+    # When the model exchange is observed and exported.
+    # Then One POST to configured HTTPS, exact parentage and exact child JSON and timestamps. Tool child remains timing-only.
+    # Demonstrates Renderable observation mapping.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_sdk_exports_streamed_tool_fragments_and_interrupted_model_output(
+    http: HttpBoundary, settings: LangfuseSettings,
+) -> None:
+    model, tool = TEST_TRACE.children
+    messages = [{"role": "assistant", "content": ""}]
+    fragments = [{"index": 0, "name": "web_search", "args": "{"}]
+    completed_output = json.dumps({"messages": messages, "tool_call_fragments": fragments})
+    partial_output = json.dumps({"chunks": [{"role": "assistant", "content": "partial"}]})
+    completed = replace(model, model_exchange=ModelExchange("[]", completed_output, ModelOutputState.COMPLETE))
+    interrupted = replace(
+        model, start_time_unix_nano=1060, end_time_unix_nano=1070, outcome=SpanOutcome.INTERRUPTED,
+        model_exchange=ModelExchange("[]", partial_output, ModelOutputState.PARTIAL),
+    )
+    assert export_trace(settings, replace(TEST_TRACE, children=(completed, tool, interrupted))) is None
+    model_spans = [span for span in http.spans() if span.name == model.name]
+    assert {span.status.code: attributes(span)["langfuse.observation.output"] for span in model_spans} == {
+        1: completed_output,
+        2: partial_output,
+    }
+
+
+def test_sdk_guard_rejects_swapped_model_outputs() -> None:
+    # Given the shared valid setup, Swap the two generation outputs.
+    # When the model exchange is observed and exported.
+    # Then No HTTP request and `invalid_trace`.
+    # Demonstrates Wire-level pairing.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_sdk_guard_rejects_missing_model_content_attribute() -> None:
+    # Given the shared valid setup, Remove one expected generation attribute.
+    # When the model exchange is observed and exported.
+    # Then No HTTP request and `invalid_trace`.
+    # Demonstrates Lossy SDK export rejected.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_sdk_guard_rejects_wrong_generation_parent() -> None:
+    # Given the shared valid setup, Swap one parent ID.
+    # When the model exchange is observed and exported.
+    # Then No HTTP request and `invalid_trace`.
+    # Demonstrates Turn association.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_sdk_guard_rejects_extra_model_attribute() -> None:
+    # Given the shared valid setup, Add one extra generation attribute.
+    # When the model exchange is observed and exported.
+    # Then No HTTP request and `invalid_trace`.
+    # Demonstrates Attribute allowlist.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_sdk_guard_blocks_oversized_batch_with_combined_root_and_models() -> None:
+    # Given the shared valid setup, Grow legal root content until the final protobuf exceeds 256 KiB.
+    # When the model exchange is observed and exported.
+    # Then No HTTP request. SDK rejection leaves `delivery_unconfirmed`. Independently inject oversized bytes at the guard and verify `invalid_trace` with no HTTP request.
+    # Demonstrates Actual transport bound at both checks.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_model_content_export_does_not_follow_redirect() -> None:
+    # Given the shared valid setup, Return a vendor redirect.
+    # When the model exchange is observed and exported.
+    # Then At most the configured request. No redirected send of payload or credentials.
+    # Demonstrates Export destination isolation.
+    pytest.fail("TODO: implement this behavior")

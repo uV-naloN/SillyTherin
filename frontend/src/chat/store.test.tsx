@@ -246,3 +246,29 @@ describe("New chat picks", () => {
     expect(useChat.getState().picked).toEqual({ model: "vendor/claude", effort: "default" });
   });
 });
+
+
+it("restores_relay_interruption_in_resumed_answer", () => {
+  const snapshot = ready({ messages: [
+    { role: "user", text: "hi" },
+    { role: "assistant", text: "Partial", interruption_reason: "openrouter_relay_failed" },
+  ] });
+
+  expect(answers(applyEvent(emptyChat(), snapshot))[0]).toMatchObject({
+    text: "Partial", isStreaming: false, interruptionReason: "openrouter_relay_failed",
+  });
+
+  const streaming = play([
+    ready({ messages: [{ role: "user", text: "hi" }] }),
+    { type: "reply.started", message_id: "m1" },
+    { type: "reply.delta", message_id: "m1", text: "Par" },
+  ]);
+  expect(answers(applyEvent(streaming, snapshot))[0]).toMatchObject({
+    id: "m1", text: "Partial", isStreaming: false, interruptionReason: "openrouter_relay_failed",
+  });
+  expect(answers(applyEvent(streaming, {
+    type: "reply.ended", message_id: "m1", text: "Partial", interruption_reason: "openrouter_relay_failed",
+  }))[0]).toMatchObject({
+    id: "m1", text: "Partial", isStreaming: false, interruptionReason: "openrouter_relay_failed",
+  });
+});

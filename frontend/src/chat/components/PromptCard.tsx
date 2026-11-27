@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ShieldQuestion } from "lucide-react";
 import { Answer } from "@/chat/components/Answer";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { PromptView } from "@/chat/store";
 
 export const TIMED_OUT = "No answer, skipped";
@@ -16,10 +17,10 @@ export function PromptCard({ prompt, onAnswer }: { prompt: PromptView; onAnswer:
     onAnswer(prompt.askId, choiceId);
   };
   return (
-    <div className="st-enter overflow-hidden rounded-xl border border-primary/30 bg-background shadow-sm">
-      <div className="flex items-center gap-2 bg-primary/10 px-4 py-2.5 text-sm font-semibold">
-        <ShieldQuestion className="size-4 text-primary" aria-hidden />
-        {prompt.kaggleRequestId ? "Confirm Kaggle download" : "The assistant is asking first"}
+    <div className={cn("st-enter overflow-hidden rounded-xl border bg-card", isOpen && "border-warning/45")}>
+      <div className={cn("flex items-center gap-2 bg-muted/40 px-4 py-2.5 text-sm font-semibold", isOpen && "bg-warning/10 text-warning")}>
+        <ShieldQuestion className="size-4 shrink-0" aria-hidden />
+        {prompt.kaggleRequestId ? "Confirm Kaggle download" : isOpen ? "Decision needed" : "Decision"}
       </div>
       <div className="space-y-3 px-4 py-3">
         <Answer text={prompt.markdown} />

@@ -28,8 +28,12 @@ def test_second_message_while_busy_is_refused(client, model, sessions):
     model.scripts.append([text_chunk("par"), HANG])
     with open_tab(client) as tab:
         chat_id = tab.receive_json()["chat_id"]
+        tab.send_json({"type": "agent_mode.set", "mode": "manual"})
+        assert tab.receive_json()["mode"] == "manual"
         send_message(tab, "one")
         events_until(tab, "reply.delta")
+        tab.send_json({"type": "agent_mode.set", "mode": "free"})
+        assert tab.receive_json()["mode"] == "free"
         send_message(tab, "two")
         busy = events_until(tab, "error")[-1]
         history_while_busy = [m["content"] for m in sessions.resume(chat_id).state.get("history") if m["role"] == "user"]
@@ -37,5 +41,6 @@ def test_second_message_while_busy_is_refused(client, model, sessions):
         first = events_until(tab, "reply.ended")[-1]
 
     assert busy["code"] == "BUSY"
+    assert sessions.resume(chat_id).agent_mode == "free"
     assert history_while_busy == ["one"]
     assert first["text"] == "par"
