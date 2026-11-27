@@ -57,10 +57,10 @@ class ScanChanges:
     resaved: list[CreatedDataset] = field(default_factory=list)  # same id, new size/mtime
     renamed: list[CreatedDataset] = field(default_factory=list)  # same id, new path
 
-    @property
-    def has_changes(self) -> bool:
-        """False when the scan wrote nothing, so datasets_rev stays put."""
-        return bool(self.new_files or self.resaved or self.renamed)
+
+def has_scan_changes(changes: ScanChanges) -> bool:
+    """False when the scan wrote nothing, so datasets_rev stays put."""
+    return bool(changes.new_files or changes.resaved or changes.renamed)
 
 
 # ---- the folder scan -----------------------------------------------------------
@@ -339,7 +339,7 @@ class CreatedDatasets:
         changes = compare_with_stored(stored, scan_data_files(self._files_dir(project_id), self.extensions))
         self._store_changes(project_id, stored, changes, by or "upload")
         filled = self._fill_missing_columns(project_id, stored, changes)
-        return changes.has_changes or filled
+        return has_scan_changes(changes) or filled
 
     def panel_rows(self, project_id: str) -> list[DatasetProps]:
         """Created cards for NotebookProps.datasets: origin 'created', source 'created', no licence/url/shared."""

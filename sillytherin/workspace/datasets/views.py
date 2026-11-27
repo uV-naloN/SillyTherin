@@ -23,7 +23,7 @@ from pathlib import Path
 from sillytherin.config import WORKSPACES_DIR
 from sillytherin.workspace import ErrorCode, WorkspaceError, store
 from sillytherin.workspace.datasets import store as ds
-from sillytherin.workspace.datasets.pool import DatasetPool, PoolEntry
+from sillytherin.workspace.datasets.pool import DatasetPool, PoolEntry, list_ready_paths
 from sillytherin.workspace.datasets.store import ProjectDataset
 
 log = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ class ViewFile:
 
 def visible_kaggle_files(dataset: ProjectDataset, entry: PoolEntry) -> set[ViewFile]:
     paths = set(dataset.files)
-    if dataset.status != "ready" or not paths <= entry.ready_paths():
+    if dataset.status != "ready" or not paths <= list_ready_paths(entry):
         return set()
     return {ViewFile(entry.id, path) for path in paths}
 
@@ -57,7 +57,7 @@ def visible_pool_files(datasets: Iterable[ProjectDataset], entries: dict[str, Po
         if entry.source == "kaggle":
             visible.update(visible_kaggle_files(dataset, entry))
             continue
-        ready_listed_paths = set(dataset.files) & entry.ready_paths()
+        ready_listed_paths = set(dataset.files) & list_ready_paths(entry)
         visible.update(ViewFile(entry.id, path) for path in ready_listed_paths)
     return visible
 

@@ -79,11 +79,13 @@ class PoolEntry:
     created_at: str = ""  # ISO 8601 UTC; "downloaded …" in details
     description: str | None = None  # the catalog's one-line description; the same for every project using it
 
-    def file(self, path: str) -> PoolFile | None:
-        return next((f for f in self.files if f.path == path), None)
 
-    def ready_paths(self) -> set[str]:
-        return {f.path for f in self.files if f.ready}
+def find_pool_file(entry: PoolEntry, path: str) -> PoolFile | None:
+    return next((f for f in entry.files if f.path == path), None)
+
+
+def list_ready_paths(entry: PoolEntry) -> set[str]:
+    return {f.path for f in entry.files if f.ready}
 
 
 def checksum_matches(path: Path, checksum: str | None) -> bool:
@@ -219,7 +221,7 @@ class DatasetPool:
     def ensure_ready_files_intact(self, entry: PoolEntry, paths: list[str]) -> None:
         """Before linking: re-check every ready file among `paths` whose size or mtime changed."""
         for path in paths:
-            pool_file = entry.file(path)
+            pool_file = find_pool_file(entry, path)
             if pool_file is not None and pool_file.ready and not self.is_file_unchanged(entry, pool_file):
                 self.recheck_file(entry, pool_file)
 
@@ -230,7 +232,7 @@ class DatasetPool:
         os.replace(downloaded, target)
         pool_file.ready = True
         pool_file.mtime_ns = target.stat().st_mtime_ns
-        existing = entry.file(pool_file.path)
+        existing = find_pool_file(entry, pool_file.path)
         if existing is None:
             entry.files.append(pool_file)
         elif existing is not pool_file:
@@ -241,7 +243,7 @@ class DatasetPool:
     def link_files(self, project_id: str, dataset_id: str, entry: PoolEntry, paths: list[str]) -> None:
         """Link the ready pooled files among `paths` into files/datasets/<id>/; the rest wait for a download job."""
         for path in paths:
-            pool_file = entry.file(path)
+            pool_file = find_pool_file(entry, path)
             if pool_file is not None and pool_file.ready:
                 self._write_link(project_id, dataset_id, entry.id, path)
 
@@ -259,7 +261,7 @@ class DatasetPool:
 
     def is_linked(self, project_id: str, dataset_id: str, entry: PoolEntry, relpath: str) -> bool:
         """The project's link is the one the app wrote, and the pooled file behind it is intact."""
-        pool_file = entry.file(relpath)
+        pool_file = find_pool_file(entry, relpath)
         if pool_file is None or not pool_file.ready:
             return False
         try:

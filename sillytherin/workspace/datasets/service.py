@@ -38,7 +38,13 @@ from sillytherin.workspace.datasets.describe import (
     one_line_description,
 )
 from sillytherin.workspace.datasets.load_code import load_code
-from sillytherin.workspace.datasets.pool import DatasetPool, PoolEntry, PoolFile
+from sillytherin.workspace.datasets.pool import (
+    DatasetPool,
+    PoolEntry,
+    PoolFile,
+    find_pool_file,
+    list_ready_paths,
+)
 from sillytherin.workspace.datasets.sources import DatasetPlan, PlannedFile
 from sillytherin.workspace.datasets.store import DatasetStatus, ProjectDataset, Source
 from sillytherin.workspace.datasets.views import ProjectViews, visible_pool_files
@@ -242,13 +248,13 @@ class FetchPlan:
     joined: list[Job]  # jobs that already fetch some of the wanted files
     switches_entry: bool  # the project moves to another version (update: true)
 
-    @property
-    def download_bytes(self) -> int:
-        return sum(f.size for f in self.to_fetch)
 
-    @property
-    def has_downloads(self) -> bool:
-        return bool(self.to_fetch or self.joined)
+def calculate_download_bytes(fetch: FetchPlan) -> int:
+    return sum(f.size for f in fetch.to_fetch)
+
+
+def needs_download(fetch: FetchPlan) -> bool:
+    return bool(fetch.to_fetch or fetch.joined)
 
 
 
@@ -382,14 +388,14 @@ class DatasetService:
 
     def _size(self, dataset: ProjectDataset) -> int:
         entry = self._entry(dataset)
-        return sum(f.size for f in (entry.file(p) for p in dataset.files) if f is not None)
+        return sum(f.size for f in (find_pool_file(entry, p) for p in dataset.files) if f is not None)
 
     def _done_bytes(self, project_id: str, dataset: ProjectDataset) -> int:
         entry = self._entry(dataset)
         jobs = self._jobs_for(project_id, dataset.id)
         if any(j.waiters[project_id].switches_entry for j in jobs):
             return sum(j.done_bytes for j in jobs)
-        ready = sum(f.size for f in (entry.file(p) for p in dataset.files) if f is not None and f.ready)
+        ready = sum(f.size for f in (find_pool_file(entry, p) for p in dataset.files) if f is not None and f.ready)
         return ready + sum(j.done_bytes for j in jobs)
 
     def _users_by_entry(self) -> dict[str, set[str]]:
@@ -425,7 +431,7 @@ class DatasetService:
 
     @staticmethod
     def _plan_from_entry(entry: PoolEntry, paths: list[str]) -> DatasetPlan:
-        files = [f for f in (entry.file(p) for p in paths) if f is not None]
+        files = [f for f in (find_pool_file(entry, p) for p in paths) if f is not None]
         return DatasetPlan(
             source=entry.source, source_id=entry.source_id, name=entry.name, revision=entry.revision,
             url=entry.url or "", license=entry.license,
@@ -553,7 +559,7 @@ class DatasetService:
             target = self._target_for_plan(request, plan)
             pending_bytes, fetch = self._plan_kaggle_fetch(target, selection.account_generation)
             if fetch.to_fetch:
-                self._check_disk(fetch.download_bytes, plan)
+                self._check_disk(calculate_download_bytes(fetch), plan)
             if approved and pending_bytes > approved.download_bytes:
                 raise WorkspaceError(KaggleImportError.STALE_APPROVAL, "This download needs more space than approved. Try again.")
             if approved is None and pending_bytes > self.settings.ask_above_mb * MB:
@@ -575,7 +581,7 @@ class DatasetService:
         return sum(file.size for file in missing), FetchPlan(target, wanted, to_fetch, jobs, False)
 
     def _is_verified_kaggle_file(self, entry: PoolEntry, file: PlannedFile) -> bool:
-        stored = entry.file(file.path)
+        stored = find_pool_file(entry, file.path)
         return stored is not None and stored.ready and stored.size == file.size and self.pool.is_file_unchanged(entry, stored)
 
     def _stage_kaggle_fetch(self, request: DownloadRequest, fetch: FetchPlan, transfer: KaggleTransfer) -> ProjectDataset:
@@ -583,15 +589,15 @@ class DatasetService:
         self._store_entry(fetch)
         dataset = self._find_dataset(project_id, "kaggle", request.source_id) or self._new_dataset(request, entry)
         previous_entry = dataset.pool_entry
-        if not fetch.has_downloads:
+        if not needs_download(fetch):
             self.pool.link_files(project_id, dataset.id, entry, fetch.wanted)
         else:
             self.pool.unlink_dataset(project_id, dataset.id)
         if previous_entry != entry.id:
             dataset.assistant_description = None
         dataset.pool_entry, dataset.files = entry.id, sorted(fetch.wanted)
-        dataset.status, dataset.error = ("queued" if fetch.has_downloads else "ready"), None
-        dataset.linked_at = None if fetch.has_downloads else utc_now()
+        dataset.status, dataset.error = ("queued" if needs_download(fetch) else "ready"), None
+        dataset.linked_at = None if needs_download(fetch) else utc_now()
         job = self._queue_downloads(request, dataset, fetch)
         if job is not None:
             job.kaggle = transfer
@@ -647,11 +653,11 @@ class DatasetService:
         target = await self._resolve_target(request, dataset)
         fetch = self._plan_fetch(dataset, target)
         if fetch.to_fetch:
-            self._check_disk(fetch.download_bytes, target.plan)
+            self._check_disk(calculate_download_bytes(fetch), target.plan)
             # Pasted links don't ask yet; a size prompt for them is a separate change
-            asks_first = request.source != links.LINK_SOURCE and fetch.download_bytes > ask_above_bytes
+            asks_first = request.source != links.LINK_SOURCE and calculate_download_bytes(fetch) > ask_above_bytes
             if asks_first:
-                return (target.plan, fetch.download_bytes)
+                return (target.plan, calculate_download_bytes(fetch))
         return await self._carry_out(request, dataset, fetch)
 
     def _refuse_update_while_downloading(self, request: DownloadRequest, dataset: ProjectDataset | None) -> None:
@@ -664,7 +670,7 @@ class DatasetService:
         entry, wanted = target.entry, [f.path for f in target.plan.files]
         if not target.is_new_entry:
             self.pool.ensure_ready_files_intact(entry, wanted)
-        ready = entry.ready_paths()
+        ready = list_ready_paths(entry)
         jobs_here = self._jobs_on_entry(entry.id)
         in_jobs = {p for j in jobs_here for p in j.paths}
         return FetchPlan(
@@ -682,7 +688,7 @@ class DatasetService:
         dataset = dataset or self._new_dataset(request, entry)
         newly_linked = self._show_ready_files(project_id, dataset, fetch, request.files)
         job = self._queue_downloads(request, dataset, fetch)
-        if fetch.has_downloads:
+        if needs_download(fetch):
             dataset.status = dataset.status if dataset.status == "ready" else "queued"
             dataset.error = None
         self.pool.save_index()
@@ -701,13 +707,13 @@ class DatasetService:
         if fetch.target.is_new_entry:
             self.pool.add_entry(entry)
         for f in fetch.to_fetch:
-            if entry.file(f.path) is None:
+            if find_pool_file(entry, f.path) is None:
                 entry.files.append(PoolFile(f.path, f.size, f.checksum))
 
     def _show_ready_files(self, project_id: str, dataset: ProjectDataset, fetch: FetchPlan, files: list[str] | None) -> list[str]:
         """Link the ready pooled files now; switch versions now when nothing is left to fetch. Newly linked paths."""
         entry = fetch.target.entry
-        if fetch.switches_entry and fetch.has_downloads:
+        if fetch.switches_entry and needs_download(fetch):
             return []  # the old version stays until the new one is complete
         if fetch.switches_entry:
             self._switch_entry(project_id, dataset, entry, fetch.wanted)
@@ -716,8 +722,8 @@ class DatasetService:
             dataset.files = sorted(set(dataset.files) | set(fetch.wanted))
         visible_before = set(fetch.wanted) - set(self._missing(project_id, dataset))
         self.pool.link_files(project_id, dataset.id, entry, fetch.wanted)
-        newly_linked = [p for p in fetch.wanted if p not in visible_before and p in entry.ready_paths()]
-        if not fetch.has_downloads and not self._missing(project_id, dataset):
+        newly_linked = [p for p in fetch.wanted if p not in visible_before and p in list_ready_paths(entry)]
+        if not needs_download(fetch) and not self._missing(project_id, dataset):
             dataset.status, dataset.error = "ready", None
             if newly_linked or dataset.linked_at is None:
                 dataset.linked_at = utc_now()
@@ -1063,7 +1069,7 @@ class DatasetService:
             self._save(project_id)
             self._refresh_view(project_id)
             return
-        ready = self._entry(dataset).ready_paths()
+        ready = list_ready_paths(self._entry(dataset))
         dataset.files = [p for p in dataset.files if p in ready]
         if dataset.files and not self._jobs_for(project_id, dataset_id):
             dataset.status = "ready"
@@ -1234,7 +1240,7 @@ class DatasetService:
             entry = self.pool.get_entry(job.pool_entry)
             if entry is None:
                 raise WorkspaceError(ErrorCode.DOWNLOAD_FAILED, "the dataset was removed during the download")
-            pool_file = entry.file(f.path) or PoolFile(f.path, f.size, f.checksum)
+            pool_file = find_pool_file(entry, f.path) or PoolFile(f.path, f.size, f.checksum)
             pool_file.size, pool_file.checksum = f.size, f.checksum
             self.pool.store_file(entry, pool_file, downloaded)
             self.pool.save_index()
@@ -1272,11 +1278,11 @@ class DatasetService:
         if dataset is None or entry is None or self._jobs_for(project_id, waiter.dataset_id):
             return False
         if entry.source == "kaggle":
-            if not waiter.paths <= entry.ready_paths():
+            if not waiter.paths <= list_ready_paths(entry):
                 raise WorkspaceError(ErrorCode.DOWNLOAD_FAILED, "Not all Kaggle files could be verified.")
             self.pool.link_files(project_id, dataset.id, entry, sorted(waiter.paths))
         if waiter.switches_entry:
-            if not waiter.paths <= entry.ready_paths():
+            if not waiter.paths <= list_ready_paths(entry):
                 return False
             self._switch_entry(project_id, dataset, entry, sorted(waiter.paths))
         dataset.status, dataset.error, dataset.linked_at = "ready", None, utc_now()
@@ -1336,7 +1342,7 @@ class DatasetService:
                     "path": ds.kernel_path(dataset.id),
                     "downloaded_at": dataset.linked_at,
                     "requested_at": dataset.requested_at,
-                    "files": [{"path": p, "size": f.size if f else 0} for p, f in ((p, entry.file(p)) for p in dataset.files[:PANEL_FILES_MAX])],
+                    "files": [{"path": p, "size": f.size if f else 0} for p, f in ((p, find_pool_file(entry, p)) for p in dataset.files[:PANEL_FILES_MAX])],
                     "error": dataset.error if status == "failed" else None,
                     "shared_with": view["shared_with"],
                     "origin": "downloaded",
