@@ -11,9 +11,11 @@ from sillytherin.tools import chosen_tools, dataset_download, dataset_list
 from sillytherin.tools import dataset_search as search
 from sillytherin.workspace import ErrorCode, WorkspaceError, store
 from sillytherin.workspace.datasets import sources as src
+from sillytherin.workspace.datasets.dtos.settings import DatasetsSettings
+from sillytherin.workspace.datasets.dtos.sources import PlannedFile
 from sillytherin.workspace.datasets.links import find_pasted_links
-from sillytherin.workspace.datasets.service import DatasetService, DatasetsSettings
-from sillytherin.workspace.datasets.sources import DatasetPlan, PlannedFile
+from sillytherin.workspace.datasets.service import DatasetService
+from sillytherin.workspace.datasets.sources import DatasetPlan
 from tests.chat.fakes import FakeChatState, in_chat
 from tests.conftest import FakeDatasetService, FakeFreeDisk, fake_lookup
 from tests.tool_calls import call_tool, failure_text, fake_services

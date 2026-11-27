@@ -18,7 +18,7 @@ import json
 import os
 import stat
 from collections.abc import Callable
-from dataclasses import dataclass, field, replace
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING, BinaryIO, Literal
 
@@ -27,8 +27,9 @@ from sillytherin.config import CREATED_DATA_EXTENSIONS, WORKSPACES_DIR
 from sillytherin.workspace import ErrorCode, WorkspaceError, store
 from sillytherin.workspace.datasets import created_store as cds
 from sillytherin.workspace.datasets import store as ds
-from sillytherin.workspace.datasets.created_store import CreatedDataset, FileSnapshot
 from sillytherin.workspace.datasets.describe import describe_need
+from sillytherin.workspace.datasets.dtos._created import ScanChanges
+from sillytherin.workspace.datasets.dtos.created import CreatedDataset, FileSnapshot
 from sillytherin.workspace.datasets.load_code import load_code
 from sillytherin.workspace.service import DatasetPanelStatus, DatasetProps
 
@@ -47,15 +48,6 @@ ELLIPSIS = "…"
 COLUMNS_READ_MAX_BYTES = 64 * 1024  # text files: at most this much (after decompressing) is read for the header
 COLUMNS_MAX = 50  # column names kept per file
 COLUMN_NAME_MAX_CHARS = 60  # per column name
-
-
-@dataclass
-class ScanChanges:
-    """What one scan found compared with the stored rows; computed without touching storage."""
-
-    new_files: list[FileSnapshot] = field(default_factory=list)  # insert
-    resaved: list[CreatedDataset] = field(default_factory=list)  # same id, new size/mtime
-    renamed: list[CreatedDataset] = field(default_factory=list)  # same id, new path
 
 
 def has_scan_changes(changes: ScanChanges) -> bool:

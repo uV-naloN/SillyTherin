@@ -12,6 +12,7 @@ import pytest
 from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.datasets import links
 from sillytherin.workspace.datasets import sources as src
+from sillytherin.workspace.datasets.dtos.sources import PlannedFile
 from tests.conftest import catalog_client, fake_lookup
 
 SHA = "a" * 40
@@ -313,7 +314,7 @@ def test_downloader_only_starts_at_catalog_hosts(tmp_path):
 
     async def go(url):
         async with catalog_client(handler) as client:
-            await src.stream_file(src.PlannedFile("x", 1, None, url), tmp_path / "x", client=client, on_bytes=nothing, stall_timeout=1)
+            await src.stream_file(PlannedFile("x", 1, None, url), tmp_path / "x", client=client, on_bytes=nothing, stall_timeout=1)
 
     for url in ("https://evil.example/x", "http://huggingface.co/x", "https://127.0.0.1/x"):
         with pytest.raises(WorkspaceError):

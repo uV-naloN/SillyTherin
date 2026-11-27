@@ -12,7 +12,8 @@ from sillytherin.server import app as server_app
 from sillytherin.server.app import ServerSettings, create_app
 from sillytherin.server.socket import ChatSessions
 from sillytherin.workspace import actions
-from sillytherin.workspace.datasets.service import DatasetService, DatasetsSettings
+from sillytherin.workspace.datasets.dtos.settings import DatasetsSettings
+from sillytherin.workspace.datasets.service import DatasetService
 from sillytherin.workspace.kaggle.account import KaggleAccountService
 from sillytherin.workspace.kaggle.token_file import TokenFile
 from sillytherin.workspace.panel import PanelRegistry

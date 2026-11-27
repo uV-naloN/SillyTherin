@@ -13,8 +13,9 @@ import pytest
 
 from sillytherin.workspace import ErrorCode, WorkspaceError, kernels, store
 from sillytherin.workspace.datasets import store as ds
+from sillytherin.workspace.datasets.dtos._views import ViewFile
 from sillytherin.workspace.datasets.pool import POOL_DIR, DatasetPool
-from sillytherin.workspace.datasets.views import VIEWS_DIR, ProjectViews, ViewFile
+from sillytherin.workspace.datasets.views import VIEWS_DIR, ProjectViews
 from sillytherin.workspace.kernels import (
     SCOPE_LABEL,
     CellCompilationError,

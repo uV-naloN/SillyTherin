@@ -34,7 +34,8 @@ from sillytherin.settings import keep_chat_choices
 from sillytherin.tools import dataset_describe
 from sillytherin.workspace import ErrorCode, WorkspaceError, store
 from sillytherin.workspace.datasets.created import missing_notice
-from sillytherin.workspace.datasets.service import DatasetService, DatasetsSettings
+from sillytherin.workspace.datasets.dtos.settings import DatasetsSettings
+from sillytherin.workspace.datasets.service import DatasetService
 from sillytherin.workspace.kaggle.account import (
     KaggleAccountService,
     KaggleAccountStatus,

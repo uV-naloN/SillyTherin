@@ -11,18 +11,14 @@ import os
 import pytest
 
 from sillytherin.workspace import ErrorCode, WorkspaceError
-from sillytherin.workspace.datasets.pool import (
-    POOL_DIR,
-    DatasetPool,
-    PoolEntry,
-    PoolFile,
-)
-from sillytherin.workspace.datasets.store import ProjectDataset
+from sillytherin.workspace.datasets.dtos._views import ViewFile
+from sillytherin.workspace.datasets.dtos.pool import PoolEntry, PoolFile
+from sillytherin.workspace.datasets.dtos.store import ProjectDataset
+from sillytherin.workspace.datasets.pool import POOL_DIR, DatasetPool
 from sillytherin.workspace.datasets.views import (
     VIEW_FAILED_MESSAGE,
     VIEWS_DIR,
     ProjectViews,
-    ViewFile,
     visible_pool_files,
 )
 

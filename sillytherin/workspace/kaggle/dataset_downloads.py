@@ -15,7 +15,8 @@ import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
 from sillytherin.workspace import ErrorCode, WorkspaceError, store
-from sillytherin.workspace.datasets.sources import DatasetPlan, PlannedFile
+from sillytherin.workspace.datasets.dtos.sources import PlannedFile
+from sillytherin.workspace.datasets.sources import DatasetPlan
 from sillytherin.workspace.datasets.store import NAME_MAX, safe_relpath
 from sillytherin.workspace.kaggle.account import HttpFactory
 from sillytherin.workspace.kaggle.dtos._dataset_downloads import (

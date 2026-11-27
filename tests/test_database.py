@@ -15,7 +15,9 @@ from sillytherin.db import engine as db
 from sillytherin.db.schema import metadata
 from sillytherin.workspace import store
 from sillytherin.workspace.datasets import store as ds
-from sillytherin.workspace.datasets.pool import DatasetPool, PoolEntry, PoolFile
+from sillytherin.workspace.datasets.dtos.pool import PoolEntry, PoolFile
+from sillytherin.workspace.datasets.dtos.store import ProjectDataset
+from sillytherin.workspace.datasets.pool import DatasetPool
 from sillytherin.workspace.kernels import ContainerMounts, KernelRegistry
 
 APP_TABLES = {"projects", "pool_entries", "pool_files", "project_datasets", "project_dataset_files"}
@@ -228,7 +230,7 @@ def test_sql_metacharacters_are_stored_as_plain_text(root):
     pool.add_entry(PoolEntry("zenodo-1", "zenodo", "1", None, hostile_name, None, hostile_license,
                              [PoolFile(hostile_path, 1, None, True)]))
     pool.save_index()
-    ds.save_project_datasets(project.id, [ds.ProjectDataset("zenodo-1", "zenodo-1", [hostile_path], "ready", [hostile_path])], root)
+    ds.save_project_datasets(project.id, [ProjectDataset("zenodo-1", "zenodo-1", [hostile_path], "ready", [hostile_path])], root)
 
     assert store.get_project(project.id, root).name == hostile_name
     entry = DatasetPool(root).get_entry("zenodo-1")

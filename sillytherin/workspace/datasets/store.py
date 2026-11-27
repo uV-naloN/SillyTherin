@@ -14,9 +14,7 @@ import re
 import shutil
 import unicodedata
 from collections.abc import Callable
-from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
-from typing import Literal
 from urllib.parse import unquote, urlparse
 
 from sqlalchemy import Connection, Row, Select, delete, insert, select
@@ -30,6 +28,7 @@ from sillytherin.db.schema import (
     projects,
 )
 from sillytherin.workspace import ErrorCode, WorkspaceError, store
+from sillytherin.workspace.datasets.dtos.store import ProjectDataset, Source
 
 log = logging.getLogger(__name__)
 
@@ -41,10 +40,7 @@ PATH_MAX = 1024
 KERNEL_ROOT = "/work/datasets"  # how the kernel sees files/datasets/
 DRIVE_RE = re.compile(r"^[A-Za-z]:")
 
-Source = Literal["huggingface", "zenodo", "link", "kaggle"]
-StoredStatus = Literal["queued", "downloading", "ready", "failed"]
 ORIGIN_DOWNLOADED = "downloaded"  # project_datasets.origin of a catalog download
-DatasetStatus = Literal["queued", "downloading", "ready", "failed", "missing"]  # missing is computed on read
 
 
 def slug_of(text: str) -> str:
@@ -167,19 +163,6 @@ def remove_dataset_dir(project_id: str, dataset_id: str, root: Path = WORKSPACES
 # ---- project datasets: rows pointing at shared pool entries --------
 
 STORED_STATUSES = ("queued", "downloading", "ready", "failed")
-
-
-@dataclass
-class ProjectDataset:
-    id: str  # generated slug, folder name under files/datasets/
-    pool_entry: str  # which pooled version this project uses; changes only with update: true
-    selection: list[str] | None  # every `files` pattern asked for so far; None = all files
-    status: StoredStatus
-    files: list[str] = field(default_factory=list)  # paths only; sizes and checksums live in the pool entry
-    requested_at: str = ""  # ISO 8601 UTC; queue order
-    linked_at: str | None = None  # when this project got the files (may be long after the pool did)
-    error: str | None = None  # one-line reason when failed
-    assistant_description: str | None = None  # one line the assistant wrote for this project; cleared on update
 
 
 def load_project_datasets(project_id: str, root: Path = WORKSPACES_DIR) -> list[ProjectDataset]:

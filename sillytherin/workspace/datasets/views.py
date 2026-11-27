@@ -17,27 +17,20 @@ nothing it finds there. Callers hold the pool lock, like every pool change.
 import logging
 import os
 from collections.abc import Iterable
-from dataclasses import dataclass
 from pathlib import Path
 
 from sillytherin.config import WORKSPACES_DIR
 from sillytherin.workspace import ErrorCode, WorkspaceError, store
 from sillytherin.workspace.datasets import store as ds
-from sillytherin.workspace.datasets.pool import DatasetPool, PoolEntry, list_ready_paths
-from sillytherin.workspace.datasets.store import ProjectDataset
+from sillytherin.workspace.datasets.dtos._views import ViewFile
+from sillytherin.workspace.datasets.dtos.pool import PoolEntry
+from sillytherin.workspace.datasets.dtos.store import ProjectDataset
+from sillytherin.workspace.datasets.pool import DatasetPool, list_ready_paths
 
 log = logging.getLogger(__name__)
 
 VIEWS_DIR = ".dataset-views"
 VIEW_FAILED_MESSAGE = "Couldn't make the dataset readable in this project"
-
-
-@dataclass(frozen=True)
-class ViewFile:
-    """One pool file a project may read."""
-
-    entry_id: str  # pool folder name (checked by check_entry_id); also the folder name in the view
-    path: str  # file inside the entry (checked by safe_relpath); the same path the project's link uses
 
 
 def visible_kaggle_files(dataset: ProjectDataset, entry: PoolEntry) -> set[ViewFile]:

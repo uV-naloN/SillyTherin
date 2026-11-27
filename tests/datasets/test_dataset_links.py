@@ -13,7 +13,8 @@ from sillytherin.workspace import ErrorCode, WorkspaceError, store
 from sillytherin.workspace.datasets import links
 from sillytherin.workspace.datasets import sources as src
 from sillytherin.workspace.datasets import store as ds
-from sillytherin.workspace.datasets.service import DatasetService, DatasetsSettings
+from sillytherin.workspace.datasets.dtos.settings import DatasetsSettings
+from sillytherin.workspace.datasets.service import DatasetService
 from tests.conftest import FakeFreeDisk, catalog_client, fake_lookup
 
 LINK = "https://example.org/data/iris.csv"
