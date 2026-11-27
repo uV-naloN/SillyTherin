@@ -96,3 +96,8 @@ class PickerChoices:
     levels: dict[str, str]
     model_details: dict[str, str] = field(default_factory=dict)  # model id -> "thinks · tools" etc.
     model_effort_levels: dict[str, tuple[str, ...]] = field(default_factory=dict)  # model id -> its Effort levels
+
+
+ToastKind = Literal["info", "success", "warning", "error"]
+
+ReplyInterruptionReason = Literal["openrouter_relay_failed"]

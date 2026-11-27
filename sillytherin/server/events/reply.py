@@ -10,7 +10,7 @@ from pydantic import (
     model_serializer,
 )
 
-from sillytherin.chat.ports import ReplyInterruptionReason
+from sillytherin.contracts.chat import ReplyInterruptionReason
 from sillytherin.server.events.base import ServerEvent
 
 

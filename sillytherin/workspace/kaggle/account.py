@@ -7,6 +7,7 @@ import asyncio
 import contextlib
 import secrets
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from typing import Protocol
 
 import httpx
@@ -16,7 +17,7 @@ from sillytherin.contracts.kaggle import KaggleAccountStatus
 from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.kaggle import oauth
 from sillytherin.workspace.kaggle.callback import CallbackListener
-from sillytherin.workspace.kaggle.dtos._account import CachedAccessToken, PendingSignIn
+from sillytherin.workspace.kaggle.dtos._account import CachedAccessToken
 from sillytherin.workspace.kaggle.dtos.callback import CallbackResult
 from sillytherin.workspace.kaggle.dtos.oauth import OAuthClient, PkcePair, TokenGrant
 from sillytherin.workspace.kaggle.dtos.token_file import SavedSignIn
@@ -53,6 +54,12 @@ AccountChanged = Callable[[KaggleAccountStatus], Awaitable[None]]
 HttpFactory = Callable[[], httpx.AsyncClient]
 ListenerFactory = Callable[[str, float], CallbackListener]  # (expected state, timeout seconds) -> listener
 Now = Callable[[], float]  # monotonic seconds, to know when the access token runs out
+
+
+@dataclass
+class PendingSignIn:
+    listener: CallbackListener
+    finished: asyncio.Task | None = None
 
 
 class KaggleAccountService:

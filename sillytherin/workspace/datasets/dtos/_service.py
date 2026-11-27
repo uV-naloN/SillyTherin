@@ -3,9 +3,7 @@
 from dataclasses import dataclass
 
 from sillytherin.contracts.datasets import DatasetPlan, Source
-from sillytherin.contracts.kaggle import KaggleImportSelection
 from sillytherin.workspace.datasets.dtos.pool import PoolEntry
-from sillytherin.workspace.kaggle.dataset_downloads import KaggleDatasetDownloads
 
 
 @dataclass
@@ -16,13 +14,6 @@ class Waiter:
     session_id: str
     paths: set[str]  # every file this project asked for in the job's entry
     switches_entry: bool = False  # update: true to a new version; linked all at once when complete
-
-
-@dataclass
-class KaggleTransfer:
-    downloads: KaggleDatasetDownloads
-    selection: KaggleImportSelection
-    revision: str
 
 
 @dataclass

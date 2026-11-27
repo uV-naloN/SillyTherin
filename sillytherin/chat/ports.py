@@ -5,13 +5,16 @@ Each Protocol is one job, so a tool depends only on what it uses: a prompt needs
 """
 
 from collections.abc import Sequence
-from typing import Literal, Protocol
+from typing import Protocol
 
-from sillytherin.contracts.chat import Choice, Picker, SettingSwitch
+from sillytherin.contracts.chat import (
+    Choice,
+    Picker,
+    ReplyInterruptionReason,
+    SettingSwitch,
+    ToastKind,
+)
 from sillytherin.contracts.notebook import NotebookProps
-
-ToastKind = Literal["info", "success", "warning", "error"]
-ReplyInterruptionReason = Literal["openrouter_relay_failed"]
 
 
 class AnswerView(Protocol):

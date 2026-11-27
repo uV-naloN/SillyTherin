@@ -49,7 +49,6 @@ from sillytherin.workspace.datasets.created import CreatedDatasets
 from sillytherin.workspace.datasets.describe import describe_need, one_line_description
 from sillytherin.workspace.datasets.dtos._service import (
     DownloadRequest,
-    KaggleTransfer,
     RequestTarget,
     Waiter,
 )
@@ -114,6 +113,13 @@ READY_NOTE = "Already downloaded. The files are ready to use at these paths."
 LINK_READY_NOTE = "Tell the user: This file is already in your datasets. Give them the path; nothing was downloaded."
 REF_PREFIXES = {"huggingface": "hf", "zenodo": "zenodo"}  # dataset_search refs; links and created files have none
 LINK_LICENCE_NOTE = " No licence is known for a pasted link; don't state one."
+
+
+@dataclass
+class KaggleTransfer:
+    downloads: KaggleDatasetDownloads
+    selection: KaggleImportSelection
+    revision: str
 
 
 @dataclass

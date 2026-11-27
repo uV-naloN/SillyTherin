@@ -28,7 +28,6 @@ from sillytherin.chat.ports import (
     Asker,
     ChatState,
     ProgressView,
-    ReplyInterruptionReason,
     SettingsView,
 )
 from sillytherin.chat_start import (
@@ -40,7 +39,12 @@ from sillytherin.chat_start import (
     picker_choices,
 )
 from sillytherin.config import TOOL_MAX_ROUNDS
-from sillytherin.contracts.chat import ModelRequest, Picks, UserMessage
+from sillytherin.contracts.chat import (
+    ModelRequest,
+    Picks,
+    ReplyInterruptionReason,
+    UserMessage,
+)
 from sillytherin.llm import model_params
 from sillytherin.modes import EFFORT_MODE_ID, MODEL_MODE_ID, chosen_picks
 from sillytherin.progress import Progress

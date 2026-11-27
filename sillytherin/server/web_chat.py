@@ -7,13 +7,14 @@ from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager, nullcontext
 from typing import Literal, Protocol
 
-from sillytherin.chat.ports import (
+from sillytherin.chat.ports import ThinkingStep, ToolStep
+from sillytherin.contracts.chat import (
+    Choice,
+    Picker,
     ReplyInterruptionReason,
-    ThinkingStep,
+    SettingSwitch,
     ToastKind,
-    ToolStep,
 )
-from sillytherin.contracts.chat import Choice, Picker, SettingSwitch
 from sillytherin.contracts.kaggle import KaggleApprovalOffer
 from sillytherin.contracts.notebook import NotebookProps
 from sillytherin.server.events import (

@@ -4,13 +4,13 @@ from typing import Annotated, Any, Literal
 
 from pydantic import Field
 
-from sillytherin.chat.ports import ToastKind
 from sillytherin.contracts.chat import (
     DEFAULT_AGENT_MODE,
     AgentMode,
     Choice,
     Picker,
     SettingSwitch,
+    ToastKind,
 )
 from sillytherin.server.events.base import MAX_ID_CHARS, EventError, ServerEvent
 from sillytherin.server.events.reply import ChatLine
