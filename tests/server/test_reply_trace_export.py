@@ -10,6 +10,7 @@ from types import SimpleNamespace
 import pytest
 from starlette.testclient import TestClient
 
+from sillytherin.observability import langfuse
 from sillytherin.observability.agent_observer import observe_answer_wait
 from sillytherin.observability.answer_capture import AnswerCapture
 from sillytherin.observability.langfuse import (
@@ -63,9 +64,11 @@ class FakeWorker:
         self.ready_error: Exception | None = None
         self.loss: ExportLoss | None = None
         self.starts = 0
+        self.has_exited = False
 
     async def create(self, settings: LangfuseSettings) -> "FakeWorker":
         self.starts += 1
+        self.has_exited = False
         return self
 
     async def wait_ready(self) -> None:
@@ -79,6 +82,7 @@ class FakeWorker:
         return self.loss
 
     async def stop(self) -> None:
+        self.has_exited = True
         self.stopped.set()
 
     async def next_trace(self) -> ReplyTrace:
@@ -238,6 +242,45 @@ def test_worker_readiness_timeout_does_not_delay_chat(caplog: pytest.LogCaptureF
 
     asyncio.run(exercise())
     assert "reason=startup_disabled affected_traces=1" in caplog.text
+
+
+def test_later_reply_restarts_worker_after_startup_failure(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture,
+) -> None:
+    worker = FakeWorker()
+    worker.ready_error = langfuse.WorkerStartupError(langfuse.WorkerStartupFailure.DEPENDENCY_MISSING)
+    clock = iter((0, 0, langfuse.WORKER_START_RETRY_SECONDS))
+    monkeypatch.setattr(langfuse, "monotonic", lambda: next(clock))
+
+    async def exercise() -> None:
+        supervisor = make_supervisor(worker)
+        async with supervisor.lifespan():
+            await worker.wait_stopped()
+            supervisor.offer(TEST_TRACE)
+            assert worker.attempts.empty()
+            worker.ready_error = None
+            supervisor.offer(TEST_TRACE)
+            assert await worker.next_trace() == TEST_TRACE
+            assert worker.starts == 2
+
+    asyncio.run(exercise())
+    assert "Langfuse worker startup failed reason=dependency_missing" in caplog.text
+
+
+def test_worker_exit_while_idle_keeps_next_trace(caplog: pytest.LogCaptureFixture) -> None:
+    async def exercise() -> None:
+        worker = FakeWorker()
+        supervisor = make_supervisor(worker)
+        async with supervisor.lifespan():
+            supervisor.offer(TEST_TRACE)
+            assert await worker.next_trace() == TEST_TRACE
+            worker.has_exited = True
+            supervisor.offer(TEST_TRACE)
+            assert await worker.next_trace() == TEST_TRACE
+            assert worker.starts == 2
+
+    asyncio.run(exercise())
+    assert "affected_traces=1" not in caplog.text
 
 
 def test_selecting_another_cloud_region_only_changes_the_resolved_endpoint() -> None:
@@ -541,3 +584,43 @@ class ReceiptSender:
     async def try_send(self, event: ServerEvent) -> bool:
         self.events.append(event)
         return next(self.receipts)
+
+
+def test_enabled_socket_exports_exchange_and_preserves_approval() -> None:
+    # Given the shared valid setup, —.
+    # When the model exchange is observed and exported.
+    # Then Real socket exports exact generations and root; tool executes once after approval; same chat events.
+    # Demonstrates Normal path and approvals.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_disabled_socket_never_captures_or_exports_model_content() -> None:
+    # Given the shared valid setup, Remove opt-in with otherwise valid settings.
+    # When the model exchange is observed and exported.
+    # Then No observer capture, queue or worker. Same chat behavior.
+    # Demonstrates Consent and optional installation.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_rejected_model_export_does_not_change_chat() -> None:
+    # Given the shared valid setup, Reject export and provide a vendor body.
+    # When the model exchange is observed and exported.
+    # Then Same chat, history and tool effects. One attempt and safe reason/status only.
+    # Demonstrates Fail-open HTTP rejection.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_stalled_model_export_does_not_delay_next_turn() -> None:
+    # Given the shared valid setup, Stall the worker until timeout.
+    # When the model exchange is observed and exported.
+    # Then Next turn and its approval complete independently. Safe timeout loss.
+    # Demonstrates Export off chat path.
+    pytest.fail("TODO: implement this behavior")
+
+
+def test_model_projection_exception_does_not_interrupt_chat() -> None:
+    # Given the shared valid setup, Raise an observer-side exception containing a sentinel.
+    # When the model exchange is observed and exported.
+    # Then Same model requests, actions and reply. No export or sentinel in local trace diagnostics.
+    # Demonstrates Observer failure containment.
+    pytest.fail("TODO: implement this behavior")

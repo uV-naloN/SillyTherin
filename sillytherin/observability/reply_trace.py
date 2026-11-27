@@ -2,7 +2,7 @@
 
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import Annotated, Protocol
 from uuid import UUID
@@ -48,6 +48,19 @@ class ReplyState(StrEnum):
     MISSING = "missing"
 
 
+class ModelOutputState(StrEnum):
+    COMPLETE = "complete"
+    PARTIAL = "partial"
+    MISSING = "missing"
+
+
+@dataclass(frozen=True)
+class ModelExchange:
+    input_json: str = field(repr=False)
+    output_json: str | None = field(repr=False)
+    output_state: ModelOutputState
+
+
 @dataclass(frozen=True)
 class ReplySpan:
     kind: SpanKind
@@ -55,6 +68,7 @@ class ReplySpan:
     start_time_unix_nano: UnixNanoseconds
     end_time_unix_nano: UnixNanoseconds
     outcome: SpanOutcome
+    model_exchange: ModelExchange | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True)
@@ -140,6 +154,8 @@ class ReplyRecorder:
         self._epoch_offset = 0
         self._stages: dict[UUID, StartedStage] = {}
         self._finished: dict[UUID, ReplySpan] = {}
+        self._model_inputs: dict[UUID, str] = {}
+        self._model_chunks: dict[UUID, list[dict[str, object]]] = {}
         self._sealed = False
         self.loss: RecordingLoss | None = None
 
@@ -176,6 +192,35 @@ class ReplyRecorder:
         if stage is not None:
             self._finished[run_id] = stage.finish(self._clock.monotonic_ns(), outcome, self._epoch_offset)
 
+    def attach_model_exchange(self, run_id: UUID, exchange: ModelExchange) -> None:
+        """Attach callback content to the matching model span."""
+        stage = self._stages.get(run_id)
+        if stage is not None and stage.kind is SpanKind.MODEL:
+            self._model_inputs[run_id] = exchange.input_json
+            self._model_chunks[run_id] = []
+            return
+        span = self._finished.get(run_id)
+        if span is not None and span.kind is SpanKind.MODEL:
+            self._finished[run_id] = replace(span, model_exchange=exchange)
+
+    def record_model_chunk(self, run_id: UUID, chunk: dict[str, object]) -> None:
+        if run_id in self._model_inputs and not self._sealed:
+            self._model_chunks.setdefault(run_id, []).append(chunk)
+
+    def finish_model_stage(self, run_id: UUID, outcome: SpanOutcome, response: object | None) -> None:
+        from sillytherin.observability.model_capture import finish_model_exchange
+
+        input_json = self._model_inputs.get(run_id)
+        chunks = self._model_chunks.get(run_id, [])
+        if input_json is not None:
+            exchange = finish_model_exchange(input_json, chunks, response, outcome)
+            self.finish_stage(run_id, outcome)
+            self.attach_model_exchange(run_id, exchange)
+            self._model_inputs.pop(run_id, None)
+            self._model_chunks.pop(run_id, None)
+            return
+        self.finish_stage(run_id, outcome)
+
     def finish_reply(self, outcome: SpanOutcome, *, content: ReplyContent | None = None) -> ReplyTrace | None:
         if self._sealed or self.loss is not None:
             return None
@@ -183,6 +228,14 @@ class ReplyRecorder:
         pending_outcome = SpanOutcome.CANCELLED if outcome is SpanOutcome.CANCELLED else SpanOutcome.INTERRUPTED
         for run_id, stage in self._stages.items():
             self._finished[run_id] = stage.finish(end, pending_outcome, self._epoch_offset)
+            input_json = self._model_inputs.get(run_id)
+            if input_json is not None:
+                from sillytherin.observability.model_capture import (
+                    finish_model_exchange,
+                )
+
+                exchange = finish_model_exchange(input_json, self._model_chunks.get(run_id, []), None, pending_outcome)
+                self._finished[run_id] = replace(self._finished[run_id], model_exchange=exchange)
         self._stages.clear()
         self._sealed = True
         root = ReplySpan(SpanKind.REPLY, REPLY_NAME, self._started + self._epoch_offset, end + self._epoch_offset, outcome)
