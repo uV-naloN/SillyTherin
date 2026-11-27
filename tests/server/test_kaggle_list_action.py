@@ -6,7 +6,10 @@ import pytest
 
 from sillytherin.server.socket import GENERIC_FAILURE
 from sillytherin.workspace import actions
-from sillytherin.workspace.kaggle.my_datasets import MyDatasetsAnswer, OwnedDataset
+from sillytherin.workspace.kaggle.dtos._my_datasets import (
+    MyDatasetsAnswer,
+    OwnedDataset,
+)
 from tests.server.conftest import open_tab
 
 ANAS_LIST = MyDatasetsAnswer(

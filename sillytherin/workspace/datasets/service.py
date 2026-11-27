@@ -53,10 +53,10 @@ from sillytherin.workspace.kaggle.dataset_downloads import (
     KaggleApprovalOffer,
     KaggleDatasetDownloads,
     KaggleDownloadResult,
-    KaggleFileDownload,
     KaggleImportError,
     KaggleImportSelection,
 )
+from sillytherin.workspace.kaggle.dtos.downloads import KaggleFileDownload
 from sillytherin.workspace.service import (
     DatasetOrigin,
     DatasetProps,

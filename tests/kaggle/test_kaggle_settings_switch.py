@@ -9,7 +9,7 @@ from sillytherin.workspace.kaggle.account import (
     REFUSED_NOTICE,
     KaggleAccountStatus,
 )
-from sillytherin.workspace.kaggle.callback import CallbackResult
+from sillytherin.workspace.kaggle.dtos.callback import CallbackResult
 from sillytherin.workspace.kaggle.settings_switch import (
     ChatSide,
     account_change,

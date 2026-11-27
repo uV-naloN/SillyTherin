@@ -8,7 +8,8 @@ from dataclasses import asdict
 from pathlib import Path
 
 from sillytherin.config import KAGGLE_TOKEN_FILE, WORKSPACES_DIR
-from sillytherin.workspace.kaggle.callback import CallbackListener, CallbackResult
+from sillytherin.workspace.kaggle.callback import CallbackListener
+from sillytherin.workspace.kaggle.dtos.callback import CallbackResult
 from sillytherin.workspace.kaggle.my_datasets import LIST_DATASETS_URL
 from sillytherin.workspace.kaggle.settings_switch import (
     apply_account_change,

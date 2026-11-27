@@ -7,8 +7,9 @@ paths (they carry the one-time code).
 import asyncio
 import contextlib
 import urllib.parse
-from dataclasses import dataclass, field
-from typing import Literal
+
+from sillytherin.workspace.kaggle.dtos._callback import BrowserReply
+from sillytherin.workspace.kaggle.dtos.callback import CallbackResult
 
 CALLBACK_PATH = "/callback"
 LOOPBACK_HOST = "127.0.0.1"
@@ -17,22 +18,6 @@ CONNECTED_PAGE = "Connected. You can close this tab and go back to SillyTherin."
 CANCELLED_PAGE = "Sign-in cancelled. You can close this tab."
 MAX_REQUEST_LINE_BYTES = 8192
 READ_TIMEOUT_SECONDS = 5
-
-CallbackOutcome = Literal["code", "cancelled", "timed_out"]
-
-
-@dataclass(frozen=True)
-class CallbackResult:
-    """How the browser hand-off ended; `code` is set only when the user approved."""
-
-    outcome: CallbackOutcome
-    code: str | None = field(default=None, repr=False)
-
-
-@dataclass(frozen=True)
-class BrowserReply:
-    status: int
-    text: str
 
 
 NOT_OURS = BrowserReply(404, "")

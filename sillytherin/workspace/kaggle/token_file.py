@@ -6,21 +6,13 @@ Only the refresh token is saved; access tokens live in memory.
 import json
 import os
 import stat
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict
 from pathlib import Path
+
+from sillytherin.workspace.kaggle.dtos.token_file import SavedSignIn
 
 OWNER_ONLY_MODE = 0o600
 GROUP_OR_OTHER_BITS = stat.S_IRWXG | stat.S_IRWXO
-
-
-@dataclass(frozen=True)
-class SavedSignIn:
-    """What is kept between app restarts."""
-
-    client_id: str
-    refresh_token: str = field(repr=False)
-    username: str
-    connected_at: str  # ISO 8601 UTC, from clock.utc_now
 
 
 class TokenFile:

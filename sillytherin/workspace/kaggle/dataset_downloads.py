@@ -8,7 +8,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path, PurePosixPath
-from typing import Annotated, Literal, Protocol, TypedDict
+from typing import Annotated, Literal, Protocol
 from urllib.parse import urlsplit
 
 import httpx
@@ -18,6 +18,12 @@ from sillytherin.workspace import ErrorCode, WorkspaceError, store
 from sillytherin.workspace.datasets.sources import DatasetPlan, PlannedFile
 from sillytherin.workspace.datasets.store import NAME_MAX, safe_relpath
 from sillytherin.workspace.kaggle.account import HttpFactory
+from sillytherin.workspace.kaggle.dtos._dataset_downloads import (
+    KaggleDownloadAccepted,
+    KaggleDownloadRejected,
+    KaggleDownloadSkipped,
+)
+from sillytherin.workspace.kaggle.dtos.downloads import KaggleFileDownload
 
 DOWNLOAD_ACTION = "kg_download_dataset"
 DOWNLOAD_PROMPT = "kaggle_download"
@@ -51,25 +57,6 @@ class KaggleDownloadPayload(BaseModel):
     ref: Annotated[str, Field(max_length=200, pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]*/[A-Za-z0-9][A-Za-z0-9_-]*$")]
 
 
-class KaggleDownloadAccepted(TypedDict):
-    state: Literal["accepted"]
-    dataset_id: str  # public project dataset ID, not the pool ID
-
-
-class KaggleDownloadSkipped(TypedDict):
-    state: Literal["skipped"]
-
-
-class KaggleDownloadError(TypedDict):
-    code: str
-    message: str  # sanitized one-line text for the picker
-
-
-class KaggleDownloadRejected(TypedDict):
-    state: Literal["error"]
-    error: KaggleDownloadError
-
-
 KaggleDownloadResult = KaggleDownloadAccepted | KaggleDownloadSkipped | KaggleDownloadRejected
 
 
@@ -91,15 +78,6 @@ class KaggleApprovalOffer:
     dataset_name: str
     revision: str
     download_bytes: int
-
-
-@dataclass(frozen=True)
-class KaggleFileDownload:
-    ref: str
-    revision: str
-    path: str
-    size_bytes: int
-    account_generation: int
 
 
 ApproveKaggleImport = Callable[[KaggleApprovalOffer], Awaitable[bool]]

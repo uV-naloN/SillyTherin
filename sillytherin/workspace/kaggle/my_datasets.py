@@ -5,8 +5,7 @@ is sent to the asking tab, never to the chat history or the model.
 """
 
 import logging
-from dataclasses import asdict, dataclass, field
-from typing import Literal, Protocol
+from typing import Protocol
 
 import httpx
 
@@ -14,6 +13,11 @@ from sillytherin.workspace.kaggle.account import (
     SIGNED_OUT_NOTICE,
     HttpFactory,
     KaggleAccountStatus,
+)
+from sillytherin.workspace.kaggle.dtos._my_datasets import (
+    ListingState,
+    MyDatasetsAnswer,
+    OwnedDataset,
 )
 
 log = logging.getLogger(__name__)
@@ -26,33 +30,6 @@ MAX_PAGES = MAX_LISTED_DATASETS // ROWS_PER_PAGE
 MY_DATASETS_REQUEST = {"group": "DATASET_SELECTION_GROUP_MY", "sortBy": "DATASET_SORT_BY_UPDATED"}
 HTTP_OK = 200
 REFUSED_TOKEN_STATUSES = {401, 403}
-
-ListingState = Literal["listed", "not_connected", "signed_out", "unreachable"]
-
-
-@dataclass(frozen=True)
-class OwnedDataset:
-    """One row of the window."""
-
-    title: str  # first line; searched
-    ref: str  # "owner/slug": second line; what a later download uses
-    total_bytes: int | None  # Size column; None when Kaggle doesn't say
-    licence: str | None  # Licence column, as Kaggle names it
-    last_updated: str | None  # Updated column, ISO-8601 UTC
-
-
-@dataclass(frozen=True)
-class MyDatasetsAnswer:
-    """What the window shows; rows only when listed, so a failure never leaves an old or half list."""
-
-    state: ListingState
-    username: str | None = None
-    datasets: list[OwnedDataset] = field(default_factory=list)
-    is_truncated: bool = False
-
-    def to_page(self) -> dict:
-        """The answer as the page receives it."""
-        return asdict(self)
 
 
 class AccountForListing(Protocol):

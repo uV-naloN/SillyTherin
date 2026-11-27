@@ -7,7 +7,7 @@ import asyncio
 import contextlib
 import secrets
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal, Protocol
 
 import httpx
@@ -15,8 +15,12 @@ import httpx
 from sillytherin.clock import utc_now
 from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.kaggle import oauth
-from sillytherin.workspace.kaggle.callback import CallbackListener, CallbackResult
-from sillytherin.workspace.kaggle.token_file import SavedSignIn, TokenFile
+from sillytherin.workspace.kaggle.callback import CallbackListener
+from sillytherin.workspace.kaggle.dtos._account import CachedAccessToken, PendingSignIn
+from sillytherin.workspace.kaggle.dtos.callback import CallbackResult
+from sillytherin.workspace.kaggle.dtos.oauth import OAuthClient, PkcePair, TokenGrant
+from sillytherin.workspace.kaggle.dtos.token_file import SavedSignIn
+from sillytherin.workspace.kaggle.token_file import TokenFile
 
 CANCELLED_NOTICE = "Kaggle sign-in was cancelled."
 TIMED_OUT_NOTICE = "Kaggle sign-in timed out. Try again."
@@ -60,18 +64,6 @@ AccountChanged = Callable[[KaggleAccountStatus], Awaitable[None]]
 HttpFactory = Callable[[], httpx.AsyncClient]
 ListenerFactory = Callable[[str, float], CallbackListener]  # (expected state, timeout seconds) -> listener
 Now = Callable[[], float]  # monotonic seconds, to know when the access token runs out
-
-
-@dataclass
-class PendingSignIn:
-    listener: CallbackListener
-    finished: asyncio.Task | None = None
-
-
-@dataclass(frozen=True)
-class CachedAccessToken:
-    token: str = field(repr=False)
-    refresh_at: float  # monotonic seconds
 
 
 class KaggleAccountService:
@@ -193,7 +185,7 @@ class KaggleAccountService:
 
     # ---- steps ----
 
-    async def _finish_sign_in(self, pending: PendingSignIn, client: oauth.OAuthClient, pkce: oauth.PkcePair) -> None:
+    async def _finish_sign_in(self, pending: PendingSignIn, client: OAuthClient, pkce: PkcePair) -> None:
         result = await pending.listener.wait()
         try:
             if self._pending is pending:
@@ -203,7 +195,7 @@ class KaggleAccountService:
                 self._pending = None
                 await self.on_change(self.status())
 
-    async def _save_sign_in(self, result: CallbackResult, client: oauth.OAuthClient, pkce: oauth.PkcePair) -> str | None:
+    async def _save_sign_in(self, result: CallbackResult, client: OAuthClient, pkce: PkcePair) -> str | None:
         """Exchange the code and save the sign-in; the notice to show when it didn't happen."""
         if result.outcome != "code" or result.code is None:
             return NOTICE_FOR_FAILURE["timed_out" if result.outcome == "timed_out" else "cancelled"]
@@ -268,7 +260,7 @@ class KaggleAccountService:
         self._notice = SIGNED_OUT_NOTICE
         await self.on_change(self.status())
 
-    def _remember(self, grant: oauth.TokenGrant) -> None:
+    def _remember(self, grant: TokenGrant) -> None:
         self._cached = CachedAccessToken(grant.access_token, self.now() + grant.expires_in_seconds - EXPIRY_MARGIN_SECONDS)
 
     def _cached_is_fresh(self) -> bool:

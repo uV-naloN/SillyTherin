@@ -32,9 +32,9 @@ from sillytherin.workspace.datasets.sources import DatasetPlan, PlannedFile
 from sillytherin.workspace.datasets.views import VIEW_FAILED_MESSAGE, VIEWS_DIR
 from sillytherin.workspace.kaggle.dataset_downloads import (
     KaggleApprovalOffer,
-    KaggleFileDownload,
     KaggleImportSelection,
 )
+from sillytherin.workspace.kaggle.dtos.downloads import KaggleFileDownload
 from sillytherin.workspace.service import NotebookService
 from tests.conftest import FakeChats, FakeFreeDisk, FakeKernels, fake_lookup
 from tests.tool_calls import call_tool, fake_services
