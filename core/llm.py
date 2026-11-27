@@ -3,7 +3,7 @@
 
 import httpx
 
-from core.config import MODEL, OPENROUTER_URL
+from core.configuration.config import MODEL, OPENROUTER_URL
 from core.contracts.chat import ModelInfo
 
 _catalog: dict[str, ModelInfo] | None = None

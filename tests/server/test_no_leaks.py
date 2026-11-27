@@ -2,7 +2,7 @@
 
 import json
 
-from core import config
+from core.configuration import config
 from core.server import socket as chat_socket
 from core.server.events import ChatStop
 from core.tools import web_search

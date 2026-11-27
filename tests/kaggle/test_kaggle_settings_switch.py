@@ -2,8 +2,8 @@
 
 import asyncio
 
+from core.configuration.settings import build_widgets
 from core.contracts.kaggle import KaggleAccountStatus
-from core.settings import build_widgets
 from core.workspace.kaggle import settings_switch as switch
 from core.workspace.kaggle.account import CANCELLED_NOTICE, REFUSED_NOTICE
 from core.workspace.kaggle.dtos.callback import CallbackResult

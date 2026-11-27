@@ -7,7 +7,7 @@ import urllib.parse
 from dataclasses import asdict
 from pathlib import Path
 
-from core.config import KAGGLE_TOKEN_FILE, WORKSPACES_DIR
+from core.configuration.config import KAGGLE_TOKEN_FILE, WORKSPACES_DIR
 from core.workspace.kaggle.callback import CallbackListener
 from core.workspace.kaggle.dtos.callback import CallbackResult
 from core.workspace.kaggle.my_datasets import LIST_DATASETS_URL

@@ -4,15 +4,15 @@ import asyncio
 
 from core import llm
 from core.chat_start import pickers_for
-from core.config import check_levels
-from core.contracts.chat import ModelInfo, PickerChoices, Picks
-from core.modes import (
+from core.configuration.config import check_levels
+from core.configuration.modes import (
     EFFORT_MODE_ID,
     MODEL_MODE_ID,
     chosen_picks,
     effort_levels_for,
 )
-from core.settings import reasoning_body
+from core.configuration.settings import reasoning_body
+from core.contracts.chat import ModelInfo, PickerChoices, Picks
 
 # ---- Group 1 — levels per model on the server · unit
 # Baseline: config levels default, off, low, medium, high; a model that thinks, lists efforts

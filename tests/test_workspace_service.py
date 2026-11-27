@@ -253,7 +253,7 @@ def test_absolute_and_drive_paths_rejected(root, bad):
 @pytest.mark.parametrize("host", ["0.0.0.0", "192.168.1.5", "::", "example.com"])
 def test_startup_refuses_non_local_host(host):
     # Demonstrates: the app only serves on localhost
-    from core.config import check_local_host
+    from core.configuration.config import check_local_host
 
     with pytest.raises(RuntimeError, match="localhost"):
         check_local_host(host)

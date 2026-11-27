@@ -2,7 +2,7 @@
 
 from dataclasses import replace
 
-from core.config import SEARCH_ENABLED
+from core.configuration.config import SEARCH_ENABLED
 from core.contracts.chat import SettingSwitch
 from core.contracts.kaggle import KaggleAccountStatus
 from core.workspace.kaggle.settings_switch import (

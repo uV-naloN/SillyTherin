@@ -14,7 +14,7 @@ from langgraph.runtime import Runtime
 from openrouter.errors import BadRequestResponseError
 
 from core.agent.round_limit import tool_rounds_this_turn
-from core.config import OPENROUTER_API_KEY, OPENROUTER_URL
+from core.configuration.config import OPENROUTER_API_KEY, OPENROUTER_URL
 from core.contracts.chat import ModelRequest
 
 APP_TITLE = "SillyTherin"  # how OpenRouter names the app on the account's activity page

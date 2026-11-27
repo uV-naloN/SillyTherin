@@ -9,7 +9,7 @@ from langchain.tools import ToolRuntime
 from langchain_core.tools import ToolException, tool
 from pydantic import Field
 
-from core.config import MODEL_AUTO_RUN, RISKY_CODE_NEEDS_APPROVAL
+from core.configuration.config import MODEL_AUTO_RUN, RISKY_CODE_NEEDS_APPROVAL
 from core.tools.shared.approval import RUN_CHOICE, RUN_OR_SKIP, ask_choice
 from core.tools.shared.arguments import NonBlankText, ToolArguments
 from core.tools.shared.services import ToolServices

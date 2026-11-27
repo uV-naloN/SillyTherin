@@ -19,7 +19,7 @@ from urllib.parse import unquote, urlparse
 
 from sqlalchemy import Connection, Row, Select, delete, insert, select
 
-from core.config import WORKSPACES_DIR
+from core.configuration.config import WORKSPACES_DIR
 from core.contracts.datasets import Source
 from core.db.engine import database_for
 from core.db.schema import (

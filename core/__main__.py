@@ -61,7 +61,12 @@ def create_runtime_app(settings: "ServerSettings") -> "FastAPI":
 def main(argv: list[str] | None = None) -> None:
     arguments = read_arguments(argv)
     # Imported here: config and the database must be checked before anything else loads them
-    from core.config import ROOT, WORKSPACES_DIR, check_local_host, check_setup
+    from core.configuration.config import (
+        ROOT,
+        WORKSPACES_DIR,
+        check_local_host,
+        check_setup,
+    )
 
     check_setup()  # wrong Python or no API key: say how to fix it before anything else fails
     # Notebook cells run code, so never serve beyond this PC

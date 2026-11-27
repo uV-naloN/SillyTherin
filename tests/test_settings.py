@@ -1,5 +1,4 @@
-from core.contracts.kaggle import KaggleAccountStatus
-from core.settings import (
+from core.configuration.settings import (
     NO_REASONING_REASON,
     NO_TOOLS_REASON,
     build_widgets,
@@ -7,6 +6,7 @@ from core.settings import (
     reasoning_body,
     usable_settings,
 )
+from core.contracts.kaggle import KaggleAccountStatus
 
 NOT_CONNECTED = KaggleAccountStatus(state="disconnected")
 FULL_MODEL = {"reasoning", "tools"}

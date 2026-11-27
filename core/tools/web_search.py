@@ -9,7 +9,7 @@ from langchain.tools import ToolRuntime
 from langchain_core.tools import tool
 from pydantic import Field
 
-from core.config import SEARCH_MAX_RESULTS
+from core.configuration.config import SEARCH_MAX_RESULTS
 from core.tools.shared.arguments import NonBlankText, ToolArguments
 from core.tools.shared.titles import shorten
 

@@ -14,8 +14,8 @@ EVENTS_FOLDER = CORE_ROOT / "server" / "events"
 EVENT_LOGIC_FILES = {"parse.py"}
 CONVERTER_PREFIXES = ("to_", "from_")
 CHECK_DECORATORS = {"field_validator", "model_validator", "model_serializer", "field_serializer"}
-# core.config only holds constants, so a DTO may read its defaults from it
-ALLOWED_PACKAGE_MODULES = ("core.contracts", "core.server.events", "core.config")
+# core.configuration.config only holds constants, so a DTO may read its defaults from it
+ALLOWED_PACKAGE_MODULES = ("core.contracts", "core.server.events", "core.configuration.config")
 
 
 def find_dto_files() -> list[Path]:

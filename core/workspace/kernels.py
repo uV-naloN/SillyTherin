@@ -29,7 +29,7 @@ import nbformat
 from jupyter_client.asynchronous import AsyncKernelClient
 from nbformat import NotebookNode
 
-from core.config import (
+from core.configuration.config import (
     CELL_TIMEOUT_SECONDS,
     KERNEL_IDLE_MINUTES,
     MAX_IMAGE_KB,

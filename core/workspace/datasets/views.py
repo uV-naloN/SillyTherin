@@ -19,7 +19,7 @@ import os
 from collections.abc import Iterable
 from pathlib import Path
 
-from core.config import WORKSPACES_DIR
+from core.configuration.config import WORKSPACES_DIR
 from core.workspace import store
 from core.workspace.datasets import store as ds
 from core.workspace.datasets.dtos._views import ViewFile

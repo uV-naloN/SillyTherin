@@ -17,7 +17,7 @@ from langchain.tools import ToolRuntime
 from langchain_core.tools import ToolException, tool
 from pydantic import AfterValidator, Field
 
-from core.config import DATASET_MAX_RESULTS
+from core.configuration.config import DATASET_MAX_RESULTS
 from core.tools.shared.arguments import ToolArguments
 from core.tools.shared.services import ToolServices
 from core.tools.shared.titles import shorten

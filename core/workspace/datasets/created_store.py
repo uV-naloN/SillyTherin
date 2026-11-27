@@ -12,7 +12,7 @@ from pathlib import Path
 
 from sqlalchemy import Connection, Row, delete, func, insert, select, update
 
-from core.config import WORKSPACES_DIR
+from core.configuration.config import WORKSPACES_DIR
 from core.db.engine import database_for
 from core.db.schema import project_datasets, projects
 from core.workspace import store

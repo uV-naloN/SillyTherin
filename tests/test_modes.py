@@ -1,13 +1,13 @@
 """The Model and Effort pickers in the chat box."""
 
-from core.contracts.chat import PickerChoices, Picks
-from core.modes import (
+from core.configuration.modes import (
     EFFORT_MODE_ID,
     MODEL_MODE_ID,
     build_modes,
     chosen_picks,
     picker_models,
 )
+from core.contracts.chat import PickerChoices, Picks
 
 CHOICES = PickerChoices(
     models={"vendor/fast": "Fast", "vendor/smart": "Smart"},

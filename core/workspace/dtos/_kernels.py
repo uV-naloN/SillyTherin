@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from core.config import (
+from core.configuration.config import (
     DOCKER_CPUS,
     DOCKER_IMAGE,
     DOCKER_MEMORY,

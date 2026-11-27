@@ -18,7 +18,7 @@ import nbformat
 from nbformat import NotebookNode
 from sqlalchemy import Connection, Row, insert, select
 
-from core.config import WORKSPACES_DIR
+from core.configuration.config import WORKSPACES_DIR
 from core.contracts.notebook import PROJECT_ID_MAX, PROJECT_ID_RE, CellType
 from core.db.engine import database_for
 from core.db.schema import projects

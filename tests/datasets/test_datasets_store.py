@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-from core.config import DATABASE_FILE
+from core.configuration.config import DATABASE_FILE
 from core.db.engine import database_for
 from core.workspace import store
 from core.workspace.datasets import store as ds

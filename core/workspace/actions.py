@@ -20,7 +20,7 @@ from core.chat.ports import (
     SettingsView,
     Toaster,
 )
-from core.config import (
+from core.configuration.config import (
     DATASETS_ASK_ABOVE_MB,
     DATASETS_MAX_FILES,
     DATASETS_MIN_FREE_DISK_MB,
@@ -29,10 +29,10 @@ from core.config import (
     KAGGLE_SIGNIN_TIMEOUT_SECONDS,
     KAGGLE_TOKEN_FILE,
 )
+from core.configuration.settings import keep_chat_choices
 from core.contracts.chat import SettingSwitch
 from core.contracts.kaggle import KaggleAccountStatus, KaggleImportSelection
 from core.contracts.notebook import NotebookProps
-from core.settings import keep_chat_choices
 from core.tools import dataset_describe
 from core.workspace import store
 from core.workspace.datasets.created import missing_notice

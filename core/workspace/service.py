@@ -20,7 +20,7 @@ from typing import Literal
 
 from nbformat import NotebookNode
 
-from core.config import NOTEBOOK_READ_MAX_CHARS, WORKSPACES_DIR
+from core.configuration.config import NOTEBOOK_READ_MAX_CHARS, WORKSPACES_DIR
 from core.contracts.notebook import (
     CellProps,
     CellStatus,

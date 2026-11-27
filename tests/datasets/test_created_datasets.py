@@ -18,7 +18,7 @@ import pyarrow.parquet as pq
 import pytest
 from openpyxl.worksheet._read_only import ReadOnlyWorksheet
 
-from core.config import CREATED_DATA_EXTENSIONS
+from core.configuration.config import CREATED_DATA_EXTENSIONS
 from core.workspace import store
 from core.workspace.datasets import created as created_module
 from core.workspace.datasets import created_store as cds

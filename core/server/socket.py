@@ -22,6 +22,7 @@ from core.chat_start import (
     start_chat_values,
     switches_for,
 )
+from core.configuration.settings import keep_chat_choices
 from core.contracts.chat import DEFAULT_AGENT_MODE, AgentMode, UserMessage
 from core.contracts.kaggle import (
     KaggleDownloadPayload,
@@ -61,7 +62,6 @@ from core.server.web_chat import (
     SocketSignInPopup,
     SocketToaster,
 )
-from core.settings import keep_chat_choices
 from core.turn import TurnRunner, TurnViews, run_turn
 from core.workspace import actions
 from core.workspace.errors import ErrorCode

@@ -4,8 +4,8 @@ import importlib.util
 import subprocess
 from pathlib import Path
 
-from core import config
 from core.__main__ import main
+from core.configuration import config
 from core.db import engine as db
 from core.tools import dataset_search
 from core.workspace import store

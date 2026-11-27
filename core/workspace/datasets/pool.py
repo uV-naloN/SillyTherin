@@ -32,7 +32,7 @@ from pathlib import Path
 from sqlalchemy import Connection, Row, delete, func, insert, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
-from core.config import WORKSPACES_DIR
+from core.configuration.config import WORKSPACES_DIR
 from core.contracts.datasets import Source
 from core.db.engine import database_for
 from core.db.schema import (

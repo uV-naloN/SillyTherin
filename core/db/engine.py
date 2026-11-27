@@ -17,7 +17,7 @@ from alembic.script import ScriptDirectory
 from sqlalchemy import Connection, Engine, create_engine, event, text
 from sqlalchemy.exc import DatabaseError
 
-from core.config import DATABASE_FILE, WORKSPACES_DIR
+from core.configuration.config import DATABASE_FILE, WORKSPACES_DIR
 
 BUSY_TIMEOUT_MILLISECONDS = 5000
 CONNECTION_PRAGMAS = ("foreign_keys=ON", "journal_mode=WAL", f"busy_timeout={BUSY_TIMEOUT_MILLISECONDS}")

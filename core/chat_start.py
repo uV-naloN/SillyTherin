@@ -1,7 +1,14 @@
 """What a chat starts with, and the pickers and Settings it shows for its model."""
 
 from core.chat.ports import ChatState, SettingsView
-from core.config import EFFORT_DEFAULT, EFFORT_LEVELS, MODEL, SYSTEM_PROMPT
+from core.configuration.config import (
+    EFFORT_DEFAULT,
+    EFFORT_LEVELS,
+    MODEL,
+    SYSTEM_PROMPT,
+)
+from core.configuration.modes import build_modes, effort_levels_for, picker_models
+from core.configuration.settings import build_widgets, keep_chat_choices
 from core.contracts.chat import (
     ModelInfo,
     Picker,
@@ -11,8 +18,6 @@ from core.contracts.chat import (
 )
 from core.contracts.kaggle import KaggleAccountStatus
 from core.llm import model_catalog, model_params
-from core.modes import build_modes, effort_levels_for, picker_models
-from core.settings import build_widgets, keep_chat_choices
 
 HISTORY_KEY = "history"
 PICKS_KEY = "picks"

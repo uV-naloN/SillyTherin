@@ -10,7 +10,7 @@ from langchain.tools import ToolRuntime
 from langchain_core.tools import ToolException, tool
 from pydantic import Field
 
-from core.config import READ_PAGE_MAX_CHARS
+from core.configuration.config import READ_PAGE_MAX_CHARS
 from core.tools.shared.arguments import NonBlankText, ToolArguments
 from core.tools.shared.titles import short_url
 

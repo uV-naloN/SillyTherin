@@ -38,7 +38,9 @@ from core.chat_start import (
     follow_model_change,
     picker_choices,
 )
-from core.config import TOOL_MAX_ROUNDS
+from core.configuration.config import TOOL_MAX_ROUNDS
+from core.configuration.modes import EFFORT_MODE_ID, MODEL_MODE_ID, chosen_picks
+from core.configuration.settings import reasoning_body, usable_settings
 from core.contracts.chat import (
     ModelRequest,
     Picks,
@@ -46,9 +48,7 @@ from core.contracts.chat import (
     UserMessage,
 )
 from core.llm import model_params
-from core.modes import EFFORT_MODE_ID, MODEL_MODE_ID, chosen_picks
 from core.progress import Progress
-from core.settings import reasoning_body, usable_settings
 from core.tools import (
     chosen_tools,
     dataset_delete,

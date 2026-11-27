@@ -25,7 +25,7 @@ from pathlib import Path
 
 import httpx
 
-from core.config import WORKSPACES_DIR
+from core.configuration.config import WORKSPACES_DIR
 from core.contracts.datasets import (
     DatasetPlan,
     DatasetRecordView,

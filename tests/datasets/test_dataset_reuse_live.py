@@ -12,7 +12,7 @@ import re
 
 import pytest
 
-import core.config  # noqa: F401 — loads .env, so the key there counts
+import core.configuration.config  # noqa: F401 — loads .env, so the key there counts
 from tests.conftest import FakeDatasetService
 from tests.datasets.test_dataset_reuse import (
     IRIS_COLUMNS,
@@ -57,7 +57,7 @@ class Chat:
         from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 
         from core.agent.model import build_chat_model
-        from core.config import MODEL, SYSTEM_PROMPT
+        from core.configuration.config import MODEL, SYSTEM_PROMPT
         from core.contracts.chat import ModelRequest
         from core.tools import NOTEBOOK_TOOLS, TOOLS
 

@@ -76,7 +76,7 @@ def _docker_ready() -> str | None:
     """None when Docker and the kernel image are ready, else why not."""
     import subprocess
 
-    from core.config import DOCKER_IMAGE
+    from core.configuration.config import DOCKER_IMAGE
 
     try:
         if subprocess.run(["docker", "info"], capture_output=True, timeout=15).returncode != 0:
