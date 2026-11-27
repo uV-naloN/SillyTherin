@@ -53,7 +53,7 @@ from tests.chat.fakes import (
 from tests.conftest import FakeDatasetService, FakeKernels
 from tests.datasets.test_dataset_tools import STARTED, view
 from tests.scripted_chat_model import ScriptedChatModel, text_chunk, tool_call_chunk
-from tests.tool_calls import TEST_CALL_ID, call_tool, fake_services
+from tests.tool_calls import TEST_CALL_ID, call_tool, fake_services, tool_defined_in
 
 TOOL_CASES = (
     (web_search.web_search, {"query": "iris"}),
@@ -77,7 +77,7 @@ INVALID_ARGUMENTS_START = INVALID_TOOL_ARGUMENTS.removesuffix(".")
 
 def tool_of(module: ModuleType) -> BaseTool:
     """The tool a module defines, which carries the module's own name."""
-    return getattr(module, module.__name__.rsplit(".", 1)[-1])
+    return tool_defined_in(module)
 
 
 def monitor_tools(

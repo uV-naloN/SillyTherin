@@ -1,3 +1,5 @@
+from types import ModuleType
+
 """Call a tool the way the agent does, with fake services in its runtime context."""
 
 import dataclasses
@@ -15,6 +17,14 @@ from sillytherin.tools import (
 from sillytherin.tools.shared.services import ToolServices
 
 TEST_CALL_ID = "call-1"
+DATASET_TOOLS_PACKAGE = "sillytherin.tools.datasets"
+
+
+def tool_defined_in(module: ModuleType) -> BaseTool:
+    """The tool a module defines; dataset tool modules drop the `dataset_` prefix their tool names carry."""
+    module_name = module.__name__.rsplit(".", 1)[-1]
+    is_dataset_tool = module.__name__.startswith(f"{DATASET_TOOLS_PACKAGE}.")
+    return getattr(module, f"dataset_{module_name}" if is_dataset_tool else module_name)
 
 
 async def call_tool(tool: BaseTool, arguments: dict, services: ToolServices | None) -> ToolMessage:

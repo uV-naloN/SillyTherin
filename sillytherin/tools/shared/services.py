@@ -16,7 +16,7 @@ from sillytherin.contracts.datasets import (
 from sillytherin.workspace.datasets.service import Approve
 
 if TYPE_CHECKING:
-    from sillytherin.tools.datasets.dataset_describe import ChatLooks
+    from sillytherin.tools.datasets.describe import ChatLooks
     from sillytherin.workspace.service import NotebookRunOutcome
 
 

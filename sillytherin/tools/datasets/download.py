@@ -35,7 +35,7 @@ from sillytherin.workspace.datasets.service import REF_PREFIXES, human_size
 from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 
 if TYPE_CHECKING:
-    from sillytherin.tools.datasets.dataset_describe import ChatLooks
+    from sillytherin.tools.datasets.describe import ChatLooks
 
 MAX_PATTERNS = 20
 PATTERN_MAX_CHARS = 200

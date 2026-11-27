@@ -45,6 +45,7 @@ from tests.tool_calls import (
     call_tool_output,
     failure_text,
     fake_services,
+    tool_defined_in,
 )
 
 TOOL_MODULES = (
@@ -407,6 +408,6 @@ def test_fieldless_tools_reject_extra_fields(module: ModuleType) -> None:
     # Given notebook_read or dataset_list gets {"x": 1} · When it is called
     # Then it fails with invalid arguments
     # Demonstrates: tools without arguments still reject extra fields
-    native = getattr(module, module.__name__.rsplit(".", 1)[-1])
+    native = tool_defined_in(module)
     message = asyncio.run(call_tool(native, {"x": 1}, unreachable_services()))
     assert failure_text(message) == "Invalid tool arguments (x: Extra inputs are not permitted)."

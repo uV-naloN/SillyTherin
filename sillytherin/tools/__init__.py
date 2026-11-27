@@ -5,13 +5,11 @@ from pydantic import BaseModel
 
 from sillytherin.agent.tool_errors import with_safe_error_text
 from sillytherin.tools import notebook_read, notebook_run, read_page, web_search
-from sillytherin.tools.datasets import (
-    dataset_delete,
-    dataset_describe,
-    dataset_download,
-    dataset_list,
-    dataset_search,
-)
+from sillytherin.tools.datasets import delete as dataset_delete
+from sillytherin.tools.datasets import describe as dataset_describe
+from sillytherin.tools.datasets import download as dataset_download
+from sillytherin.tools.datasets import list as dataset_list
+from sillytherin.tools.datasets import search as dataset_search
 
 TOOLS: tuple[BaseTool, ...] = tuple(
     with_safe_error_text(native_tool)
