@@ -3,7 +3,7 @@
 from collections.abc import Callable
 
 from sillytherin.chat.ports import AnswerView, ReplyInterruptionReason
-from sillytherin.observability.reply_trace import (
+from sillytherin.observability.dtos.reply_trace import (
     MAX_REPLY_CONTENT_BYTES,
     RecordingLoss,
     ReplyContent,

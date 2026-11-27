@@ -19,17 +19,19 @@ from sillytherin.observability.agent_observer import (
     observe_answer_wait,
 )
 from sillytherin.observability.answer_capture import AnswerCapture
-from sillytherin.observability.reply_trace import (
-    MAX_CHILD_SPANS,
-    ApprovalWait,
+from sillytherin.observability.dtos.reply_trace import (
     RecordingLoss,
     ReplyContent,
-    ReplyRecorder,
     ReplySpan,
     ReplyState,
     ReplyTrace,
     SpanKind,
     SpanOutcome,
+)
+from sillytherin.observability.reply_trace import (
+    MAX_CHILD_SPANS,
+    ApprovalWait,
+    ReplyRecorder,
     TraceClock,
 )
 from sillytherin.observability.turn_runner import ObservedTurnRunner

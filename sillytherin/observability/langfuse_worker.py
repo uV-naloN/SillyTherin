@@ -16,21 +16,14 @@ import requests
 from pydantic import TypeAdapter, ValidationError
 from requests.auth import HTTPBasicAuth
 
-from sillytherin.observability.langfuse import (
-    CLOUD_HOSTS,
-    OTLP_TRACES_PATH,
+from sillytherin.observability.dtos.langfuse import (
     ExportLoss,
     LangfuseSettings,
     LossReason,
     WorkerStartupFailure,
-    resolve_cloud_endpoint,
 )
-from sillytherin.observability.reply_trace import (
-    MAX_CHILD_SPANS,
+from sillytherin.observability.dtos.reply_trace import (
     MAX_REPLY_CONTENT_BYTES,
-    MODEL_NAME,
-    REPLY_NAME,
-    SAFE_TOOL_LABELS,
     ModelExchange,
     ModelOutputState,
     ReplyContent,
@@ -39,6 +32,17 @@ from sillytherin.observability.reply_trace import (
     ReplyTrace,
     SpanKind,
     SpanOutcome,
+)
+from sillytherin.observability.langfuse import (
+    CLOUD_HOSTS,
+    OTLP_TRACES_PATH,
+    resolve_cloud_endpoint,
+)
+from sillytherin.observability.reply_trace import (
+    MAX_CHILD_SPANS,
+    MODEL_NAME,
+    REPLY_NAME,
+    SAFE_TOOL_LABELS,
 )
 
 if TYPE_CHECKING:

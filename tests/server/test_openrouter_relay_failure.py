@@ -3,8 +3,8 @@
 import pytest
 from starlette.testclient import TestClient
 
-from sillytherin.observability.langfuse import ExportLoss, LossReason
-from sillytherin.observability.reply_trace import ReplyState, SpanOutcome
+from sillytherin.observability.dtos.langfuse import ExportLoss, LossReason
+from sillytherin.observability.dtos.reply_trace import ReplyState, SpanOutcome
 from sillytherin.server.socket import ChatSessions
 from tests.agent.test_openrouter_relay_failure import (
     INTERRUPTION_REASON,
