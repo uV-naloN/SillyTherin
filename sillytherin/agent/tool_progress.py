@@ -9,6 +9,7 @@ from langchain_core.messages import ToolMessage
 from langgraph.errors import GraphBubbleUp
 
 from sillytherin.agent.tool_errors import TOOL_FAILURE_PREFIX, UNEXPECTED_TOOL_FAILURE
+from sillytherin.best_effort import best_effort
 from sillytherin.chat.ports import ToolStep
 from sillytherin.progress import Progress
 from sillytherin.tools import native_tool_step_title
@@ -38,11 +39,9 @@ class NativeToolProgress(AsyncCallbackHandler):
     ) -> None:
         if tool_call_id:
             self.observed_call_ids.add(tool_call_id)
-        try:
+        with best_effort():
             title = native_tool_step_title(serialized.get("name", ""), inputs or {})
             self.steps[run_id] = await self.progress.start_tool_step(title)
-        except Exception:  # noqa: BLE001 - a closed or broken view must not stop native tool execution
-            return
 
     async def on_tool_end(self, output: Any, *, run_id: UUID, **kwargs: Any) -> None:
         step = self.steps.pop(run_id, None)
@@ -88,7 +87,5 @@ def step_output(message: ToolMessage) -> str:
 
 
 async def finish_step(step: ToolStep, output: str) -> None:
-    try:
+    with best_effort():
         await step.finish(output)
-    except Exception:  # noqa: BLE001 - display failures must not change the tool result
-        return

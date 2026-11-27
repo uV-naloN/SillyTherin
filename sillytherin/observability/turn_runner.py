@@ -5,6 +5,7 @@ from collections.abc import Callable
 from dataclasses import replace
 from typing import Protocol
 
+from sillytherin.best_effort import best_effort
 from sillytherin.chat.ports import ChatState
 from sillytherin.contracts.chat import UserMessage
 from sillytherin.observability.agent_observer import (
@@ -90,10 +91,8 @@ class ObservedTurnRunner:
 
     def report_loss(self, loss: RecordingLoss) -> None:
         if self._on_loss is not None:
-            try:
+            with best_effort():
                 self._on_loss(loss)
-            except Exception:  # noqa: BLE001 - local diagnostics must not affect the reply
-                return
 
 
 def build_hooks(recorder: ReplyRecorder, on_completion: Callable[[TurnOutcome], None]) -> TurnHooks:

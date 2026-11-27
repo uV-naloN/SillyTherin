@@ -6,6 +6,7 @@ from dataclasses import dataclass, replace
 from typing import Protocol
 from uuid import UUID
 
+from sillytherin.best_effort import best_effort
 from sillytherin.observability.dtos.reply_trace import (
     ModelExchange,
     RecordingLoss,
@@ -100,11 +101,10 @@ class ReplyRecorder:
             self.loss = loss
 
     def read_tick(self) -> int | None:
-        try:
-            return self._clock.monotonic_ns()
-        except Exception:  # noqa: BLE001 - timing cannot change chat or approval behaviour
-            self.invalidate()
-            return None
+        tick = None
+        with best_effort(lambda error: self.invalidate()):
+            tick = self._clock.monotonic_ns()
+        return tick
 
     def start_reply(self) -> None:
         self._started = self._clock.monotonic_ns()

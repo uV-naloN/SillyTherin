@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 
+from sillytherin.best_effort import best_effort
 from sillytherin.chat.ports import AnswerView
 from sillytherin.contracts.chat import ReplyInterruptionReason
 from sillytherin.observability.dtos.reply_trace import (
@@ -30,17 +31,18 @@ class AnswerCapture:
         self._terminal_overflow = False
         self._has_failed = False
 
+    def mark_failed(self, error: Exception) -> None:
+        self._has_failed = True
+
     async def stream(self, text: str) -> bool | None:
         accepted = await self._answer.stream(text)
-        try:
+        with best_effort(self.mark_failed):
             if accepted is False:
                 self._has_gap = True
             if not self._has_gap:
                 self._prefix_bytes += content_size(text)
                 if self._prefix_bytes <= MAX_REPLY_CONTENT_BYTES:
                     self._prefix += text
-        except Exception:  # noqa: BLE001 - capture must preserve the delivered reply
-            self._has_failed = True
         return accepted
 
     async def finish(self, text: str, *, interruption_reason: ReplyInterruptionReason | None = None) -> bool | None:
@@ -48,12 +50,10 @@ class AnswerCapture:
             accepted = await self._answer.finish(text)
         else:
             accepted = await self._answer.finish(text, interruption_reason=interruption_reason)
-        try:
+        with best_effort(self.mark_failed):
             if accepted is not False:
                 self._terminal_overflow = content_size(text) > MAX_REPLY_CONTENT_BYTES
                 self._terminal = None if self._terminal_overflow else text
-        except Exception:  # noqa: BLE001 - capture must preserve the delivered reply
-            self._has_failed = True
         return accepted
 
     def seal(self, message: str, outcome: SpanOutcome) -> ReplyContent | None:
