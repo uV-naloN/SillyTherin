@@ -180,7 +180,7 @@ def save_project_datasets(project_id: str, datasets: list[ProjectDataset], root:
     """Replace the project's datasets in one transaction. Their pool entries must be saved first (FK)."""
     store.project_dir(project_id, root)
     with database_for(root).begin() as connection:
-        project_pk = _project_pk(connection, project_id)
+        project_pk = find_project_pk(connection, project_id)
         entry_pks = _pool_entry_pks(connection, {dataset.pool_entry for dataset in datasets})
         # Created rows share this table; a replace-all of every row would wipe them
         connection.execute(delete(project_datasets).where(
@@ -234,7 +234,7 @@ def _project_dataset_from_row(row: Row, files: list[str]) -> ProjectDataset | No
     )
 
 
-def _project_pk(connection: Connection, project_id: str) -> int:
+def find_project_pk(connection: Connection, project_id: str) -> int:
     project_pk = connection.scalar(select(projects.c.pk).where(projects.c.slug == project_id))
     if project_pk is None:
         raise WorkspaceError(ErrorCode.NOT_FOUND, "Unknown project.")

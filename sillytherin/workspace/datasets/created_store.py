@@ -15,7 +15,7 @@ from sqlalchemy import Connection, Row, delete, func, insert, select, update
 from sillytherin.config import WORKSPACES_DIR
 from sillytherin.db.engine import database_for
 from sillytherin.db.schema import project_datasets, projects
-from sillytherin.workspace import ErrorCode, WorkspaceError, store
+from sillytherin.workspace import WorkspaceError, store
 from sillytherin.workspace.datasets import store as ds
 from sillytherin.workspace.datasets.dtos.created import CreatedDataset, FileSnapshot
 
@@ -67,7 +67,7 @@ def load_created_datasets(project_id: str, root: Path = WORKSPACES_DIR) -> list[
 def insert_created_dataset(project_id: str, dataset: CreatedDataset, root: Path = WORKSPACES_DIR) -> None:
     """Add one created row (origin = 'created', no pool entry, status 'ready'), after every other row."""
     with database_for(root).begin() as connection:
-        project_pk = _project_pk(connection, project_id)
+        project_pk = ds.find_project_pk(connection, project_id)
         connection.execute(insert(project_datasets).values(
             project_pk=project_pk, slug=dataset.id, origin=ORIGIN_CREATED, position=_next_position(connection, project_pk),
             status=STORED_STATUS, requested_at=dataset.first_seen_at, linked_at=dataset.changed_at,
@@ -106,17 +106,10 @@ def _description_columns(dataset: CreatedDataset) -> dict[str, object]:
 def _created_row_of(connection: Connection, project_id: str, dataset_id: str) -> tuple:
     """WHERE clauses for one created row of one project; a downloaded row with that id is never matched."""
     return (
-        project_datasets.c.project_pk == _project_pk(connection, project_id),
+        project_datasets.c.project_pk == ds.find_project_pk(connection, project_id),
         project_datasets.c.slug == dataset_id,
         project_datasets.c.origin == ORIGIN_CREATED,
     )
-
-
-def _project_pk(connection: Connection, project_id: str) -> int:
-    project_pk = connection.scalar(select(projects.c.pk).where(projects.c.slug == project_id))
-    if project_pk is None:
-        raise WorkspaceError(ErrorCode.NOT_FOUND, "Unknown project.")
-    return project_pk
 
 
 def _next_position(connection: Connection, project_pk: int) -> int:
