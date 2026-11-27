@@ -15,7 +15,7 @@ from langgraph.runtime import Runtime
 from openrouter.errors import BadRequestResponseError
 
 from sillytherin.agent.round_limit import tool_rounds_this_turn
-from sillytherin.config import OPENROUTER_API_KEY
+from sillytherin.config import OPENROUTER_API_KEY, OPENROUTER_URL
 
 APP_TITLE = "SillyTherin"  # how OpenRouter names the app on the account's activity page
 INVALID_ARGUMENTS_FIELD = "__invalid_arguments__"
@@ -119,6 +119,7 @@ def reject_recovered_arguments(call: ToolCall, invalid_call_ids: set[str]) -> To
 def build_chat_model(request: ModelRequest) -> ChatOpenRouter:
     """The model for one message; no app URL is sent, so OpenRouter only learns the app's name."""
     return ChatOpenRouter(
+        base_url=OPENROUTER_URL,
         model=request.model,
         streaming=True,
         reasoning=request.thinking.get("reasoning"),
