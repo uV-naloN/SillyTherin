@@ -1,18 +1,18 @@
 """What a chat starts with, and the pickers and Settings it shows for its model."""
 
 from sillytherin.chat.ports import ChatState, SettingsView
-from sillytherin.chat.widgets import Picker, SettingSwitch
 from sillytherin.config import EFFORT_DEFAULT, EFFORT_LEVELS, MODEL, SYSTEM_PROMPT
-from sillytherin.llm import ModelInfo, model_catalog, model_params
-from sillytherin.modes import (
+from sillytherin.contracts.chat import (
+    ModelInfo,
+    Picker,
     PickerChoices,
     Picks,
-    build_modes,
-    effort_levels_for,
-    picker_models,
+    SettingSwitch,
 )
+from sillytherin.contracts.kaggle import KaggleAccountStatus
+from sillytherin.llm import model_catalog, model_params
+from sillytherin.modes import build_modes, effort_levels_for, picker_models
 from sillytherin.settings import build_widgets, keep_chat_choices
-from sillytherin.workspace.kaggle.account import KaggleAccountStatus
 
 HISTORY_KEY = "history"
 PICKS_KEY = "picks"

@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
+from sillytherin.contracts.notebook import PROJECT_ID_RE
 from sillytherin.db.engine import database_for
 from sillytherin.workspace import ErrorCode, WorkspaceError, store
 
@@ -40,7 +41,7 @@ def test_project_name_becomes_safe_slug():
     assert store.slugify("Tokyo Housing!!") == "tokyo-housing"
     assert store.slugify("  Nhà ở Tokyo  ") == "nha-o-tokyo"
     assert store.slugify("東京") == "project"  # nothing Latin left
-    assert store.PROJECT_ID_RE.match(store.slugify("x" * 200))
+    assert PROJECT_ID_RE.match(store.slugify("x" * 200))
 
 
 def test_default_project_created_on_first_start(root):

@@ -29,8 +29,10 @@ from sillytherin.workspace.datasets.created import (
     missing_notice,
     read_columns,
 )
-from sillytherin.workspace.datasets.created_store import CreatedDataset, FileSnapshot
-from sillytherin.workspace.datasets.pool import DatasetPool, PoolEntry, PoolFile
+from sillytherin.workspace.datasets.dtos.created import CreatedDataset, FileSnapshot
+from sillytherin.workspace.datasets.dtos.pool import PoolEntry, PoolFile
+from sillytherin.workspace.datasets.dtos.store import ProjectDataset
+from sillytherin.workspace.datasets.pool import DatasetPool
 from sillytherin.workspace.datasets.service import DatasetService
 
 IRIS_CSV = "sepal_length,species\n5.1,setosa\n4.9,setosa\n"  # 41 bytes
@@ -489,7 +491,7 @@ def test_panel_state_has_both_kinds_in_one_list(root, created, datasets):
     pool.add_entry(PoolEntry("hf-scikit-learn--iris", "huggingface", "scikit-learn/iris", None, "iris", None, "cc0",
                              [PoolFile("Iris.csv", 10, None, True)]))
     pool.save_index()
-    ds.save_project_datasets("p", [ds.ProjectDataset("hf-scikit-learn--iris", "hf-scikit-learn--iris", None, "ready", ["Iris.csv"])], root)
+    ds.save_project_datasets("p", [ProjectDataset("hf-scikit-learn--iris", "hf-scikit-learn--iris", None, "ready", ["Iris.csv"])], root)
     listed_iris(root, created)
 
     panel_rows, _rev = datasets.panel_state("p")

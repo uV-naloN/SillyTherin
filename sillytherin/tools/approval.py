@@ -1,7 +1,7 @@
 """Approval prompts shared by the tools: the question, its choices and the timeout."""
 
 from sillytherin.chat.current import this_chat
-from sillytherin.chat.ports import Choice
+from sillytherin.contracts.chat import Choice
 
 APPROVAL_TIMEOUT_SECONDS = 120
 

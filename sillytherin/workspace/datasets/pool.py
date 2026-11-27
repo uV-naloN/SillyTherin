@@ -27,13 +27,13 @@ import logging
 import os
 import re
 import shutil
-from dataclasses import dataclass, field
 from pathlib import Path
 
 from sqlalchemy import Connection, Row, delete, func, insert, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from sillytherin.config import WORKSPACES_DIR
+from sillytherin.contracts.datasets import Source
 from sillytherin.db.engine import database_for
 from sillytherin.db.schema import (
     SOURCES,
@@ -44,7 +44,7 @@ from sillytherin.db.schema import (
 )
 from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.datasets import store as ds
-from sillytherin.workspace.datasets.store import Source
+from sillytherin.workspace.datasets.dtos.pool import PoolEntry, PoolFile
 
 log = logging.getLogger(__name__)
 
@@ -57,33 +57,12 @@ ENTRY_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,79}(@[a-z0-9]{1,7})?$")
 HASH_CHUNK_BYTES = 1 << 20
 
 
-@dataclass
-class PoolFile:
-    path: str  # relative to the pool entry folder; checked by safe_relpath
-    size: int  # bytes, as the catalog declared it
-    checksum: str | None  # "md5:…" / "sha256:…", or None when the catalog gives none
-    ready: bool = False  # downloaded, verified and moved into the entry folder
-    mtime_ns: int | None = None  # lets the app notice a file changed on disk
+def find_pool_file(entry: PoolEntry, path: str) -> PoolFile | None:
+    return next((f for f in entry.files if f.path == path), None)
 
 
-@dataclass
-class PoolEntry:
-    id: str  # "<dataset-id>@<first 7 of revision>" (Zenodo: the dataset id); pool folder name
-    source: Source  # which catalog
-    source_id: str  # stable key in that catalog
-    revision: str | None  # HF commit hash; None for Zenodo
-    name: str  # title for people
-    url: str | None  # landing page
-    license: str | None  # shown in the details
-    files: list[PoolFile] = field(default_factory=list)
-    created_at: str = ""  # ISO 8601 UTC; "downloaded …" in details
-    description: str | None = None  # the catalog's one-line description; the same for every project using it
-
-    def file(self, path: str) -> PoolFile | None:
-        return next((f for f in self.files if f.path == path), None)
-
-    def ready_paths(self) -> set[str]:
-        return {f.path for f in self.files if f.ready}
+def list_ready_paths(entry: PoolEntry) -> set[str]:
+    return {f.path for f in entry.files if f.ready}
 
 
 def checksum_matches(path: Path, checksum: str | None) -> bool:
@@ -219,7 +198,7 @@ class DatasetPool:
     def ensure_ready_files_intact(self, entry: PoolEntry, paths: list[str]) -> None:
         """Before linking: re-check every ready file among `paths` whose size or mtime changed."""
         for path in paths:
-            pool_file = entry.file(path)
+            pool_file = find_pool_file(entry, path)
             if pool_file is not None and pool_file.ready and not self.is_file_unchanged(entry, pool_file):
                 self.recheck_file(entry, pool_file)
 
@@ -230,7 +209,7 @@ class DatasetPool:
         os.replace(downloaded, target)
         pool_file.ready = True
         pool_file.mtime_ns = target.stat().st_mtime_ns
-        existing = entry.file(pool_file.path)
+        existing = find_pool_file(entry, pool_file.path)
         if existing is None:
             entry.files.append(pool_file)
         elif existing is not pool_file:
@@ -241,7 +220,7 @@ class DatasetPool:
     def link_files(self, project_id: str, dataset_id: str, entry: PoolEntry, paths: list[str]) -> None:
         """Link the ready pooled files among `paths` into files/datasets/<id>/; the rest wait for a download job."""
         for path in paths:
-            pool_file = entry.file(path)
+            pool_file = find_pool_file(entry, path)
             if pool_file is not None and pool_file.ready:
                 self._write_link(project_id, dataset_id, entry.id, path)
 
@@ -259,7 +238,7 @@ class DatasetPool:
 
     def is_linked(self, project_id: str, dataset_id: str, entry: PoolEntry, relpath: str) -> bool:
         """The project's link is the one the app wrote, and the pooled file behind it is intact."""
-        pool_file = entry.file(relpath)
+        pool_file = find_pool_file(entry, relpath)
         if pool_file is None or not pool_file.ready:
             return False
         try:

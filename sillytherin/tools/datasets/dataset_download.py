@@ -13,6 +13,7 @@ from langchain.tools import ToolRuntime
 from langchain_core.tools import ToolException, tool
 from pydantic import AfterValidator, Field
 
+from sillytherin.contracts.datasets import DatasetPlan
 from sillytherin.tools.approval import (
     DOWNLOAD_AGAIN_CHOICE,
     DOWNLOAD_AGAIN_OR_SKIP,
@@ -32,7 +33,6 @@ from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.datasets import links
 from sillytherin.workspace.datasets.describe import look_first_message
 from sillytherin.workspace.datasets.service import REF_PREFIXES, human_size
-from sillytherin.workspace.datasets.sources import DatasetPlan
 
 if TYPE_CHECKING:
     from sillytherin.tools.datasets.dataset_describe import ChatLooks

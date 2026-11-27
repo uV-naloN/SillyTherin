@@ -8,9 +8,9 @@ import nbformat
 import pytest
 
 from sillytherin import turn
+from sillytherin.contracts.notebook import CellCompilationError
 from sillytherin.tools import notebook_run
 from sillytherin.workspace import actions, store
-from sillytherin.workspace.kernels import CellCompilationError
 from sillytherin.workspace.service import NotebookService
 from tests.agent.conftest import history_of, ready_chat, run_one_turn
 from tests.conftest import FakeKernels

@@ -8,12 +8,12 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
-from sillytherin.workspace.datasets.service import (
-    Approve,
+from sillytherin.contracts.datasets import (
     DatasetRecordView,
     DeleteResult,
     DownloadStarted,
 )
+from sillytherin.workspace.datasets.service import Approve
 
 if TYPE_CHECKING:
     from sillytherin.tools.datasets.dataset_describe import ChatLooks

@@ -18,18 +18,18 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
+from sillytherin.contracts.datasets import DatasetPlan, PlannedFile
+from sillytherin.contracts.kaggle import KaggleApprovalOffer, KaggleImportSelection
 from sillytherin.workspace import ErrorCode, WorkspaceError, actions, store
 from sillytherin.workspace.datasets import sources as src
 from sillytherin.workspace.datasets import store as ds
-from sillytherin.workspace.datasets.pool import DatasetPool, PoolEntry, PoolFile
-from sillytherin.workspace.datasets.service import DatasetService, DatasetsSettings
-from sillytherin.workspace.datasets.sources import DatasetPlan, PlannedFile
+from sillytherin.workspace.datasets.dtos.pool import PoolEntry, PoolFile
+from sillytherin.workspace.datasets.dtos.settings import DatasetsSettings
+from sillytherin.workspace.datasets.dtos.store import ProjectDataset
+from sillytherin.workspace.datasets.pool import DatasetPool, find_pool_file
+from sillytherin.workspace.datasets.service import DatasetService
 from sillytherin.workspace.datasets.views import VIEW_FAILED_MESSAGE, VIEWS_DIR
-from sillytherin.workspace.kaggle.dataset_downloads import (
-    KaggleApprovalOffer,
-    KaggleFileDownload,
-    KaggleImportSelection,
-)
+from sillytherin.workspace.kaggle.dtos.downloads import KaggleFileDownload
 from sillytherin.workspace.service import NotebookService
 from tests.conftest import FakeChats, FakeFreeDisk, FakeKernels, fake_lookup
 from tests.tool_calls import call_tool, fake_services
@@ -463,7 +463,7 @@ def records(root, pid):
         entry = entries.get(d.pool_entry)
         files = [
             SimpleNamespace(path=p, size=f.size if f else 0, checksum=f.checksum if f else None, ready=bool(f and f.ready))
-            for p, f in ((p, entry.file(p) if entry else None) for p in d.files)
+            for p, f in ((p, find_pool_file(entry, p) if entry else None) for p in d.files)
         ]
         joined.append(SimpleNamespace(
             id=d.id, status=d.status, error=d.error, selection=d.selection, pool_entry=d.pool_entry,
@@ -949,8 +949,8 @@ def test_startup_marks_stale_jobs_failed(root):
         pool.add_entry(PoolEntry(entry_id, "zenodo", entry_id[-1], None, entry_id, None, None, [PoolFile("x.csv", 3, None)]))
     pool.save_index()
     ds.save_project_datasets("p1", [
-        ds.ProjectDataset("zenodo-1", "zenodo-1", None, "queued", ["x.csv"]),
-        ds.ProjectDataset("zenodo-2", "zenodo-2", None, "downloading", ["x.csv"]),
+        ProjectDataset("zenodo-1", "zenodo-1", None, "queued", ["x.csv"]),
+        ProjectDataset("zenodo-2", "zenodo-2", None, "downloading", ["x.csv"]),
     ], root)
     job_folder = pool.partial_dir() / "job-7"
     job_folder.mkdir(parents=True)

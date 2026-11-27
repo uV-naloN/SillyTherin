@@ -4,11 +4,14 @@ import json
 
 import pytest
 
+from sillytherin.contracts.datasets import DatasetPlan, PlannedFile
+from sillytherin.contracts.kaggle import KaggleAccountStatus
 from sillytherin.server import web_chat
 from sillytherin.workspace import actions, store
-from sillytherin.workspace.datasets.sources import DatasetPlan, PlannedFile
-from sillytherin.workspace.kaggle.account import KaggleAccountStatus
-from sillytherin.workspace.kaggle.my_datasets import MyDatasetsAnswer, OwnedDataset
+from sillytherin.workspace.kaggle.dtos._my_datasets import (
+    MyDatasetsAnswer,
+    OwnedDataset,
+)
 from tests.server.conftest import events_until, open_tab
 
 REF = "ana/sample"

@@ -12,7 +12,7 @@ from langchain_core.messages import (
     HumanMessageChunk,
 )
 
-from sillytherin.observability.reply_trace import (
+from sillytherin.observability.dtos.reply_trace import (
     ModelExchange,
     ModelOutputState,
     SpanOutcome,

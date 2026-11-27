@@ -7,12 +7,12 @@ import pytest
 from starlette.testclient import TestClient, WebSocketTestSession
 from starlette.websockets import WebSocketDisconnect
 
-from sillytherin.chat.mode import AgentMode
 from sillytherin.chat.ports import ChatState
+from sillytherin.contracts.chat import AgentMode, UserMessage
 from sillytherin.server.events import MAX_FRAME_BYTES
 from sillytherin.server.socket import ChatSessions
 from sillytherin.tools import approval, web_search
-from sillytherin.turn import TurnViews, UserMessage
+from sillytherin.turn import TurnViews
 from sillytherin.workspace import actions
 from tests.scripted_chat_model import ScriptedChatModel
 from tests.server.conftest import (

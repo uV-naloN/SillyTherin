@@ -2,14 +2,11 @@
 
 import asyncio
 
+from sillytherin.contracts.kaggle import KaggleAccountStatus
 from sillytherin.settings import build_widgets
 from sillytherin.workspace.kaggle import settings_switch as switch
-from sillytherin.workspace.kaggle.account import (
-    CANCELLED_NOTICE,
-    REFUSED_NOTICE,
-    KaggleAccountStatus,
-)
-from sillytherin.workspace.kaggle.callback import CallbackResult
+from sillytherin.workspace.kaggle.account import CANCELLED_NOTICE, REFUSED_NOTICE
+from sillytherin.workspace.kaggle.dtos.callback import CallbackResult
 from sillytherin.workspace.kaggle.settings_switch import (
     ChatSide,
     account_change,

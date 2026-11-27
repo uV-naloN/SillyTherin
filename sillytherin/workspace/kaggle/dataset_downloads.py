@@ -5,19 +5,23 @@ import logging
 from collections.abc import Awaitable, Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass
-from enum import StrEnum
 from pathlib import Path, PurePosixPath
-from typing import Annotated, Literal, Protocol, TypedDict
+from typing import Literal, Protocol
 from urllib.parse import urlsplit
 
 import httpx
-from pydantic import BaseModel, ConfigDict, Field
 
-from sillytherin.workspace import ErrorCode, WorkspaceError, store
-from sillytherin.workspace.datasets.sources import DatasetPlan, PlannedFile
+from sillytherin.contracts.datasets import DatasetPlan, PlannedFile
+from sillytherin.contracts.kaggle import KaggleApprovalOffer, KaggleImportSelection
+from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.datasets.store import NAME_MAX, safe_relpath
 from sillytherin.workspace.kaggle.account import HttpFactory
+from sillytherin.workspace.kaggle.dtos._dataset_downloads import (
+    KaggleDownloadAccepted,
+    KaggleDownloadRejected,
+    KaggleDownloadSkipped,
+)
+from sillytherin.workspace.kaggle.dtos.downloads import KaggleFileDownload
 
 DOWNLOAD_ACTION = "kg_download_dataset"
 DOWNLOAD_PROMPT = "kaggle_download"
@@ -37,69 +41,11 @@ RECONNECT = "Connect to Kaggle again to download this dataset."
 KEEP_HTTP_PRIVATE: ContextVar[bool] = ContextVar("keep_kaggle_http_private", default=False)
 
 
-class KaggleImportError(StrEnum):
-    STALE_PROJECT = "STALE_PROJECT"
-    STALE_APPROVAL = "STALE_APPROVAL"
-
-
-class KaggleDownloadPayload(BaseModel):
-    """A picker selection; the socket, not this DTO, chooses the destination."""
-
-    model_config = ConfigDict(extra="ignore", strict=True, frozen=True)
-
-    project_id: Annotated[str, Field(min_length=1, max_length=store.PROJECT_ID_MAX, pattern=store.PROJECT_ID_RE)]
-    ref: Annotated[str, Field(max_length=200, pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]*/[A-Za-z0-9][A-Za-z0-9_-]*$")]
-
-
-class KaggleDownloadAccepted(TypedDict):
-    state: Literal["accepted"]
-    dataset_id: str  # public project dataset ID, not the pool ID
-
-
-class KaggleDownloadSkipped(TypedDict):
-    state: Literal["skipped"]
-
-
-class KaggleDownloadError(TypedDict):
-    code: str
-    message: str  # sanitized one-line text for the picker
-
-
-class KaggleDownloadRejected(TypedDict):
-    state: Literal["error"]
-    error: KaggleDownloadError
-
-
 KaggleDownloadResult = KaggleDownloadAccepted | KaggleDownloadSkipped | KaggleDownloadRejected
 
 
 def reject_import(code: str, message: str) -> KaggleDownloadRejected:
     return {"state": "error", "error": {"code": code, "message": message}}
-
-
-@dataclass(frozen=True)
-class KaggleImportSelection:
-    project_id: str
-    project_generation: int
-    account_generation: int
-    ref: str
-
-
-@dataclass(frozen=True)
-class KaggleApprovalOffer:
-    selection: KaggleImportSelection
-    dataset_name: str
-    revision: str
-    download_bytes: int
-
-
-@dataclass(frozen=True)
-class KaggleFileDownload:
-    ref: str
-    revision: str
-    path: str
-    size_bytes: int
-    account_generation: int
 
 
 ApproveKaggleImport = Callable[[KaggleApprovalOffer], Awaitable[bool]]

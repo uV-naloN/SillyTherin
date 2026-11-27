@@ -6,7 +6,8 @@ from starlette.websockets import WebSocketDisconnect
 
 import sillytherin.__main__ as command
 from sillytherin.__main__ import read_arguments, server_settings
-from sillytherin.server.app import ServerSettings, create_app
+from sillytherin.server.app import create_app
+from sillytherin.server.dtos.app import ServerSettings
 from sillytherin.server.guard import DEV_PAGE_ORIGINS
 from tests.server.conftest import OWN_HOST, OWN_PAGE, PORT
 

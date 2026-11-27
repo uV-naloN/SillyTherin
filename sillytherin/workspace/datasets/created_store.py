@@ -8,7 +8,6 @@ rules (what counts, renames, safe delete) live in created.py.
 """
 
 import logging
-from dataclasses import dataclass
 from pathlib import Path
 
 from sqlalchemy import Connection, Row, delete, func, insert, select, update
@@ -18,6 +17,7 @@ from sillytherin.db.engine import database_for
 from sillytherin.db.schema import project_datasets, projects
 from sillytherin.workspace import ErrorCode, WorkspaceError, store
 from sillytherin.workspace.datasets import store as ds
+from sillytherin.workspace.datasets.dtos.created import CreatedDataset, FileSnapshot
 
 log = logging.getLogger(__name__)
 
@@ -25,29 +25,6 @@ ORIGIN_CREATED = "created"
 CREATED_ID_PREFIX = "file-"  # can't clash with catalog ids (hf-, zenodo-), so ds_delete routes by lookup
 KERNEL_FILES_ROOT = "/work"  # how the kernel sees the project's files/
 STORED_STATUS = "ready"  # created rows are always stored ready; missing is computed on read
-
-
-@dataclass(frozen=True)
-class FileSnapshot:
-    """What one scan saw of a data file: enough to spot a re-save or a rename."""
-
-    path: str  # POSIX, relative to files/
-    size_bytes: int
-    mtime_ns: int  # changes on every save; part of the rename match
-    inode: int  # kept by a rename; with size and mtime it finds the card of a renamed file
-
-
-@dataclass
-class CreatedDataset:
-    """One created card, as stored."""
-
-    id: str  # stored slug (file-iris-csv); kept on rename
-    snapshot: FileSnapshot  # path, size, mtime, inode at the last scan that changed it
-    first_seen_at: str  # ISO 8601 UTC, project_datasets.requested_at; sort order
-    changed_at: str  # ISO 8601 UTC, project_datasets.linked_at; "added 2 h ago"
-    columns: list[str] | None = None  # column names from the file's start; None = not read yet, [] = none found
-    created_by: str | None = None  # "assistant" / "user" (a cell run by either) or "upload"; None counts as an upload
-    assistant_description: str | None = None  # one line the assistant wrote after looking at the file
 
 
 def make_created_id(path: str, taken_ids: set[str]) -> str:

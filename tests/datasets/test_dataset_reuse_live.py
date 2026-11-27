@@ -56,8 +56,9 @@ class Chat:
     async def ask(self, user_text: str) -> str:
         from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 
-        from sillytherin.agent.model import ModelRequest, build_chat_model
+        from sillytherin.agent.model import build_chat_model
         from sillytherin.config import MODEL, SYSTEM_PROMPT
+        from sillytherin.contracts.chat import ModelRequest
         from sillytherin.tools import NOTEBOOK_TOOLS, TOOLS
 
         # A model per chat: a shared one is tied to the event loop of the first test

@@ -21,9 +21,10 @@ from urllib.parse import quote, urljoin, urlparse
 
 import httpx
 
+from sillytherin.contracts.datasets import DatasetPlan, PlannedFile, Source
 from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.datasets.describe import one_line_description
-from sillytherin.workspace.datasets.store import NAME_MAX, Source, safe_relpath
+from sillytherin.workspace.datasets.store import NAME_MAX, safe_relpath
 
 MAX_REDIRECTS = 5
 USER_AGENT = "SillyTherin"  # generic; no tokens are ever sent
@@ -35,27 +36,6 @@ API_TIMEOUT = 30
 HF_PART_RE = re.compile(r"^[A-Za-z0-9_.-]{1,96}$")
 ZENODO_ID_RE = re.compile(r"^[0-9]{1,12}$")
 REDIRECTS = {301, 302, 303, 307, 308}
-
-
-@dataclass
-class PlannedFile:
-    path: str  # safe relative path (datasets.store.safe_relpath)
-    size: int  # bytes, from the catalog
-    checksum: str | None  # "sha256:…" (HF LFS) / "md5:…" (Zenodo) / None
-    url: str  # https download URL built from the catalog API, pinned to the revision; a link: the pasted URL
-    size_is_known: bool = True  # False when a linked website sent no size; the real size is recorded at the end
-
-
-@dataclass
-class DatasetPlan:
-    source: Source
-    source_id: str  # HF repo id / Zenodo record id
-    name: str  # HF card pretty_name or repo id; Zenodo title
-    revision: str | None  # HF commit sha; None for Zenodo
-    url: str  # landing page
-    license: str | None
-    files: list[PlannedFile]  # after the `files` filter
-    description: str | None = None  # the catalog's one-line description (≤ DESCRIPTION_MAX); None when it gave none
 
 
 def _bad_ref(message: str = "Not a dataset ref. Use the `ref` from dataset_search, e.g. hf:org/name or zenodo:123.") -> WorkspaceError:

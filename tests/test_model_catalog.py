@@ -3,6 +3,7 @@
 import asyncio
 
 from sillytherin import llm
+from sillytherin.contracts.chat import ModelInfo
 
 
 def test_catalog_keeps_only_models_that_answer_in_text():
@@ -13,7 +14,7 @@ def test_catalog_keeps_only_models_that_answer_in_text():
     ]
     catalog = llm.parse_catalog(entries)
     assert list(catalog) == ["a/chat", "c/plain"]
-    assert catalog["a/chat"] == llm.ModelInfo(id="a/chat", name="A: Chat", params=frozenset({"tools"}))
+    assert catalog["a/chat"] == ModelInfo(id="a/chat", name="A: Chat", params=frozenset({"tools"}))
     assert catalog["c/plain"].name == "c/plain"  # a model without a name shows its id
 
 

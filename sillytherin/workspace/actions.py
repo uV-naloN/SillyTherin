@@ -20,7 +20,6 @@ from sillytherin.chat.ports import (
     SettingsView,
     Toaster,
 )
-from sillytherin.chat.widgets import SettingSwitch
 from sillytherin.config import (
     DATASETS_ASK_ABOVE_MB,
     DATASETS_MAX_FILES,
@@ -30,21 +29,21 @@ from sillytherin.config import (
     KAGGLE_SIGNIN_TIMEOUT_SECONDS,
     KAGGLE_TOKEN_FILE,
 )
+from sillytherin.contracts.chat import SettingSwitch
+from sillytherin.contracts.kaggle import KaggleAccountStatus, KaggleImportSelection
+from sillytherin.contracts.notebook import NotebookProps
 from sillytherin.settings import keep_chat_choices
 from sillytherin.tools import dataset_describe
 from sillytherin.workspace import ErrorCode, WorkspaceError, store
 from sillytherin.workspace.datasets.created import missing_notice
-from sillytherin.workspace.datasets.service import DatasetService, DatasetsSettings
-from sillytherin.workspace.kaggle.account import (
-    KaggleAccountService,
-    KaggleAccountStatus,
-)
+from sillytherin.workspace.datasets.dtos.settings import DatasetsSettings
+from sillytherin.workspace.datasets.service import DatasetService
+from sillytherin.workspace.kaggle.account import KaggleAccountService
 from sillytherin.workspace.kaggle.callback import CallbackListener
 from sillytherin.workspace.kaggle.dataset_downloads import (
     ApproveKaggleImport,
     KaggleDatasetDownloads,
     KaggleDownloadResult,
-    KaggleImportSelection,
     reject_import,
 )
 from sillytherin.workspace.kaggle.my_datasets import MyKaggleDatasets
@@ -58,7 +57,7 @@ from sillytherin.workspace.kaggle.settings_switch import (
 from sillytherin.workspace.kaggle.token_file import TokenFile
 from sillytherin.workspace.kernels import KernelRegistry
 from sillytherin.workspace.panel import PanelRegistry, skip_session
-from sillytherin.workspace.service import NotebookProps, NotebookService
+from sillytherin.workspace.service import NotebookService
 
 log = logging.getLogger(__name__)
 

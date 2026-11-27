@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 
 from sillytherin.chat.current import ChatContext, current_chat
-from sillytherin.chat.ports import Choice, ReplyInterruptionReason, ToastKind
+from sillytherin.contracts.chat import Choice, ReplyInterruptionReason, ToastKind
 
 
 @dataclass

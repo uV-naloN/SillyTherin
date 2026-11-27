@@ -5,22 +5,16 @@ Each Protocol is one job, so a tool depends only on what it uses: a prompt needs
 """
 
 from collections.abc import Sequence
-from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import Protocol
 
-from sillytherin.chat.widgets import Picker, SettingSwitch
-from sillytherin.workspace.service import NotebookProps
-
-ToastKind = Literal["info", "success", "warning", "error"]
-ReplyInterruptionReason = Literal["openrouter_relay_failed"]
-
-
-@dataclass(frozen=True)
-class Choice:
-    """One button under a prompt: `id` comes back when it is clicked, `label` is what it says."""
-
-    id: str
-    label: str
+from sillytherin.contracts.chat import (
+    Choice,
+    Picker,
+    ReplyInterruptionReason,
+    SettingSwitch,
+    ToastKind,
+)
+from sillytherin.contracts.notebook import NotebookProps
 
 
 class AnswerView(Protocol):

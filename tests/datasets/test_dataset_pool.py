@@ -15,7 +15,9 @@ from sillytherin.workspace import WorkspaceError, store
 from sillytherin.workspace.datasets import pool as dataset_pool
 from sillytherin.workspace.datasets import sources as src
 from sillytherin.workspace.datasets import store as ds
-from sillytherin.workspace.datasets.pool import DatasetPool, PoolEntry, PoolFile
+from sillytherin.workspace.datasets.dtos.pool import PoolEntry, PoolFile
+from sillytherin.workspace.datasets.dtos.store import ProjectDataset
+from sillytherin.workspace.datasets.pool import DatasetPool, find_pool_file
 from sillytherin.workspace.kernels import KernelRegistry
 from tests.conftest import fake_lookup
 from tests.datasets.test_dataset_service import (
@@ -275,7 +277,7 @@ def saved_pool(root, *entries) -> DatasetPool:
 
 
 def use_entry(root, project_id, entry_id=ENTRY_R1):
-    ds.save_project_datasets(project_id, [ds.ProjectDataset("hf-org--name", entry_id, None, "ready", ["b.csv"])], root)
+    ds.save_project_datasets(project_id, [ProjectDataset("hf-org--name", entry_id, None, "ready", ["b.csv"])], root)
 
 
 def entry_pk(root, slug=ENTRY_R1):
@@ -300,7 +302,7 @@ def test_large_mtime_ns_round_trips(root):
     # Demonstrates: change detection still works
     saved_pool(root)
 
-    assert DatasetPool(root).get_entry(ENTRY_R1).file("b.csv").mtime_ns == MTIME_NS
+    assert find_pool_file(DatasetPool(root).get_entry(ENTRY_R1), "b.csv").mtime_ns == MTIME_NS
 
 
 def test_projects_using_reads_from_database(root):

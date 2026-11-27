@@ -8,12 +8,10 @@ from pathlib import Path
 import httpx
 import pytest
 
+from sillytherin.contracts.kaggle import KaggleImportSelection
 from sillytherin.workspace import WorkspaceError
-from sillytherin.workspace.kaggle.dataset_downloads import (
-    KaggleDatasetDownloads,
-    KaggleFileDownload,
-    KaggleImportSelection,
-)
+from sillytherin.workspace.kaggle.dataset_downloads import KaggleDatasetDownloads
+from sillytherin.workspace.kaggle.dtos.downloads import KaggleFileDownload
 
 TOKEN = "test-token-only-for-kaggle"
 SIGNATURE = "test-private-signature"

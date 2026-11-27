@@ -1,10 +1,9 @@
 """The Model and Effort pickers in the chat box."""
 
+from sillytherin.contracts.chat import PickerChoices, Picks
 from sillytherin.modes import (
     EFFORT_MODE_ID,
     MODEL_MODE_ID,
-    PickerChoices,
-    Picks,
     build_modes,
     chosen_picks,
     picker_models,

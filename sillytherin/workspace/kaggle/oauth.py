@@ -9,10 +9,11 @@ import base64
 import hashlib
 import secrets
 import urllib.parse
-from dataclasses import dataclass, field
 from typing import Literal
 
 import httpx
+
+from sillytherin.workspace.kaggle.dtos.oauth import OAuthClient, PkcePair, TokenGrant
 
 OAUTH_CLIENT_NAME = "SillyTherin"  # what Kaggle's approval page and kaggle.com → Settings show
 OAUTH_SCOPE = "resources.admin:*"  # the only scope Kaggle's discovery document lists
@@ -26,32 +27,6 @@ INVALID_GRANT = "invalid_grant"
 HTTP_OK = 200
 
 SignInFailure = Literal["cancelled", "timed_out", "refused", "signed_out", "revoke_unreachable"]
-
-
-@dataclass(frozen=True)
-class OAuthClient:
-    """The app's registered Kaggle client and where Kaggle sends the browser back to."""
-
-    client_id: str
-    redirect_uri: str
-
-
-@dataclass(frozen=True)
-class PkcePair:
-    """A random verifier the app keeps, and its SHA-256 challenge that goes in the browser link."""
-
-    verifier: str = field(repr=False)
-    challenge: str
-
-
-@dataclass(frozen=True)
-class TokenGrant:
-    """What Kaggle's token endpoint answered. Lives in memory only."""
-
-    access_token: str = field(repr=False)
-    refresh_token: str | None = field(repr=False)
-    expires_in_seconds: int
-    username: str | None
 
 
 class KaggleSignInError(Exception):

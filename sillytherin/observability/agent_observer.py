@@ -13,6 +13,12 @@ from langchain_core.callbacks import AsyncCallbackHandler
 from langchain_core.messages import BaseMessage, ToolMessage
 from langgraph.types import Command
 
+from sillytherin.observability.dtos.reply_trace import (
+    ModelExchange,
+    ModelOutputState,
+    SpanKind,
+    SpanOutcome,
+)
 from sillytherin.observability.model_capture import (
     capture_model_chunk,
     encode_model_input,
@@ -22,11 +28,7 @@ from sillytherin.observability.reply_trace import (
     OTHER_TOOL_LABEL,
     SAFE_TOOL_LABELS,
     ApprovalWait,
-    ModelExchange,
-    ModelOutputState,
     ReplyRecorder,
-    SpanKind,
-    SpanOutcome,
 )
 from sillytherin.tools import NOTEBOOK_TOOLS, TOOLS
 

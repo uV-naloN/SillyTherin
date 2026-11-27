@@ -18,24 +18,25 @@ import json
 import os
 import stat
 from collections.abc import Callable
-from dataclasses import dataclass, field, replace
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING, BinaryIO, Literal
 
 from sillytherin.clock import utc_now
 from sillytherin.config import CREATED_DATA_EXTENSIONS, WORKSPACES_DIR
+from sillytherin.contracts.notebook import DatasetPanelStatus, DatasetProps
 from sillytherin.workspace import ErrorCode, WorkspaceError, store
 from sillytherin.workspace.datasets import created_store as cds
 from sillytherin.workspace.datasets import store as ds
-from sillytherin.workspace.datasets.created_store import CreatedDataset, FileSnapshot
 from sillytherin.workspace.datasets.describe import describe_need
+from sillytherin.workspace.datasets.dtos._created import ScanChanges
+from sillytherin.workspace.datasets.dtos.created import CreatedDataset, FileSnapshot
 from sillytherin.workspace.datasets.load_code import load_code
-from sillytherin.workspace.service import DatasetPanelStatus, DatasetProps
 
 CreatedBy = Literal["assistant", "user", "upload"]  # a cell run by either, or put in by the user (no run)
 
 if TYPE_CHECKING:
-    from sillytherin.workspace.datasets.service import DatasetRecordView
+    from sillytherin.contracts.datasets import DatasetRecordView
 
 RunLockFor = Callable[[str], asyncio.Lock]  # project_id -> its notebook run lock
 Clock = Callable[[], str]  # ISO 8601 UTC now
@@ -49,18 +50,9 @@ COLUMNS_MAX = 50  # column names kept per file
 COLUMN_NAME_MAX_CHARS = 60  # per column name
 
 
-@dataclass
-class ScanChanges:
-    """What one scan found compared with the stored rows; computed without touching storage."""
-
-    new_files: list[FileSnapshot] = field(default_factory=list)  # insert
-    resaved: list[CreatedDataset] = field(default_factory=list)  # same id, new size/mtime
-    renamed: list[CreatedDataset] = field(default_factory=list)  # same id, new path
-
-    @property
-    def has_changes(self) -> bool:
-        """False when the scan wrote nothing, so datasets_rev stays put."""
-        return bool(self.new_files or self.resaved or self.renamed)
+def has_scan_changes(changes: ScanChanges) -> bool:
+    """False when the scan wrote nothing, so datasets_rev stays put."""
+    return bool(changes.new_files or changes.resaved or changes.renamed)
 
 
 # ---- the folder scan -----------------------------------------------------------
@@ -339,7 +331,7 @@ class CreatedDatasets:
         changes = compare_with_stored(stored, scan_data_files(self._files_dir(project_id), self.extensions))
         self._store_changes(project_id, stored, changes, by or "upload")
         filled = self._fill_missing_columns(project_id, stored, changes)
-        return changes.has_changes or filled
+        return has_scan_changes(changes) or filled
 
     def panel_rows(self, project_id: str) -> list[DatasetProps]:
         """Created cards for NotebookProps.datasets: origin 'created', source 'created', no licence/url/shared."""

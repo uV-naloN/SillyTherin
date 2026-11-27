@@ -16,7 +16,6 @@ from langgraph.graph.state import CompiledStateGraph
 from sillytherin.agent.history import from_langchain, to_langchain
 from sillytherin.agent.model import (
     GuardModelToolCalls,
-    ModelRequest,
     ToolArgumentStream,
     build_chat_model,
     is_openrouter_relay_failure,
@@ -24,13 +23,11 @@ from sillytherin.agent.model import (
 from sillytherin.agent.round_limit import RoundLimit
 from sillytherin.agent.stream import stream_agent
 from sillytherin.agent.tool_errors import NotebookBatchGuard, ToolErrorBoundary
-from sillytherin.chat.mode import DEFAULT_AGENT_MODE, AgentMode
 from sillytherin.chat.ports import (
     AnswerView,
     Asker,
     ChatState,
     ProgressView,
-    ReplyInterruptionReason,
     SettingsView,
 )
 from sillytherin.chat_start import (
@@ -42,8 +39,14 @@ from sillytherin.chat_start import (
     picker_choices,
 )
 from sillytherin.config import TOOL_MAX_ROUNDS
+from sillytherin.contracts.chat import (
+    ModelRequest,
+    Picks,
+    ReplyInterruptionReason,
+    UserMessage,
+)
 from sillytherin.llm import model_params
-from sillytherin.modes import EFFORT_MODE_ID, MODEL_MODE_ID, Picks, chosen_picks
+from sillytherin.modes import EFFORT_MODE_ID, MODEL_MODE_ID, chosen_picks
 from sillytherin.progress import Progress
 from sillytherin.settings import reasoning_body, usable_settings
 from sillytherin.tools import (
@@ -80,16 +83,6 @@ class StopOnNotebookRestart(AgentMiddleware):
         if notebook_restart_required(request.messages):
             return ModelResponse(result=[AIMessage(content=RESTART_REPLY)])
         return await handler(request)
-
-
-@dataclass(frozen=True)
-class UserMessage:
-    """What the user sent, with the picker choices that came with it."""
-
-    text: str
-    model: str  # model id from the Model picker; kept only if it is offered
-    effort: str  # level from the Effort picker; kept only if it is offered
-    agent_mode: AgentMode = DEFAULT_AGENT_MODE
 
 
 @dataclass(frozen=True)

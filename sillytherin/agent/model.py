@@ -9,26 +9,17 @@ from langchain.agents.middleware import AgentMiddleware, AgentState
 from langchain_core.callbacks import AsyncCallbackHandler
 from langchain_core.messages import AIMessage, AIMessageChunk, ToolCall
 from langchain_core.outputs import ChatGenerationChunk
-from langchain_core.tools import BaseTool
 from langchain_openrouter import ChatOpenRouter
 from langgraph.runtime import Runtime
 from openrouter.errors import BadRequestResponseError
 
 from sillytherin.agent.round_limit import tool_rounds_this_turn
 from sillytherin.config import OPENROUTER_API_KEY, OPENROUTER_URL
+from sillytherin.contracts.chat import ModelRequest
 
 APP_TITLE = "SillyTherin"  # how OpenRouter names the app on the account's activity page
 INVALID_ARGUMENTS_FIELD = "__invalid_arguments__"
 OPENROUTER_RELAY_ERROR_MESSAGE = "Request path cannot be relayed"
-
-
-@dataclass(frozen=True)
-class ModelRequest:
-    """How every round of one turn calls the model."""
-
-    model: str  # OpenRouter model id
-    tools: list[BaseTool]
-    thinking: dict  # reasoning_body(): {"reasoning": {...}} or {} for a model that doesn't think
 
 
 @dataclass

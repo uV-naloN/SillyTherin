@@ -10,6 +10,7 @@ import asyncio
 import httpx
 import pytest
 
+from sillytherin.contracts.datasets import PlannedFile
 from sillytherin.workspace.datasets import links
 from sillytherin.workspace.datasets import sources as src
 from tests.conftest import catalog_client, fake_lookup
@@ -58,7 +59,7 @@ def tasks_used(tasks: list[str]) -> set[str]:
 def test_catalog_download_reads_and_closes_in_one_task(tmp_path) -> None:
     # Then: every chunk read and the close happen in the downloading task · Demonstrates: no cross-task close warning
     tasks: list[str] = []
-    planned = src.PlannedFile("iris.csv", 12, None, "https://huggingface.co/datasets/x/y/resolve/abc/iris.csv")
+    planned = PlannedFile("iris.csv", 12, None, "https://huggingface.co/datasets/x/y/resolve/abc/iris.csv")
 
     async def download() -> str:
         async with catalog_client(recording_handler(tasks)) as client:
@@ -74,7 +75,7 @@ def test_catalog_download_reads_and_closes_in_one_task(tmp_path) -> None:
 def test_pasted_link_download_reads_and_closes_in_one_task(tmp_path) -> None:
     # Changed: a pasted file link instead of a catalog file · Then: the same single task · Demonstrates: both download paths are fixed
     tasks: list[str] = []
-    planned = src.PlannedFile("iris.csv", 12, None, "https://example.org/data/iris.csv")
+    planned = PlannedFile("iris.csv", 12, None, "https://example.org/data/iris.csv")
 
     async def download() -> str:
         async with catalog_client(recording_handler(tasks)) as client:
@@ -97,7 +98,7 @@ def test_stalled_body_still_times_out(tmp_path) -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, stream=StallingBody())
 
-    planned = src.PlannedFile("iris.csv", 12, None, "https://huggingface.co/datasets/x/y/resolve/abc/iris.csv")
+    planned = PlannedFile("iris.csv", 12, None, "https://huggingface.co/datasets/x/y/resolve/abc/iris.csv")
 
     async def download() -> None:
         async with catalog_client(handler) as client:

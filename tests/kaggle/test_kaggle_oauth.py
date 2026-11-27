@@ -10,6 +10,7 @@ import httpx
 import pytest
 
 from sillytherin.workspace.kaggle import oauth
+from sillytherin.workspace.kaggle.dtos.oauth import OAuthClient
 from tests.kaggle.fakes import (
     ACCESS_TOKEN,
     CLIENT_ID,
@@ -21,7 +22,7 @@ from tests.kaggle.fakes import (
 )
 
 REDIRECT = "http://127.0.0.1:48123/callback"
-CLIENT = oauth.OAuthClient(client_id=CLIENT_ID, redirect_uri=REDIRECT)
+CLIENT = OAuthClient(client_id=CLIENT_ID, redirect_uri=REDIRECT)
 
 
 def run(coro):
@@ -70,7 +71,7 @@ def test_register_client_returns_its_id() -> None:
     # Changed: — · Then: client id is taken from Kaggle's answer; the request names the client SillyTherin · Demonstrates: the app gets its own client under the chosen name
     kaggle = FakeKaggle(register=answer(200, {"client_id": "given-by-kaggle"}))
     client = run(with_client(kaggle, lambda http: oauth.register_client(http, REDIRECT)))
-    assert client == oauth.OAuthClient(client_id="given-by-kaggle", redirect_uri=REDIRECT)
+    assert client == OAuthClient(client_id="given-by-kaggle", redirect_uri=REDIRECT)
     sent = json.loads(kaggle.calls_to(oauth.REGISTER_URL)[0].content)
     assert sent["client_name"] == "SillyTherin"
     assert sent["redirect_uris"] == [REDIRECT]

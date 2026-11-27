@@ -10,11 +10,11 @@ from langchain_core.tools import ToolException, tool
 from pydantic import Field
 
 from sillytherin.config import MODEL_AUTO_RUN, RISKY_CODE_NEEDS_APPROVAL
+from sillytherin.contracts.notebook import CellCompilationError
 from sillytherin.tools.approval import RUN_CHOICE, RUN_OR_SKIP, ask_choice
 from sillytherin.tools.arguments import NonBlankText, ToolArguments
 from sillytherin.tools.services import ToolServices
 from sillytherin.workspace import WorkspaceError, risk
-from sillytherin.workspace.kernels import CellCompilationError
 from sillytherin.workspace.service import NotebookRunOutcome
 
 DECLINED = "User declined to run this code."

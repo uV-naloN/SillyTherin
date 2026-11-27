@@ -14,22 +14,25 @@ from sillytherin import turn
 from sillytherin.agent import stream
 from sillytherin.chat.ports import ChatState
 from sillytherin.chat_start import HISTORY_KEY, PICKS_KEY
+from sillytherin.contracts.chat import UserMessage
 from sillytherin.observability.agent_observer import (
     NativeStageObserver,
     observe_answer_wait,
 )
 from sillytherin.observability.answer_capture import AnswerCapture
-from sillytherin.observability.reply_trace import (
-    MAX_CHILD_SPANS,
-    ApprovalWait,
+from sillytherin.observability.dtos.reply_trace import (
     RecordingLoss,
     ReplyContent,
-    ReplyRecorder,
     ReplySpan,
     ReplyState,
     ReplyTrace,
     SpanKind,
     SpanOutcome,
+)
+from sillytherin.observability.reply_trace import (
+    MAX_CHILD_SPANS,
+    ApprovalWait,
+    ReplyRecorder,
     TraceClock,
 )
 from sillytherin.observability.turn_runner import ObservedTurnRunner
@@ -37,7 +40,7 @@ from sillytherin.server.events import AskOpened, ServerEvent
 from sillytherin.server.web_chat import OpenPrompts, SocketAsker
 from sillytherin.tools import web_search
 from sillytherin.tools.approval import RUN_OR_SKIP
-from sillytherin.turn import TurnHooks, TurnViews, UserMessage, run_turn
+from sillytherin.turn import TurnHooks, TurnViews, run_turn
 from tests.agent.conftest import ready_chat, run_one_turn
 from tests.chat.fakes import FakeAnswerView, FakeAsker, FakeProgressView, in_chat
 from tests.scripted_chat_model import (

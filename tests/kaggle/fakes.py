@@ -9,7 +9,7 @@ from typing import ClassVar
 import httpx
 
 from sillytherin.workspace.kaggle import oauth
-from sillytherin.workspace.kaggle.callback import CallbackResult
+from sillytherin.workspace.kaggle.dtos.callback import CallbackResult
 from sillytherin.workspace.kaggle.my_datasets import LIST_DATASETS_URL
 
 ACCESS_TOKEN = "AT-SECRET-0001"

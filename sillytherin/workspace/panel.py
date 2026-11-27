@@ -7,7 +7,7 @@ import asyncio
 import contextvars
 
 from sillytherin.chat.ports import PanelSink
-from sillytherin.workspace.service import NotebookProps
+from sillytherin.contracts.notebook import NotebookProps
 
 # Set during an edit action: the acting chat gets the result as the action's
 # reply, so it isn't pushed there too (a push while typing would cost the cursor).

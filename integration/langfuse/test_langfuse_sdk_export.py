@@ -17,11 +17,24 @@ from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
 from pydantic import SecretStr
 
 from sillytherin.chat.ports import ChatState
+from sillytherin.contracts.chat import UserMessage
 from sillytherin.observability.agent_observer import NativeStageObserver
-from sillytherin.observability.langfuse import (
+from sillytherin.observability.dtos.langfuse import (
     ExportLoss,
     LangfuseSettings,
     LossReason,
+)
+from sillytherin.observability.dtos.reply_trace import (
+    ModelExchange,
+    ModelOutputState,
+    ReplyContent,
+    ReplySpan,
+    ReplyState,
+    ReplyTrace,
+    SpanKind,
+    SpanOutcome,
+)
+from sillytherin.observability.langfuse import (
     read_settings,
     resolve_cloud_endpoint,
     worker_environment,
@@ -31,19 +44,9 @@ from sillytherin.observability.langfuse_worker import (
     open_sdk_exporter,
     validate_encoded_batch,
 )
-from sillytherin.observability.reply_trace import (
-    ModelExchange,
-    ModelOutputState,
-    ReplyContent,
-    ReplySpan,
-    ReplyState,
-    ReplyTrace,
-    SpanKind,
-    SpanOutcome,
-    TraceClock,
-)
+from sillytherin.observability.reply_trace import TraceClock
 from sillytherin.observability.turn_runner import ObservedTurnRunner
-from sillytherin.turn import TurnHooks, TurnOutcome, TurnViews, UserMessage
+from sillytherin.turn import TurnHooks, TurnOutcome, TurnViews
 from tests.chat.fakes import FakeAnswerView, FakeAsker, FakeChatState, FakeProgressView
 
 MARKER = "private-sentinel"

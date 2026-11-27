@@ -5,12 +5,13 @@ known column names needs a description ("write"). Every file in the project may
 be read without asking the user, whoever added it. Pure functions, no I/O.
 """
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
+
+from sillytherin.contracts.datasets import DescribeNeed
 
 if TYPE_CHECKING:
-    from sillytherin.workspace.datasets.service import DatasetRecordView
+    from sillytherin.contracts.datasets import DatasetRecordView
 
-DescribeNeed = Literal["write"]
 DESCRIPTION_MAX = 300  # one line, like catalog descriptions
 ELLIPSIS = "…"
 

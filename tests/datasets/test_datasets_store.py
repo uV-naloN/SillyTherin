@@ -10,7 +10,10 @@ from sillytherin.config import DATABASE_FILE
 from sillytherin.db.engine import database_for
 from sillytherin.workspace import WorkspaceError, store
 from sillytherin.workspace.datasets import store as ds
-from sillytherin.workspace.datasets.pool import DatasetPool, PoolEntry, PoolFile
+from sillytherin.workspace.datasets.dtos.created import CreatedDataset, FileSnapshot
+from sillytherin.workspace.datasets.dtos.pool import PoolEntry, PoolFile
+from sillytherin.workspace.datasets.dtos.store import ProjectDataset
+from sillytherin.workspace.datasets.pool import DatasetPool
 
 
 @pytest.fixture
@@ -71,7 +74,7 @@ def pool(root):
 
 
 def dataset(id="hf-org--name", files=("a.csv",), selection=None, status="ready"):
-    return ds.ProjectDataset(
+    return ProjectDataset(
         id=id, pool_entry=ENTRY, selection=selection, status=status, files=list(files),
         requested_at="2026-11-15T00:00:00+00:00", linked_at="2026-11-15T00:00:01+00:00", error=None,
     )
@@ -149,7 +152,7 @@ def test_integer_keys_never_reach_the_dataclasses(root, pool):
 
     [loaded] = ds.load_project_datasets("p1", root)
 
-    assert [f.name for f in fields(ds.ProjectDataset)] == [
+    assert [f.name for f in fields(ProjectDataset)] == [
         "id", "pool_entry", "selection", "status", "files", "requested_at", "linked_at", "error",
         "assistant_description",
     ]
@@ -278,9 +281,9 @@ def project_with_both_kinds(root):
     pool = DatasetPool(root)
     pool.add_entry(PoolEntry("hf-x@1", "huggingface", "o/x", None, "X", None, None, [PoolFile("a.csv", 1, None, True)]))
     pool.save_index()
-    ds.save_project_datasets("p1", [ds.ProjectDataset("hf-x", "hf-x@1", None, "ready", ["a.csv"])], root)
-    snapshot = cds.FileSnapshot(path="Iris.csv", size_bytes=4551, mtime_ns=1, inode=1)
-    cds.insert_created_dataset("p1", cds.CreatedDataset("file-iris-csv", snapshot, "t", "t"), root)
+    ds.save_project_datasets("p1", [ProjectDataset("hf-x", "hf-x@1", None, "ready", ["a.csv"])], root)
+    snapshot = FileSnapshot(path="Iris.csv", size_bytes=4551, mtime_ns=1, inode=1)
+    cds.insert_created_dataset("p1", CreatedDataset("file-iris-csv", snapshot, "t", "t"), root)
     return root
 
 

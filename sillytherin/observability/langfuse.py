@@ -10,13 +10,19 @@ import sys
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import asdict, dataclass
-from enum import StrEnum
 from time import monotonic, monotonic_ns, time_ns
-from typing import TYPE_CHECKING, Annotated, Protocol
+from typing import TYPE_CHECKING, Protocol
 
-from pydantic import Field, SecretStr, TypeAdapter
+from pydantic import SecretStr, TypeAdapter
 
-from sillytherin.observability.reply_trace import RecordingLoss, ReplyTrace, TraceClock
+from sillytherin.observability.dtos.langfuse import (
+    ExportLoss,
+    LangfuseSettings,
+    LossReason,
+    WorkerStartupFailure,
+)
+from sillytherin.observability.dtos.reply_trace import RecordingLoss, ReplyTrace
+from sillytherin.observability.reply_trace import TraceClock
 
 if TYPE_CHECKING:
     from sillytherin.server.app import ServerLifespan
@@ -40,46 +46,12 @@ CLOUD_HOSTS = {
     "us": "us.cloud.langfuse.com",
     "jp": "jp.cloud.langfuse.com",
 }
-HttpStatus = Annotated[int, Field(ge=100, le=599)]
-
-
-@dataclass(frozen=True)
-class LangfuseSettings:
-    endpoint: str
-    public_key: SecretStr
-    secret_key: SecretStr
-
-
-class LossReason(StrEnum):
-    EXPORT_TIMEOUT = "export_timeout"
-    CONNECTION_FAILED = "connection_failed"
-    HTTP_REJECTED = "http_rejected"
-    DELIVERY_UNCONFIRMED = "delivery_unconfirmed"
-    WORKER_FAILED = "worker_failed"
-    INVALID_TRACE = "invalid_trace"
-    QUEUE_FULL = "queue_full"
-    STAGE_LIMIT = "stage_limit"
-    OBSERVER_FAILED = "observer_failed"
-    STARTUP_DISABLED = "startup_disabled"
-    SHUTDOWN_DISCARDED = "shutdown_discarded"
-
-
-class WorkerStartupFailure(StrEnum):
-    DEPENDENCY_MISSING = "dependency_missing"
-    INITIALIZATION_FAILED = "initialization_failed"
 
 
 class WorkerStartupError(Exception):
     def __init__(self, reason: WorkerStartupFailure) -> None:
         super().__init__(reason.value)
         self.reason = reason
-
-
-@dataclass(frozen=True)
-class ExportLoss:
-    reason: LossReason
-    affected_traces: Annotated[int, Field(ge=0)]
-    http_status: HttpStatus | None = None
 
 
 @dataclass(frozen=True)

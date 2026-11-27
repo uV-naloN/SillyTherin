@@ -7,14 +7,16 @@ from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager, nullcontext
 from typing import Literal, Protocol
 
-from sillytherin.chat.ports import (
+from sillytherin.chat.ports import ThinkingStep, ToolStep
+from sillytherin.contracts.chat import (
     Choice,
+    Picker,
     ReplyInterruptionReason,
-    ThinkingStep,
+    SettingSwitch,
     ToastKind,
-    ToolStep,
 )
-from sillytherin.chat.widgets import Picker, SettingSwitch
+from sillytherin.contracts.kaggle import KaggleApprovalOffer
+from sillytherin.contracts.notebook import NotebookProps
 from sillytherin.server.events import (
     AskClosed,
     AskOpened,
@@ -40,12 +42,10 @@ from sillytherin.tools.approval import (
     DOWNLOAD_OR_SKIP,
 )
 from sillytherin.workspace.datasets.service import human_size
-from sillytherin.workspace.kaggle.dataset_downloads import KaggleApprovalOffer
 from sillytherin.workspace.kaggle.settings_switch import (
     WAITING_POPUP_MESSAGE,
     SignInPopupState,
 )
-from sillytherin.workspace.service import NotebookProps
 
 PROMPT_ID_BYTES = 16  # prompt ids are unguessable, so one chat can't answer another's prompt
 AnswerOutcome = Literal["accepted", "unknown", "unoffered"]

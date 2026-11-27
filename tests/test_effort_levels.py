@@ -5,11 +5,10 @@ import asyncio
 from sillytherin import llm
 from sillytherin.chat_start import pickers_for
 from sillytherin.config import check_levels
+from sillytherin.contracts.chat import ModelInfo, PickerChoices, Picks
 from sillytherin.modes import (
     EFFORT_MODE_ID,
     MODEL_MODE_ID,
-    PickerChoices,
-    Picks,
     chosen_picks,
     effort_levels_for,
 )
@@ -23,9 +22,9 @@ CONFIG_LEVELS = {"default": "Model default", "off": "Off", "low": "Low", "medium
 THINKS = frozenset({"reasoning", "tools"})
 
 
-def thinking_model(**fields) -> llm.ModelInfo:
+def thinking_model(**fields) -> ModelInfo:
     base = {"id": "vendor/smart", "name": "Smart", "params": THINKS, "supported_efforts": ("low", "medium", "high", "minimal")}
-    return llm.ModelInfo(**{**base, **fields})
+    return ModelInfo(**{**base, **fields})
 
 
 def test_model_with_listed_efforts_offers_only_those_config_has():
@@ -51,7 +50,7 @@ def test_budget_model_offers_all_config_levels():
 def test_server_always_sends_the_effort_labels(monkeypatch):
     # Changed: the chat's model doesn't think · Then: the Effort picker is still sent with every label
     # Demonstrates: the page can show Effort as soon as a thinking model is picked
-    plain = llm.ModelInfo(id="vendor/plain", name="Plain", params=frozenset())
+    plain = ModelInfo(id="vendor/plain", name="Plain", params=frozenset())
     monkeypatch.setattr(llm, "_catalog", {plain.id: plain})
     pickers = asyncio.run(pickers_for(Picks(model="vendor/plain", effort="default")))
     assert [picker.id for picker in pickers] == [MODEL_MODE_ID, EFFORT_MODE_ID]
@@ -62,7 +61,7 @@ def test_model_options_carry_their_effort_levels(monkeypatch):
     # Then: a thinking model's option lists its levels; a plain model's option has none
     # Demonstrates: the page knows each model's levels before any message
     smart = thinking_model(supported_efforts=("low", "high"))
-    plain = llm.ModelInfo(id="vendor/plain", name="Plain", params=frozenset())
+    plain = ModelInfo(id="vendor/plain", name="Plain", params=frozenset())
     monkeypatch.setattr(llm, "_catalog", {smart.id: smart, plain.id: plain})
     model_picker = asyncio.run(pickers_for(Picks(model="vendor/smart", effort="default")))[0]
     levels = {option.id: option.effort_levels for option in model_picker.options}

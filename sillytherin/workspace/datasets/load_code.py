@@ -10,7 +10,7 @@ import json
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from sillytherin.workspace.datasets.service import DatasetRecordView
+    from sillytherin.contracts.datasets import DatasetRecordView
 
 TABLES_MAX = 5  # same as loadCode.ts
 # (file name suffixes, reader call with {path} for the quoted path) — same order as READERS in loadCode.ts

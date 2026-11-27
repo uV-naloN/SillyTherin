@@ -13,16 +13,13 @@ from starlette.testclient import TestClient
 from sillytherin.observability import langfuse
 from sillytherin.observability.agent_observer import observe_answer_wait
 from sillytherin.observability.answer_capture import AnswerCapture
-from sillytherin.observability.langfuse import (
-    EXPORT_QUEUE_CAPACITY,
+from sillytherin.observability.dtos.langfuse import (
     ExportLoss,
     LangfuseSettings,
-    LangfuseSupervisor,
     LossReason,
-    configure_observability,
-    read_settings,
+    WorkerStartupFailure,
 )
-from sillytherin.observability.reply_trace import (
+from sillytherin.observability.dtos.reply_trace import (
     MAX_REPLY_CONTENT_BYTES,
     RecordingLoss,
     ReplyContent,
@@ -31,10 +28,17 @@ from sillytherin.observability.reply_trace import (
     ReplyTrace,
     SpanKind,
     SpanOutcome,
-    TraceClock,
 )
+from sillytherin.observability.langfuse import (
+    EXPORT_QUEUE_CAPACITY,
+    LangfuseSupervisor,
+    configure_observability,
+    read_settings,
+)
+from sillytherin.observability.reply_trace import TraceClock
 from sillytherin.observability.turn_runner import ObservedTurnRunner
-from sillytherin.server.app import ServerSettings, create_app
+from sillytherin.server.app import create_app
+from sillytherin.server.dtos.app import ServerSettings
 from sillytherin.server.events import ServerEvent
 from sillytherin.server.socket import ChatSessions
 from sillytherin.server.web_chat import SocketAnswerView
@@ -248,7 +252,7 @@ def test_later_reply_restarts_worker_after_startup_failure(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture,
 ) -> None:
     worker = FakeWorker()
-    worker.ready_error = langfuse.WorkerStartupError(langfuse.WorkerStartupFailure.DEPENDENCY_MISSING)
+    worker.ready_error = langfuse.WorkerStartupError(WorkerStartupFailure.DEPENDENCY_MISSING)
     clock = iter((0, 0, langfuse.WORKER_START_RETRY_SECONDS))
     monkeypatch.setattr(langfuse, "monotonic", lambda: next(clock))
 

@@ -9,13 +9,13 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
-from sillytherin.chat.widgets import SettingSwitch
+from sillytherin.contracts.chat import SettingSwitch
+from sillytherin.contracts.kaggle import KaggleAccountStatus
 from sillytherin.workspace import WorkspaceError
 from sillytherin.workspace.kaggle.account import (
     REFUSED_NOTICE,
     SIGNED_OUT_NOTICE,
     KaggleAccountService,
-    KaggleAccountStatus,
 )
 from sillytherin.workspace.kaggle.oauth import AUTHORIZE_URL
 

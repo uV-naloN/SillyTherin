@@ -6,20 +6,23 @@ from dataclasses import replace
 from typing import Protocol
 
 from sillytherin.chat.ports import ChatState
+from sillytherin.contracts.chat import UserMessage
 from sillytherin.observability.agent_observer import (
     NativeStageObserver,
     ToolWaitMiddleware,
 )
 from sillytherin.observability.answer_capture import AnswerCapture
-from sillytherin.observability.reply_trace import (
+from sillytherin.observability.dtos.reply_trace import (
     RecordingLoss,
     ReplyContent,
+    SpanOutcome,
+)
+from sillytherin.observability.reply_trace import (
     ReplyRecorder,
     ReplyTraceSink,
-    SpanOutcome,
     TraceClock,
 )
-from sillytherin.turn import TurnHooks, TurnOutcome, TurnViews, UserMessage
+from sillytherin.turn import TurnHooks, TurnOutcome, TurnViews
 
 
 class HookedTurnRunner(Protocol):
