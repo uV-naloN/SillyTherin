@@ -20,6 +20,7 @@ from urllib.parse import unquote, urlparse
 from sqlalchemy import Connection, Row, Select, delete, insert, select
 
 from sillytherin.config import WORKSPACES_DIR
+from sillytherin.contracts.datasets import Source
 from sillytherin.db.engine import database_for
 from sillytherin.db.schema import (
     pool_entries,
@@ -28,7 +29,7 @@ from sillytherin.db.schema import (
     projects,
 )
 from sillytherin.workspace import ErrorCode, WorkspaceError, store
-from sillytherin.workspace.datasets.dtos.store import ProjectDataset, Source
+from sillytherin.workspace.datasets.dtos.store import ProjectDataset
 
 log = logging.getLogger(__name__)
 

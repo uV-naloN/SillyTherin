@@ -13,7 +13,6 @@ from fastapi import WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
 
 from sillytherin.chat.current import ChatContext, current_chat
-from sillytherin.chat.mode import DEFAULT_AGENT_MODE, AgentMode
 from sillytherin.chat_start import (
     HISTORY_KEY,
     SETTINGS_KEY,
@@ -22,6 +21,12 @@ from sillytherin.chat_start import (
     pickers_for,
     start_chat_values,
     switches_for,
+)
+from sillytherin.contracts.chat import DEFAULT_AGENT_MODE, AgentMode, UserMessage
+from sillytherin.contracts.kaggle import (
+    KaggleDownloadPayload,
+    KaggleImportError,
+    KaggleImportSelection,
 )
 from sillytherin.server.events import (
     MAX_FRAME_BYTES,
@@ -57,16 +62,13 @@ from sillytherin.server.web_chat import (
     SocketToaster,
 )
 from sillytherin.settings import keep_chat_choices
-from sillytherin.turn import TurnRunner, TurnViews, UserMessage, run_turn
+from sillytherin.turn import TurnRunner, TurnViews, run_turn
 from sillytherin.workspace import ErrorCode, actions
 from sillytherin.workspace.kaggle.dataset_downloads import (
     DOWNLOAD_ACTION,
     MAX_PENDING_IMPORTS,
     RECONNECT,
-    KaggleDownloadPayload,
     KaggleDownloadResult,
-    KaggleImportError,
-    KaggleImportSelection,
     reject_import,
 )
 

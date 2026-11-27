@@ -18,21 +18,17 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
+from sillytherin.contracts.datasets import DatasetPlan, PlannedFile
+from sillytherin.contracts.kaggle import KaggleApprovalOffer, KaggleImportSelection
 from sillytherin.workspace import ErrorCode, WorkspaceError, actions, store
 from sillytherin.workspace.datasets import sources as src
 from sillytherin.workspace.datasets import store as ds
 from sillytherin.workspace.datasets.dtos.pool import PoolEntry, PoolFile
 from sillytherin.workspace.datasets.dtos.settings import DatasetsSettings
-from sillytherin.workspace.datasets.dtos.sources import PlannedFile
 from sillytherin.workspace.datasets.dtos.store import ProjectDataset
 from sillytherin.workspace.datasets.pool import DatasetPool, find_pool_file
 from sillytherin.workspace.datasets.service import DatasetService
-from sillytherin.workspace.datasets.sources import DatasetPlan
 from sillytherin.workspace.datasets.views import VIEW_FAILED_MESSAGE, VIEWS_DIR
-from sillytherin.workspace.kaggle.dataset_downloads import (
-    KaggleApprovalOffer,
-    KaggleImportSelection,
-)
 from sillytherin.workspace.kaggle.dtos.downloads import KaggleFileDownload
 from sillytherin.workspace.service import NotebookService
 from tests.conftest import FakeChats, FakeFreeDisk, FakeKernels, fake_lookup

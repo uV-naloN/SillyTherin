@@ -9,11 +9,8 @@ from typing import Protocol
 
 import httpx
 
-from sillytherin.workspace.kaggle.account import (
-    SIGNED_OUT_NOTICE,
-    HttpFactory,
-    KaggleAccountStatus,
-)
+from sillytherin.contracts.kaggle import KaggleAccountStatus
+from sillytherin.workspace.kaggle.account import SIGNED_OUT_NOTICE, HttpFactory
 from sillytherin.workspace.kaggle.dtos._my_datasets import (
     ListingState,
     MyDatasetsAnswer,

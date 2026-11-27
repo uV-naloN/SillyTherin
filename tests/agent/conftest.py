@@ -8,9 +8,9 @@ import pytest
 
 from sillytherin import llm, turn
 from sillytherin.chat_start import HISTORY_KEY, PICKS_KEY, SETTINGS_KEY
-from sillytherin.modes import Picks
+from sillytherin.contracts.chat import ModelInfo, Picks, UserMessage
 from sillytherin.tools import web_search
-from sillytherin.turn import TurnRunner, TurnViews, UserMessage, run_turn
+from sillytherin.turn import TurnRunner, TurnViews, run_turn
 from sillytherin.workspace import actions
 from tests.chat.fakes import (
     FakeAnswerView,
@@ -30,9 +30,9 @@ EVERY_SWITCH_ON = {"show_thinking": True, "web_search": True, "notebook": True}
 @pytest.fixture
 def catalog(monkeypatch) -> None:
     models = {
-        THINKS_AND_TOOLS: llm.ModelInfo(id=THINKS_AND_TOOLS, name="A B", params=frozenset({"reasoning", "tools"})),
-        TOOLS_ONLY: llm.ModelInfo(id=TOOLS_ONLY, name="Tools", params=frozenset({"tools"})),
-        PLAIN: llm.ModelInfo(id=PLAIN, name="Plain", params=frozenset()),
+        THINKS_AND_TOOLS: ModelInfo(id=THINKS_AND_TOOLS, name="A B", params=frozenset({"reasoning", "tools"})),
+        TOOLS_ONLY: ModelInfo(id=TOOLS_ONLY, name="Tools", params=frozenset({"tools"})),
+        PLAIN: ModelInfo(id=PLAIN, name="Plain", params=frozenset()),
     }
     monkeypatch.setattr(llm, "_catalog", models)
 

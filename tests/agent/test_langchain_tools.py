@@ -15,6 +15,8 @@ from sillytherin import turn
 from sillytherin.agent.tool_errors import INVALID_TOOL_ARGUMENTS
 from sillytherin.agent.tool_progress import NativeToolProgress
 from sillytherin.chat_start import HISTORY_KEY, PICKS_KEY
+from sillytherin.contracts.chat import UserMessage
+from sillytherin.contracts.datasets import DatasetPlan
 from sillytherin.progress import Progress
 from sillytherin.tools import (
     chosen_tools,
@@ -28,10 +30,9 @@ from sillytherin.tools import (
     read_page,
     web_search,
 )
-from sillytherin.turn import TurnViews, UserMessage
+from sillytherin.turn import TurnViews
 from sillytherin.workspace import ErrorCode, WorkspaceError, actions, store
 from sillytherin.workspace.datasets.service import DatasetService
-from sillytherin.workspace.datasets.sources import DatasetPlan
 from sillytherin.workspace.service import NotebookService
 from tests.agent.conftest import (
     EVERY_SWITCH_ON,

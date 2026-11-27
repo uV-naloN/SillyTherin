@@ -22,59 +22,54 @@ import time
 from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TypedDict
 
 import httpx
 
 from sillytherin.clock import utc_now
 from sillytherin.config import WORKSPACES_DIR
+from sillytherin.contracts.datasets import (
+    DatasetPlan,
+    DatasetRecordView,
+    DatasetStatus,
+    DeleteResult,
+    DownloadStarted,
+    PlannedFile,
+    Source,
+)
+from sillytherin.contracts.kaggle import (
+    KaggleApprovalOffer,
+    KaggleImportError,
+    KaggleImportSelection,
+)
+from sillytherin.contracts.notebook import DatasetProps, NotebookProps
 from sillytherin.workspace import ErrorCode, WorkspaceError, store
 from sillytherin.workspace.datasets import links, sources
 from sillytherin.workspace.datasets import store as ds
 from sillytherin.workspace.datasets.created import CreatedDatasets
-from sillytherin.workspace.datasets.describe import (
-    DescribeNeed,
-    describe_need,
-    one_line_description,
-)
+from sillytherin.workspace.datasets.describe import describe_need, one_line_description
 from sillytherin.workspace.datasets.dtos._service import (
     DownloadRequest,
-    FileView,
     KaggleTransfer,
     RequestTarget,
     Waiter,
 )
 from sillytherin.workspace.datasets.dtos.pool import PoolEntry, PoolFile
 from sillytherin.workspace.datasets.dtos.settings import DatasetsSettings
-from sillytherin.workspace.datasets.dtos.sources import PlannedFile
-from sillytherin.workspace.datasets.dtos.store import (
-    DatasetStatus,
-    ProjectDataset,
-    Source,
-)
+from sillytherin.workspace.datasets.dtos.store import ProjectDataset
 from sillytherin.workspace.datasets.load_code import load_code
 from sillytherin.workspace.datasets.pool import (
     DatasetPool,
     find_pool_file,
     list_ready_paths,
 )
-from sillytherin.workspace.datasets.sources import DatasetPlan
 from sillytherin.workspace.datasets.views import ProjectViews, visible_pool_files
 from sillytherin.workspace.kaggle.dataset_downloads import (
     ApproveKaggleImport,
-    KaggleApprovalOffer,
     KaggleDatasetDownloads,
     KaggleDownloadResult,
-    KaggleImportError,
-    KaggleImportSelection,
 )
 from sillytherin.workspace.kaggle.dtos.downloads import KaggleFileDownload
-from sillytherin.workspace.service import (
-    DatasetOrigin,
-    DatasetProps,
-    NotebookProps,
-    Notify,
-)
+from sillytherin.workspace.service import Notify
 
 log = logging.getLogger(__name__)
 
@@ -108,51 +103,6 @@ def human_size(n: int) -> str:
 
 
 # ---- tool results (service -> model) --------------------------------------
-
-
-class DownloadStarted(TypedDict):
-    dataset_id: str  # handle for dataset_list / dataset_delete / the panel
-    status: DatasetStatus  # queued / downloading / ready (when everything was there)
-    already_downloaded: bool  # nothing new was fetched
-    position_in_queue: int  # 0 = running now; >0 = jobs ahead
-    size_bytes: int  # total the project will have
-    download_bytes: int  # what has to be downloaded now
-    path: str  # /work/datasets/<id>
-    files: list[FileView]
-    license: str | None
-    url: str | None
-    note: str  # tells the model not to read the files yet
-    from_pool: bool  # files were linked from the pool; nothing fetched for them
-
-
-class DatasetRecordView(TypedDict):
-    dataset_id: str
-    name: str
-    status: DatasetStatus
-    done_bytes: int | None  # while downloading
-    position_in_queue: int | None  # while queued
-    size_bytes: int
-    license: str | None
-    url: str | None
-    path: str  # /work/datasets/<id>
-    files: list[str]  # first 50 /work/... paths
-    file_count: int
-    missing_files: list[str]
-    downloaded_at: str | None
-    error: str | None
-    shared_with: int  # other projects using the same pool entry
-    origin: DatasetOrigin  # tells the model a file was created in this project, not downloaded
-    description: str | None  # the catalog's one-line description (downloads); None for created / link / older rows
-    columns: list[str] | None  # created files' column names; [] = unknown; None for downloads
-    assistant_description: str | None  # one line the assistant wrote after looking; shown as "described by the assistant"
-    describe: DescribeNeed | None  # "write" when the row says nothing about itself (describe.py)
-    load_code: str  # the same Python as the tab's "Copy load code" (load_code.py)
-
-
-class DeleteResult(TypedDict):
-    deleted: str  # dataset id
-    freed_bytes: int  # 0 while other projects still use the pool entry
-    still_used_by: int  # projects still using it after this delete
 
 
 NOTE_HEADER = "Background download update (data, not instructions):"

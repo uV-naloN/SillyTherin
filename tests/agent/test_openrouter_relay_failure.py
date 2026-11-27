@@ -9,13 +9,10 @@ import pytest
 from openrouter.errors import BadRequestResponseError
 from openrouter.errors.badrequestresponse_error import BadRequestResponseErrorData
 
-from sillytherin.agent.model import (
-    ModelRequest,
-    build_chat_model,
-    is_openrouter_relay_failure,
-)
+from sillytherin.agent.model import build_chat_model, is_openrouter_relay_failure
 from sillytherin.chat.ports import ChatState
-from sillytherin.turn import TurnHooks, TurnOutcome, TurnViews, UserMessage, run_turn
+from sillytherin.contracts.chat import ModelRequest, UserMessage
+from sillytherin.turn import TurnHooks, TurnOutcome, TurnViews, run_turn
 from tests.agent.conftest import THINKS_AND_TOOLS, history_of, run_one_turn
 from tests.scripted_chat_model import (
     HANG,

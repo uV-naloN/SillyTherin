@@ -24,7 +24,6 @@ import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
 
 import nbformat
 from jupyter_client.asynchronous import AsyncKernelClient
@@ -37,6 +36,7 @@ from sillytherin.config import (
     MAX_OUTPUT_CHARS,
     WORKSPACES_DIR,
 )
+from sillytherin.contracts.notebook import CellCompilationError, KernelStatus
 from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.datasets.pool import KERNEL_POOL_ROOT
 from sillytherin.workspace.datasets.views import VIEWS_DIR
@@ -70,7 +70,6 @@ BINDINGS_EXPR = (
     "and k not in ('In','Out','exit','quit','get_ipython')))"
 )
 
-KernelStatus = Literal["off", "starting", "idle", "busy", "dead", "unavailable"]
 OnOutput = Callable[[NotebookNode], Awaitable[None]]
 
 
@@ -79,14 +78,6 @@ def missing_global_name(error_name: str | None, error_value: object) -> str | No
         return None
     match = MISSING_GLOBAL.fullmatch(error_value)
     return match.group(1) if match else None
-
-
-@dataclass
-class CellCompilationError(Exception):
-    """A compile rejection reported without a traceback."""
-
-    message: str
-    line_number: int | None = None
 
 
 def decode_notebook_bindings(value: dict) -> NotebookBindings | None:

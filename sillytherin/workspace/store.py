@@ -20,6 +20,7 @@ from sqlalchemy import Connection, Row, insert, select
 
 from sillytherin.clock import utc_now
 from sillytherin.config import WORKSPACES_DIR
+from sillytherin.contracts.notebook import PROJECT_ID_MAX, PROJECT_ID_RE, CellType
 from sillytherin.db.engine import database_for
 from sillytherin.db.schema import projects
 from sillytherin.workspace import ErrorCode, WorkspaceError
@@ -27,8 +28,6 @@ from sillytherin.workspace.dtos.projects import Project
 
 log = logging.getLogger(__name__)
 
-PROJECT_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
-PROJECT_ID_MAX = 40
 PROJECT_NAME_MAX = 80
 DEFAULT_PROJECT_ID = "default"
 DEFAULT_PROJECT_NAME = "Default"
@@ -38,7 +37,6 @@ MAX_SOURCE_BYTES = 100 * 1024
 NOTEBOOK_FILE = "notebook.ipynb"
 FILES_DIR = "files"
 
-CellType = Literal["code", "markdown"]
 Direction = Literal["up", "down"]
 CELL_TYPES = ("code", "markdown")
 DIRECTIONS = ("up", "down")

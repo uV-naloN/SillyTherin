@@ -4,11 +4,10 @@ import json
 
 import pytest
 
+from sillytherin.contracts.datasets import DatasetPlan, PlannedFile
+from sillytherin.contracts.kaggle import KaggleAccountStatus
 from sillytherin.server import web_chat
 from sillytherin.workspace import actions, store
-from sillytherin.workspace.datasets.dtos.sources import PlannedFile
-from sillytherin.workspace.datasets.sources import DatasetPlan
-from sillytherin.workspace.kaggle.account import KaggleAccountStatus
 from sillytherin.workspace.kaggle.dtos._my_datasets import (
     MyDatasetsAnswer,
     OwnedDataset,

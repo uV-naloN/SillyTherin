@@ -1,23 +1,10 @@
 """What OpenRouter offers: its model catalog and each model's capabilities."""
 
-from dataclasses import dataclass
 
 import httpx
 
 from sillytherin.config import MODEL, OPENROUTER_URL
-
-
-@dataclass(frozen=True)
-class ModelInfo:
-    """One OpenRouter model as the app needs it."""
-
-    id: str
-    name: str
-    params: frozenset[str]
-    thinking_mandatory: bool = False  # OpenRouter reasoning.mandatory: thinking cannot be turned off
-    supported_efforts: tuple[str, ...] = ()  # OpenRouter reasoning.supported_efforts; empty = budget-based
-    default_effort: str | None = None  # OpenRouter reasoning.default_effort
-
+from sillytherin.contracts.chat import ModelInfo
 
 _catalog: dict[str, ModelInfo] | None = None
 
@@ -48,7 +35,6 @@ def parse_catalog(entries: list[dict]) -> dict[str, ModelInfo]:
         for entry in entries
         if answers_in_text(entry)
     }
-
 
 
 def thinking_fields(reasoning: object) -> dict:

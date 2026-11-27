@@ -19,11 +19,10 @@ from urllib.parse import ParseResult, unquote, urlparse, urlunparse
 
 import httpx
 
+from sillytherin.contracts.datasets import DatasetPlan, PlannedFile, Source
 from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.datasets import sources
-from sillytherin.workspace.datasets.dtos.sources import PlannedFile
-from sillytherin.workspace.datasets.dtos.store import Source
-from sillytherin.workspace.datasets.sources import CHUNK_SIZE, DatasetPlan
+from sillytherin.workspace.datasets.sources import CHUNK_SIZE
 from sillytherin.workspace.datasets.store import safe_relpath
 
 LINK_SOURCE: Source = "link"

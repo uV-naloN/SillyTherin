@@ -10,9 +10,9 @@ import asyncio
 import httpx
 import pytest
 
+from sillytherin.contracts.datasets import PlannedFile
 from sillytherin.workspace.datasets import links
 from sillytherin.workspace.datasets import sources as src
-from sillytherin.workspace.datasets.dtos.sources import PlannedFile
 from tests.conftest import catalog_client, fake_lookup
 
 BODY_CHUNKS = [b"a,b\n", b"1,2\n", b"3,4\n"]

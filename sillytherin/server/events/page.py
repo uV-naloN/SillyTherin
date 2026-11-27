@@ -4,7 +4,7 @@ from typing import Any, Literal
 
 from pydantic import ConfigDict, Field
 
-from sillytherin.chat.mode import AgentMode
+from sillytherin.contracts.chat import AgentMode
 from sillytherin.server.events.base import MAX_ID_CHARS, MAX_MESSAGE_CHARS, PageEvent
 
 

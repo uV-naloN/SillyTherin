@@ -8,6 +8,7 @@ import pytest
 from starlette.testclient import TestClient
 
 from sillytherin import config, llm, turn
+from sillytherin.contracts.chat import ModelInfo
 from sillytherin.server import app as server_app
 from sillytherin.server.app import create_app
 from sillytherin.server.dtos.app import ServerSettings
@@ -34,7 +35,7 @@ OWN_PAGE = f"http://{OWN_HOST}"
 def model(monkeypatch) -> ScriptedChatModel:
     scripted = ScriptedChatModel()
     monkeypatch.setattr(turn, "build_chat_model", lambda _request: scripted)
-    catalog = {config.MODEL: llm.ModelInfo(id=config.MODEL, name="Test model", params=frozenset({"tools", "reasoning"}))}
+    catalog = {config.MODEL: ModelInfo(id=config.MODEL, name="Test model", params=frozenset({"tools", "reasoning"}))}
     monkeypatch.setattr(llm, "_catalog", catalog)
     return scripted
 

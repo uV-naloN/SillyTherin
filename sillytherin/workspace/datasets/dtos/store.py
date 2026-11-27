@@ -3,9 +3,7 @@
 from dataclasses import dataclass, field
 from typing import Literal
 
-Source = Literal["huggingface", "zenodo", "link", "kaggle"]
 StoredStatus = Literal["queued", "downloading", "ready", "failed"]
-DatasetStatus = Literal["queued", "downloading", "ready", "failed", "missing"]  # missing is computed on read
 
 
 @dataclass

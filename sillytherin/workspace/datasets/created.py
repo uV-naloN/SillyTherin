@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, BinaryIO, Literal
 
 from sillytherin.clock import utc_now
 from sillytherin.config import CREATED_DATA_EXTENSIONS, WORKSPACES_DIR
+from sillytherin.contracts.notebook import DatasetPanelStatus, DatasetProps
 from sillytherin.workspace import ErrorCode, WorkspaceError, store
 from sillytherin.workspace.datasets import created_store as cds
 from sillytherin.workspace.datasets import store as ds
@@ -31,12 +32,11 @@ from sillytherin.workspace.datasets.describe import describe_need
 from sillytherin.workspace.datasets.dtos._created import ScanChanges
 from sillytherin.workspace.datasets.dtos.created import CreatedDataset, FileSnapshot
 from sillytherin.workspace.datasets.load_code import load_code
-from sillytherin.workspace.service import DatasetPanelStatus, DatasetProps
 
 CreatedBy = Literal["assistant", "user", "upload"]  # a cell run by either, or put in by the user (no run)
 
 if TYPE_CHECKING:
-    from sillytherin.workspace.datasets.service import DatasetRecordView
+    from sillytherin.contracts.datasets import DatasetRecordView
 
 RunLockFor = Callable[[str], asyncio.Lock]  # project_id -> its notebook run lock
 Clock = Callable[[], str]  # ISO 8601 UTC now

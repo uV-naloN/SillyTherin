@@ -9,12 +9,12 @@ from uuid import uuid4
 from langchain_core.messages import ToolMessage
 
 from sillytherin.agent.tool_progress import NativeToolProgress
-from sillytherin.chat.widgets import Picker, SettingSwitch
-from sillytherin.modes import PickerChoices, Picks, build_modes
+from sillytherin.contracts.chat import Picker, PickerChoices, Picks, SettingSwitch
+from sillytherin.contracts.kaggle import KaggleAccountStatus
+from sillytherin.modes import build_modes
 from sillytherin.progress import Progress
 from sillytherin.settings import NO_REASONING_REASON, NO_TOOLS_REASON, build_widgets
 from sillytherin.tools import web_search
-from sillytherin.workspace.kaggle.account import KaggleAccountStatus
 from tests.chat.fakes import FakeProgressView
 
 # ---- Business code runs without Chainlit · unit

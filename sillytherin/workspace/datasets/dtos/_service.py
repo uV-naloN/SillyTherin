@@ -1,20 +1,11 @@
 """Data that only the dataset service uses while it serves one request."""
 
 from dataclasses import dataclass
-from typing import TypedDict
 
+from sillytherin.contracts.datasets import DatasetPlan, Source
+from sillytherin.contracts.kaggle import KaggleImportSelection
 from sillytherin.workspace.datasets.dtos.pool import PoolEntry
-from sillytherin.workspace.datasets.dtos.store import Source
-from sillytherin.workspace.datasets.sources import DatasetPlan
-from sillytherin.workspace.kaggle.dataset_downloads import (
-    KaggleDatasetDownloads,
-    KaggleImportSelection,
-)
-
-
-class FileView(TypedDict):
-    path: str  # /work/datasets/<id>/<file>
-    size: int  # bytes
+from sillytherin.workspace.kaggle.dataset_downloads import KaggleDatasetDownloads
 
 
 @dataclass

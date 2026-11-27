@@ -2,9 +2,9 @@
 
 from dataclasses import replace
 
-from sillytherin.chat.widgets import SettingSwitch
 from sillytherin.config import SEARCH_ENABLED
-from sillytherin.workspace.kaggle.account import KaggleAccountStatus
+from sillytherin.contracts.chat import SettingSwitch
+from sillytherin.contracts.kaggle import KaggleAccountStatus
 from sillytherin.workspace.kaggle.settings_switch import (
     KAGGLE_SWITCH_ID,
     kaggle_switch,

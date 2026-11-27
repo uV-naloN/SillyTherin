@@ -1,12 +1,11 @@
 """The Model and Effort pickers in the chat box, and reading what a message chose."""
 
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from sillytherin.chat.widgets import Picker, PickerOption
+from sillytherin.contracts.chat import Picker, PickerChoices, PickerOption, Picks
 
 if TYPE_CHECKING:
-    from sillytherin.llm import ModelInfo
+    from sillytherin.contracts.chat import ModelInfo
 
 MODEL_MODE_ID = "model"
 MODEL_MODE_NAME = "Model"
@@ -15,24 +14,6 @@ EFFORT_MODE_NAME = "Effort"
 DEFAULT_LEVEL = "default"  # send no effort: the model decides
 OFF_LEVEL = "off"
 REASONING_PARAM = "reasoning"  # OpenRouter parameter a thinking model accepts
-
-
-@dataclass(frozen=True)
-class Picks:
-    """What one chat has picked in the chat box pickers."""
-
-    model: str
-    effort: str
-
-
-@dataclass(frozen=True)
-class PickerChoices:
-    """Everything the pickers may offer: model id -> label and effort level -> label."""
-
-    models: dict[str, str]
-    levels: dict[str, str]
-    model_details: dict[str, str] = field(default_factory=dict)  # model id -> "thinks · tools" etc.
-    model_effort_levels: dict[str, tuple[str, ...]] = field(default_factory=dict)  # model id -> its Effort levels
 
 
 def picker_models(names: dict[str, str], default_model: str) -> dict[str, str]:
@@ -105,4 +86,3 @@ def chosen_picks(modes: dict[str, str] | None, choices: PickerChoices, fallback:
 def offered_or(value: str | None, offered: dict[str, str], fallback: str) -> str:
     """`value` when it is one of the offered keys, else `fallback`: the browser can send anything."""
     return value if value in offered else fallback
-

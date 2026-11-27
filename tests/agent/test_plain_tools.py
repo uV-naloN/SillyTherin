@@ -10,6 +10,7 @@ import pytest
 from langchain_core.tools import BaseTool
 
 from sillytherin.chat_start import HISTORY_KEY, PICKS_KEY
+from sillytherin.contracts.chat import UserMessage
 from sillytherin.tools import (
     NOTEBOOK_TOOLS,
     TOOLS,
@@ -23,7 +24,7 @@ from sillytherin.tools import (
     read_page,
     web_search,
 )
-from sillytherin.turn import TurnViews, UserMessage, run_turn
+from sillytherin.turn import TurnViews, run_turn
 from sillytherin.workspace import ErrorCode, WorkspaceError, actions
 from tests.agent.conftest import ready_chat
 from tests.chat.fakes import (

@@ -1,3 +1,4 @@
+from sillytherin.contracts.kaggle import KaggleAccountStatus
 from sillytherin.settings import (
     NO_REASONING_REASON,
     NO_TOOLS_REASON,
@@ -6,7 +7,6 @@ from sillytherin.settings import (
     reasoning_body,
     usable_settings,
 )
-from sillytherin.workspace.kaggle.account import KaggleAccountStatus
 
 NOT_CONNECTED = KaggleAccountStatus(state="disconnected")
 FULL_MODEL = {"reasoning", "tools"}

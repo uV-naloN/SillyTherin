@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 
-from sillytherin.workspace.datasets.dtos.store import Source
+from sillytherin.contracts.datasets import Source
 
 
 @dataclass

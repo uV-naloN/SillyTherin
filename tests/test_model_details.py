@@ -4,11 +4,11 @@ import asyncio
 
 from sillytherin import llm
 from sillytherin.chat_start import pickers_for
-from sillytherin.modes import Picks
+from sillytherin.contracts.chat import ModelInfo, Picks
 
-THINKS_AND_TOOLS = llm.ModelInfo(id="vendor/smart", name="Smart", params=frozenset({"reasoning", "tools"}))
-TOOLS_ONLY = llm.ModelInfo(id="vendor/tools", name="Tools", params=frozenset({"tools"}))
-PLAIN = llm.ModelInfo(id="vendor/plain", name="Plain", params=frozenset())
+THINKS_AND_TOOLS = ModelInfo(id="vendor/smart", name="Smart", params=frozenset({"reasoning", "tools"}))
+TOOLS_ONLY = ModelInfo(id="vendor/tools", name="Tools", params=frozenset({"tools"}))
+PLAIN = ModelInfo(id="vendor/plain", name="Plain", params=frozenset())
 
 # ---- Model options say what each model can do · unit
 # Baseline: Given a catalog with a model that thinks and uses tools, one that only uses tools, and one with neither · When the Model picker is built

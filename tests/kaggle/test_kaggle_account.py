@@ -5,6 +5,7 @@ import json
 
 import pytest
 
+from sillytherin.contracts.kaggle import KaggleAccountStatus
 from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.kaggle import oauth
 from sillytherin.workspace.kaggle.account import (
@@ -14,7 +15,6 @@ from sillytherin.workspace.kaggle.account import (
     SIGNED_OUT_NOTICE,
     TIMED_OUT_NOTICE,
     KaggleAccountService,
-    KaggleAccountStatus,
 )
 from sillytherin.workspace.kaggle.dtos.callback import CallbackResult
 from sillytherin.workspace.kaggle.dtos.token_file import SavedSignIn

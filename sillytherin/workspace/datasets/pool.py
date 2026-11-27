@@ -33,6 +33,7 @@ from sqlalchemy import Connection, Row, delete, func, insert, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from sillytherin.config import WORKSPACES_DIR
+from sillytherin.contracts.datasets import Source
 from sillytherin.db.engine import database_for
 from sillytherin.db.schema import (
     SOURCES,
@@ -44,7 +45,6 @@ from sillytherin.db.schema import (
 from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.datasets import store as ds
 from sillytherin.workspace.datasets.dtos.pool import PoolEntry, PoolFile
-from sillytherin.workspace.datasets.dtos.store import Source
 
 log = logging.getLogger(__name__)
 

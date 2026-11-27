@@ -7,12 +7,12 @@ import asyncio
 import contextlib
 import secrets
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import Protocol
 
 import httpx
 
 from sillytherin.clock import utc_now
+from sillytherin.contracts.kaggle import KaggleAccountStatus
 from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.kaggle import oauth
 from sillytherin.workspace.kaggle.callback import CallbackListener
@@ -39,17 +39,6 @@ NOTICE_FOR_FAILURE: dict[oauth.SignInFailure, str] = {
 }
 STATE_BYTES = 32
 EXPIRY_MARGIN_SECONDS = 300  # refresh a little early so a download never starts with a token about to expire
-
-AccountState = Literal["disconnected", "connecting", "connected"]
-
-
-@dataclass(frozen=True)
-class KaggleAccountStatus:
-    """What Settings shows; never holds a token."""
-
-    state: AccountState
-    username: str | None = None
-    notice: str | None = None
 
 
 class KaggleAccount(Protocol):
