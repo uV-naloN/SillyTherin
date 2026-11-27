@@ -8,12 +8,12 @@ from starlette.testclient import TestClient, WebSocketTestSession
 from starlette.websockets import WebSocketDisconnect
 
 from core.chat.ports import ChatState
+from core.chat.turn import TurnViews
 from core.contracts.chat import AgentMode, UserMessage
 from core.server.events import MAX_FRAME_BYTES
 from core.server.socket import ChatSessions
 from core.tools import web_search
 from core.tools.shared import approval
-from core.turn import TurnViews
 from core.workspace import actions
 from tests.scripted_chat_model import ScriptedChatModel
 from tests.server.conftest import (

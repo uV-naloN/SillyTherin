@@ -13,7 +13,7 @@ from core.agent.tool_errors import (
     TOOL_FAILURE_PREFIX,
     ToolErrorBoundary,
 )
-from core.chat_start import HISTORY_KEY
+from core.chat.chat_start import HISTORY_KEY
 from core.tools import dataset_delete, dataset_download, notebook_run, web_search
 from core.workspace.errors import ErrorCode, WorkspaceError
 from tests.agent.conftest import history_of, run_one_turn

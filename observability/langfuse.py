@@ -26,9 +26,9 @@ from observability.dtos.reply_trace import RecordingLoss, ReplyTrace
 from observability.reply_trace import TraceClock
 
 if TYPE_CHECKING:
+    from core.chat.turn import TurnRunner
     from core.server.app import ServerLifespan
     from core.server.web_chat import AnswerWaitScope
-    from core.turn import TurnRunner
 
 log = logging.getLogger("uvicorn.error").getChild("langfuse")
 EXPORT_QUEUE_CAPACITY = 32
@@ -96,7 +96,7 @@ def configure_observability(environment: Mapping[str, str]) -> ObservabilityLaye
     if settings is None:
         return None
 
-    from core.turn import run_turn
+    from core.chat.turn import run_turn
     from observability.agent_observer import observe_answer_wait
     from observability.turn_runner import ObservedTurnRunner
 

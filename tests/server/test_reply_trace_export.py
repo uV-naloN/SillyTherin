@@ -10,12 +10,12 @@ from types import SimpleNamespace
 import pytest
 from starlette.testclient import TestClient
 
+from core.chat.turn import run_turn
 from core.server.app import create_app
 from core.server.dtos.app import ServerSettings
 from core.server.events import ServerEvent
 from core.server.socket import ChatSessions
 from core.server.web_chat import SocketAnswerView
-from core.turn import run_turn
 from observability import langfuse
 from observability.agent_observer import observe_answer_wait
 from observability.answer_capture import AnswerCapture

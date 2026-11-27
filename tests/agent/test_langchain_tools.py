@@ -11,13 +11,14 @@ from langchain_core.messages import ToolMessage
 from langchain_core.tools import BaseTool, ToolException
 from langchain_openrouter.chat_models import _convert_message_to_dict
 
-from core import turn
 from core.agent.tool_errors import INVALID_TOOL_ARGUMENTS
 from core.agent.tool_progress import NativeToolProgress
-from core.chat_start import HISTORY_KEY, PICKS_KEY
+from core.chat import turn
+from core.chat.chat_start import HISTORY_KEY, PICKS_KEY
+from core.chat.progress import Progress
+from core.chat.turn import TurnViews
 from core.contracts.chat import UserMessage
 from core.contracts.datasets import DatasetPlan
-from core.progress import Progress
 from core.tools import (
     chosen_tools,
     dataset_delete,
@@ -30,7 +31,6 @@ from core.tools import (
     read_page,
     web_search,
 )
-from core.turn import TurnViews
 from core.workspace import actions, store
 from core.workspace.datasets.service import DatasetService
 from core.workspace.errors import ErrorCode, WorkspaceError

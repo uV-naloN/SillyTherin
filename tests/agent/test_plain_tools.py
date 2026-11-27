@@ -9,7 +9,8 @@ from types import ModuleType
 import pytest
 from langchain_core.tools import BaseTool
 
-from core.chat_start import HISTORY_KEY, PICKS_KEY
+from core.chat.chat_start import HISTORY_KEY, PICKS_KEY
+from core.chat.turn import TurnViews, run_turn
 from core.contracts.chat import UserMessage
 from core.tools import (
     NOTEBOOK_TOOLS,
@@ -24,7 +25,6 @@ from core.tools import (
     read_page,
     web_search,
 )
-from core.turn import TurnViews, run_turn
 from core.workspace import actions
 from core.workspace.errors import ErrorCode, WorkspaceError
 from tests.agent.conftest import ready_chat

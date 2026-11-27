@@ -9,7 +9,7 @@ from langsmith.run_helpers import tracing_context
 from core.agent.model import ToolArgumentStream
 from core.agent.tool_progress import NativeToolProgress
 from core.chat.ports import AnswerView, ThinkingStep
-from core.progress import Progress
+from core.chat.progress import Progress
 from core.tools.shared.services import ToolServices
 
 RECURSION_SAFETY_NET = 200  # LangGraph's own step limit; the round limit always answers well before it

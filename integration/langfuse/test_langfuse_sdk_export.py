@@ -17,8 +17,8 @@ from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
 from pydantic import SecretStr
 
 from core.chat.ports import ChatState
+from core.chat.turn import TurnHooks, TurnOutcome, TurnViews
 from core.contracts.chat import UserMessage
-from core.turn import TurnHooks, TurnOutcome, TurnViews
 from observability.agent_observer import NativeStageObserver
 from observability.dtos.langfuse import (
     ExportLoss,

@@ -2,8 +2,8 @@
 
 import asyncio
 
-from core import llm
-from core.chat_start import pickers_for
+from core.agent import llm
+from core.chat.chat_start import pickers_for
 from core.configuration.config import check_levels
 from core.configuration.modes import (
     EFFORT_MODE_ID,

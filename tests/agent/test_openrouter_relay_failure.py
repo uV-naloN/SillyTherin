@@ -11,8 +11,8 @@ from openrouter.errors.badrequestresponse_error import BadRequestResponseErrorDa
 
 from core.agent.model import build_chat_model, is_openrouter_relay_failure
 from core.chat.ports import ChatState
+from core.chat.turn import TurnHooks, TurnOutcome, TurnViews, run_turn
 from core.contracts.chat import ModelRequest, UserMessage
-from core.turn import TurnHooks, TurnOutcome, TurnViews, run_turn
 from tests.agent.conftest import THINKS_AND_TOOLS, history_of, run_one_turn
 from tests.scripted_chat_model import (
     HANG,

@@ -2,7 +2,7 @@
 
 import asyncio
 
-from core import llm
+from core.agent import llm
 from core.contracts.chat import ModelInfo
 
 

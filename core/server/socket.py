@@ -12,8 +12,7 @@ from typing import Any
 from fastapi import WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
 
-from core.chat.current import ChatContext, current_chat
-from core.chat_start import (
+from core.chat.chat_start import (
     HISTORY_KEY,
     SETTINGS_KEY,
     current_picks,
@@ -22,6 +21,8 @@ from core.chat_start import (
     start_chat_values,
     switches_for,
 )
+from core.chat.current import ChatContext, current_chat
+from core.chat.turn import TurnRunner, TurnViews, run_turn
 from core.configuration.settings import keep_chat_choices
 from core.contracts.chat import DEFAULT_AGENT_MODE, AgentMode, UserMessage
 from core.contracts.kaggle import (
@@ -62,7 +63,6 @@ from core.server.web_chat import (
     SocketSignInPopup,
     SocketToaster,
 )
-from core.turn import TurnRunner, TurnViews, run_turn
 from core.workspace import actions
 from core.workspace.errors import ErrorCode
 from core.workspace.kaggle.dataset_downloads import (

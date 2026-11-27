@@ -2,8 +2,8 @@
 
 import asyncio
 
-from core import llm
-from core.chat_start import pickers_for
+from core.agent import llm
+from core.chat.chat_start import pickers_for
 from core.contracts.chat import ModelInfo, Picks
 
 THINKS_AND_TOOLS = ModelInfo(id="vendor/smart", name="Smart", params=frozenset({"reasoning", "tools"}))

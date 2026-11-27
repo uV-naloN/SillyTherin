@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from core import llm
+from core.agent import llm
 from core.agent import model as model_module
 from core.agent.model import APP_TITLE, build_chat_model
 from core.contracts.chat import ModelRequest

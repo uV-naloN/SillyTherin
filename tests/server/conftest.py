@@ -7,7 +7,8 @@ import httpx
 import pytest
 from starlette.testclient import TestClient
 
-from core import llm, turn
+from core.agent import llm
+from core.chat import turn
 from core.configuration import config
 from core.contracts.chat import ModelInfo
 from core.server import app as server_app

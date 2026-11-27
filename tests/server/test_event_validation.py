@@ -6,7 +6,7 @@ import pytest
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
-from core.chat_start import SETTINGS_KEY
+from core.chat.chat_start import SETTINGS_KEY
 from core.configuration import config
 from core.server.events import (
     MAX_FRAME_BYTES,

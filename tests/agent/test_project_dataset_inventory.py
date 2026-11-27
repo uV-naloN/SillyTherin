@@ -7,9 +7,9 @@ import pytest
 from langchain_core.messages import BaseMessage
 from langgraph.graph.state import CompiledStateGraph
 
-from core import turn
 from core.agent.model import ToolArgumentStream
-from core.progress import Progress
+from core.chat import turn
+from core.chat.progress import Progress
 from core.tools import dataset_list
 from core.tools.shared.services import ToolServices
 from core.workspace import actions, store

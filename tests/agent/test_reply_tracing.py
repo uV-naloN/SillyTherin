@@ -10,16 +10,16 @@ import pytest
 from langchain_core.messages import AIMessageChunk, HumanMessage
 from langchain_core.outputs import ChatGenerationChunk
 
-from core import turn
 from core.agent import stream
+from core.chat import turn
+from core.chat.chat_start import HISTORY_KEY, PICKS_KEY
 from core.chat.ports import ChatState
-from core.chat_start import HISTORY_KEY, PICKS_KEY
+from core.chat.turn import TurnHooks, TurnViews, run_turn
 from core.contracts.chat import UserMessage
 from core.server.events import AskOpened, ServerEvent
 from core.server.web_chat import OpenPrompts, SocketAsker
 from core.tools import web_search
 from core.tools.shared.approval import RUN_OR_SKIP
-from core.turn import TurnHooks, TurnViews, run_turn
 from observability.agent_observer import (
     NativeStageObserver,
     observe_answer_wait,
@@ -435,13 +435,13 @@ def capture_reply(
 
 
 def test_restart_trace_uses_delivered_restart_reply() -> None:
-    from core.turn import RESTART_REPLY
+    from core.chat.turn import RESTART_REPLY
     content, losses, _ = capture_reply(final=RESTART_REPLY)
     assert content.reply == RESTART_REPLY and not losses
 
 
 def test_empty_model_trace_matches_displayed_fallback() -> None:
-    from core.turn import EMPTY_ANSWER
+    from core.chat.turn import EMPTY_ANSWER
     content, _, _ = capture_reply(chunks=(), final=EMPTY_ANSWER)
     assert content.reply == EMPTY_ANSWER and content.reply_state is ReplyState.COMPLETE
 

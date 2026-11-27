@@ -1,5 +1,6 @@
 """What a chat starts with, and the pickers and Settings it shows for its model."""
 
+from core.agent.llm import model_catalog, model_params
 from core.chat.ports import ChatState, SettingsView
 from core.configuration.config import (
     EFFORT_DEFAULT,
@@ -17,7 +18,6 @@ from core.contracts.chat import (
     SettingSwitch,
 )
 from core.contracts.kaggle import KaggleAccountStatus
-from core.llm import model_catalog, model_params
 
 HISTORY_KEY = "history"
 PICKS_KEY = "picks"

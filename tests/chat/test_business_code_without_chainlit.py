@@ -9,6 +9,7 @@ from uuid import uuid4
 from langchain_core.messages import ToolMessage
 
 from core.agent.tool_progress import NativeToolProgress
+from core.chat.progress import Progress
 from core.configuration.modes import build_modes
 from core.configuration.settings import (
     NO_REASONING_REASON,
@@ -17,7 +18,6 @@ from core.configuration.settings import (
 )
 from core.contracts.chat import Picker, PickerChoices, Picks, SettingSwitch
 from core.contracts.kaggle import KaggleAccountStatus
-from core.progress import Progress
 from core.tools import web_search
 from tests.chat.fakes import FakeProgressView
 

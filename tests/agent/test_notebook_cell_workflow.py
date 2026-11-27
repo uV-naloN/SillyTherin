@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import nbformat
 import pytest
 
-from core import turn
+from core.chat import turn
 from core.tools import notebook_run
 from core.workspace import actions, store
 from core.workspace.errors import CellCompilationError

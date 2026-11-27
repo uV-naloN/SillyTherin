@@ -14,6 +14,7 @@ from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 from langgraph.graph.state import CompiledStateGraph
 
 from core.agent.history import from_langchain, to_langchain
+from core.agent.llm import model_params
 from core.agent.model import (
     GuardModelToolCalls,
     ToolArgumentStream,
@@ -23,14 +24,7 @@ from core.agent.model import (
 from core.agent.round_limit import RoundLimit
 from core.agent.stream import stream_agent
 from core.agent.tool_errors import NotebookBatchGuard, ToolErrorBoundary
-from core.chat.ports import (
-    AnswerView,
-    Asker,
-    ChatState,
-    ProgressView,
-    SettingsView,
-)
-from core.chat_start import (
+from core.chat.chat_start import (
     HISTORY_KEY,
     PICKS_KEY,
     SETTINGS_KEY,
@@ -38,6 +32,14 @@ from core.chat_start import (
     follow_model_change,
     picker_choices,
 )
+from core.chat.ports import (
+    AnswerView,
+    Asker,
+    ChatState,
+    ProgressView,
+    SettingsView,
+)
+from core.chat.progress import Progress
 from core.configuration.config import TOOL_MAX_ROUNDS
 from core.configuration.modes import EFFORT_MODE_ID, MODEL_MODE_ID, chosen_picks
 from core.configuration.settings import reasoning_body, usable_settings
@@ -47,8 +49,6 @@ from core.contracts.chat import (
     ReplyInterruptionReason,
     UserMessage,
 )
-from core.llm import model_params
-from core.progress import Progress
 from core.tools import (
     chosen_tools,
     dataset_delete,

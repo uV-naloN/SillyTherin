@@ -3,8 +3,8 @@
 import asyncio
 
 from core.agent.model import APP_TITLE, build_chat_model
+from core.chat.turn import model_request
 from core.contracts.chat import Picks
-from core.turn import model_request
 from tests.agent.conftest import (
     EVERY_SWITCH_ON,
     PLAIN,

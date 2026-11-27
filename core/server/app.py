@@ -8,7 +8,7 @@ from contextlib import AbstractAsyncContextManager, asynccontextmanager, nullcon
 from fastapi import FastAPI, Request, Response, WebSocket
 from fastapi.responses import FileResponse, PlainTextResponse
 
-from core.chat_start import switches_for
+from core.chat.chat_start import switches_for
 from core.server.dtos.app import ServerSettings
 from core.server.guard import is_allowed_host
 from core.server.socket import ChatSessions, serve_chat

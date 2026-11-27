@@ -6,9 +6,9 @@ from dataclasses import replace
 from typing import Protocol
 
 from core.chat.ports import ChatState
+from core.chat.turn import TurnHooks, TurnOutcome, TurnViews
 from core.contracts.chat import UserMessage
 from core.shared.best_effort import best_effort
-from core.turn import TurnHooks, TurnOutcome, TurnViews
 from observability.agent_observer import (
     NativeStageObserver,
     ToolWaitMiddleware,
