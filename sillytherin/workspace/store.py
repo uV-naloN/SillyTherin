@@ -23,8 +23,8 @@ from sillytherin.config import WORKSPACES_DIR
 from sillytherin.contracts.notebook import PROJECT_ID_MAX, PROJECT_ID_RE, CellType
 from sillytherin.db.engine import database_for
 from sillytherin.db.schema import projects
-from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.dtos.projects import Project
+from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 
 log = logging.getLogger(__name__)
 

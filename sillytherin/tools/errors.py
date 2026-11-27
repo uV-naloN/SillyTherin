@@ -2,7 +2,7 @@
 
 import json
 
-from sillytherin.workspace import WorkspaceError
+from sillytherin.workspace.errors import WorkspaceError
 
 
 def error_json(error: WorkspaceError) -> str:

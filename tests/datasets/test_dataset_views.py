@@ -10,7 +10,6 @@ import os
 
 import pytest
 
-from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.datasets.dtos._views import ViewFile
 from sillytherin.workspace.datasets.dtos.pool import PoolEntry, PoolFile
 from sillytherin.workspace.datasets.dtos.store import ProjectDataset
@@ -21,6 +20,7 @@ from sillytherin.workspace.datasets.views import (
     ProjectViews,
     visible_pool_files,
 )
+from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 
 
 @pytest.mark.parametrize(

@@ -20,12 +20,13 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from sillytherin.config import WORKSPACES_DIR
-from sillytherin.workspace import ErrorCode, WorkspaceError, store
+from sillytherin.workspace import store
 from sillytherin.workspace.datasets import store as ds
 from sillytherin.workspace.datasets.dtos._views import ViewFile
 from sillytherin.workspace.datasets.dtos.pool import PoolEntry
 from sillytherin.workspace.datasets.dtos.store import ProjectDataset
 from sillytherin.workspace.datasets.pool import DatasetPool, list_ready_paths
+from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 
 log = logging.getLogger(__name__)
 

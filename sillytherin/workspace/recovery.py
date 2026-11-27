@@ -6,7 +6,7 @@ the user to review and run the cell in the notebook.
 
 import ast
 
-from sillytherin.workspace import ErrorCode, WorkspaceError
+from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 
 REPEATABLE_FUNCTIONS = frozenset({
     "abs", "all", "any", "bool", "dict", "enumerate", "float", "int", "len", "list",

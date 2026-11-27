@@ -9,7 +9,7 @@ import httpx
 import pytest
 
 from sillytherin.contracts.kaggle import KaggleImportSelection
-from sillytherin.workspace import WorkspaceError
+from sillytherin.workspace.errors import WorkspaceError
 from sillytherin.workspace.kaggle.dataset_downloads import KaggleDatasetDownloads
 from sillytherin.workspace.kaggle.dtos.downloads import KaggleFileDownload
 

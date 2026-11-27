@@ -42,7 +42,7 @@ from sillytherin.contracts.kaggle import (
     KaggleImportSelection,
 )
 from sillytherin.contracts.notebook import DatasetProps, NotebookProps
-from sillytherin.workspace import ErrorCode, WorkspaceError, store
+from sillytherin.workspace import store
 from sillytherin.workspace.datasets import links, sources
 from sillytherin.workspace.datasets import store as ds
 from sillytherin.workspace.datasets.created import CreatedDatasets
@@ -62,6 +62,7 @@ from sillytherin.workspace.datasets.pool import (
     list_ready_paths,
 )
 from sillytherin.workspace.datasets.views import ProjectViews, visible_pool_files
+from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 from sillytherin.workspace.kaggle.dataset_downloads import (
     ApproveKaggleImport,
     KaggleDatasetDownloads,

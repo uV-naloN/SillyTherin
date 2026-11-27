@@ -6,7 +6,8 @@ import asyncio
 import nbformat
 import pytest
 
-from sillytherin.workspace import ErrorCode, WorkspaceError, actions, store
+from sillytherin.workspace import actions, store
+from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 from sillytherin.workspace.service import output_props
 from tests.test_workspace_store import FakeSession
 from tests.tool_calls import call_tool, fake_services

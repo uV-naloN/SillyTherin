@@ -25,7 +25,8 @@ from sillytherin.tools import (
     web_search,
 )
 from sillytherin.turn import TurnViews, run_turn
-from sillytherin.workspace import ErrorCode, WorkspaceError, actions
+from sillytherin.workspace import actions
+from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 from tests.agent.conftest import ready_chat
 from tests.chat.fakes import (
     FakeAnswerView,

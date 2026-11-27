@@ -37,11 +37,11 @@ from sillytherin.config import (
     WORKSPACES_DIR,
 )
 from sillytherin.contracts.notebook import CellCompilationError, KernelStatus
-from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.datasets.pool import KERNEL_POOL_ROOT
 from sillytherin.workspace.datasets.views import VIEWS_DIR
 from sillytherin.workspace.dtos._kernels import ContainerMounts, DockerSettings
 from sillytherin.workspace.dtos.kernels import NotebookBindings, RunResult, RunStatus
+from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 
 CONTAINER_PREFIX = "rc-kernel-"
 SCOPE_LABEL = "sillytherin.scope"  # which workspaces folder a container belongs to

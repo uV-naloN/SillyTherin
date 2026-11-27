@@ -29,10 +29,10 @@ from sillytherin.tools.services import (
     UndescribedDatasets,
 )
 from sillytherin.tools.titles import shorten
-from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.datasets import links
 from sillytherin.workspace.datasets.describe import look_first_message
 from sillytherin.workspace.datasets.service import REF_PREFIXES, human_size
+from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 
 if TYPE_CHECKING:
     from sillytherin.tools.datasets.dataset_describe import ChatLooks

@@ -20,10 +20,10 @@ from urllib.parse import ParseResult, unquote, urlparse, urlunparse
 import httpx
 
 from sillytherin.contracts.datasets import DatasetPlan, PlannedFile, Source
-from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.datasets import sources
 from sillytherin.workspace.datasets.sources import CHUNK_SIZE
 from sillytherin.workspace.datasets.store import safe_relpath
+from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 
 LINK_SOURCE: Source = "link"
 LINK_MAX_CHARS = 2000

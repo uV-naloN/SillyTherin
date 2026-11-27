@@ -63,7 +63,8 @@ from sillytherin.server.web_chat import (
 )
 from sillytherin.settings import keep_chat_choices
 from sillytherin.turn import TurnRunner, TurnViews, run_turn
-from sillytherin.workspace import ErrorCode, actions
+from sillytherin.workspace import actions
+from sillytherin.workspace.errors import ErrorCode
 from sillytherin.workspace.kaggle.dataset_downloads import (
     DOWNLOAD_ACTION,
     MAX_PENDING_IMPORTS,

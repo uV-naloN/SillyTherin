@@ -15,9 +15,10 @@ from sqlalchemy import Connection, Row, delete, func, insert, select, update
 from sillytherin.config import WORKSPACES_DIR
 from sillytherin.db.engine import database_for
 from sillytherin.db.schema import project_datasets, projects
-from sillytherin.workspace import WorkspaceError, store
+from sillytherin.workspace import store
 from sillytherin.workspace.datasets import store as ds
 from sillytherin.workspace.datasets.dtos.created import CreatedDataset, FileSnapshot
+from sillytherin.workspace.errors import WorkspaceError
 
 log = logging.getLogger(__name__)
 

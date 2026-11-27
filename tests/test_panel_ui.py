@@ -43,7 +43,7 @@ def _css_blocks(src: str | None = None) -> str:
     """The panel's stylesheet plus the KERNEL colour map in Notebook.tsx."""
     css = PANEL_CSS.read_text(encoding="utf-8") if src is None else src
     nb = (PANEL_SRC / "components" / "Notebook.tsx").read_text(encoding="utf-8")
-    kernel = re.search(r"const KERNEL[^=]*= \{(.*?)\};", nb, re.S)
+    kernel = re.search(r"const KERNEL[^=]*= \{(.*?)\};", nb, re.DOTALL)
     assert kernel, "the KERNEL colour map was not found"
     return css + "\n" + kernel.group(1)
 

@@ -15,7 +15,7 @@ from sillytherin.agent.tool_errors import (
 )
 from sillytherin.chat_start import HISTORY_KEY
 from sillytherin.tools import dataset_delete, dataset_download, notebook_run, web_search
-from sillytherin.workspace import ErrorCode, WorkspaceError
+from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 from tests.agent.conftest import history_of, run_one_turn
 from tests.scripted_chat_model import ScriptedChatModel, text_chunk, tool_call_chunk
 from tests.tool_calls import (

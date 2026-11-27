@@ -11,13 +11,14 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from sillytherin.db.engine import database_for
-from sillytherin.workspace import WorkspaceError, store
+from sillytherin.workspace import store
 from sillytherin.workspace.datasets import pool as dataset_pool
 from sillytherin.workspace.datasets import sources as src
 from sillytherin.workspace.datasets import store as ds
 from sillytherin.workspace.datasets.dtos.pool import PoolEntry, PoolFile
 from sillytherin.workspace.datasets.dtos.store import ProjectDataset
 from sillytherin.workspace.datasets.pool import DatasetPool, find_pool_file
+from sillytherin.workspace.errors import WorkspaceError
 from sillytherin.workspace.kernels import KernelRegistry
 from tests.conftest import fake_lookup
 from tests.datasets.test_dataset_service import (

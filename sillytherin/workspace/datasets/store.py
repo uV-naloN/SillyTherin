@@ -28,8 +28,9 @@ from sillytherin.db.schema import (
     project_datasets,
     projects,
 )
-from sillytherin.workspace import ErrorCode, WorkspaceError, store
+from sillytherin.workspace import store
 from sillytherin.workspace.datasets.dtos.store import ProjectDataset
+from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 
 log = logging.getLogger(__name__)
 

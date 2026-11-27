@@ -19,7 +19,7 @@ import pytest
 from openpyxl.worksheet._read_only import ReadOnlyWorksheet
 
 from sillytherin.config import CREATED_DATA_EXTENSIONS
-from sillytherin.workspace import ErrorCode, WorkspaceError, store
+from sillytherin.workspace import store
 from sillytherin.workspace.datasets import created as created_module
 from sillytherin.workspace.datasets import created_store as cds
 from sillytherin.workspace.datasets import store as ds
@@ -34,6 +34,7 @@ from sillytherin.workspace.datasets.dtos.pool import PoolEntry, PoolFile
 from sillytherin.workspace.datasets.dtos.store import ProjectDataset
 from sillytherin.workspace.datasets.pool import DatasetPool
 from sillytherin.workspace.datasets.service import DatasetService
+from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 
 IRIS_CSV = "sepal_length,species\n5.1,setosa\n4.9,setosa\n"  # 41 bytes
 

@@ -22,9 +22,9 @@ from urllib.parse import quote, urljoin, urlparse
 import httpx
 
 from sillytherin.contracts.datasets import DatasetPlan, PlannedFile, Source
-from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.datasets.describe import one_line_description
 from sillytherin.workspace.datasets.store import NAME_MAX, safe_relpath
+from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 
 MAX_REDIRECTS = 5
 USER_AGENT = "SillyTherin"  # generic; no tokens are ever sent

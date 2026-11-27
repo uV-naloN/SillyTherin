@@ -30,8 +30,9 @@ from sillytherin.contracts.notebook import (
     OutputProps,
     ProjectRef,
 )
-from sillytherin.workspace import ErrorCode, WorkspaceError, store
+from sillytherin.workspace import store
 from sillytherin.workspace.dtos.kernels import NotebookBindings, RunResult
+from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 from sillytherin.workspace.kernels import KernelRegistry
 from sillytherin.workspace.recovery import require_repeatable_correction
 from sillytherin.workspace.store import Direction

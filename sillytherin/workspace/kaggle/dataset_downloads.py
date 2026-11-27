@@ -13,8 +13,8 @@ import httpx
 
 from sillytherin.contracts.datasets import DatasetPlan, PlannedFile
 from sillytherin.contracts.kaggle import KaggleApprovalOffer, KaggleImportSelection
-from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.datasets.store import NAME_MAX, safe_relpath
+from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 from sillytherin.workspace.kaggle.account import HttpFactory
 from sillytherin.workspace.kaggle.dtos._dataset_downloads import (
     KaggleDownloadAccepted,

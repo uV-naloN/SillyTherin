@@ -8,12 +8,13 @@ from sqlalchemy.exc import IntegrityError
 
 from sillytherin.config import DATABASE_FILE
 from sillytherin.db.engine import database_for
-from sillytherin.workspace import WorkspaceError, store
+from sillytherin.workspace import store
 from sillytherin.workspace.datasets import store as ds
 from sillytherin.workspace.datasets.dtos.created import CreatedDataset, FileSnapshot
 from sillytherin.workspace.datasets.dtos.pool import PoolEntry, PoolFile
 from sillytherin.workspace.datasets.dtos.store import ProjectDataset
 from sillytherin.workspace.datasets.pool import DatasetPool
+from sillytherin.workspace.errors import WorkspaceError
 
 
 @pytest.fixture

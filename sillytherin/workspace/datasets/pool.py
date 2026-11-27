@@ -42,9 +42,9 @@ from sillytherin.db.schema import (
     project_datasets,
     projects,
 )
-from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.datasets import store as ds
 from sillytherin.workspace.datasets.dtos.pool import PoolEntry, PoolFile
+from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 
 log = logging.getLogger(__name__)
 

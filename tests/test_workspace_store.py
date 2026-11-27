@@ -10,7 +10,8 @@ from sqlalchemy.exc import IntegrityError
 
 from sillytherin.contracts.notebook import PROJECT_ID_RE
 from sillytherin.db.engine import database_for
-from sillytherin.workspace import ErrorCode, WorkspaceError, store
+from sillytherin.workspace import store
+from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 
 
 @pytest.fixture

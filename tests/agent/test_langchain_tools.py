@@ -31,8 +31,9 @@ from sillytherin.tools import (
     web_search,
 )
 from sillytherin.turn import TurnViews
-from sillytherin.workspace import ErrorCode, WorkspaceError, actions, store
+from sillytherin.workspace import actions, store
 from sillytherin.workspace.datasets.service import DatasetService
+from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 from sillytherin.workspace.service import NotebookService
 from tests.agent.conftest import (
     EVERY_SWITCH_ON,

@@ -13,7 +13,7 @@ import httpx
 
 from sillytherin.clock import utc_now
 from sillytherin.contracts.kaggle import KaggleAccountStatus
-from sillytherin.workspace import ErrorCode, WorkspaceError
+from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 from sillytherin.workspace.kaggle import oauth
 from sillytherin.workspace.kaggle.callback import CallbackListener
 from sillytherin.workspace.kaggle.dtos._account import CachedAccessToken

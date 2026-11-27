@@ -11,7 +11,7 @@ from typing import Literal, Protocol
 
 from sillytherin.contracts.chat import SettingSwitch
 from sillytherin.contracts.kaggle import KaggleAccountStatus
-from sillytherin.workspace import WorkspaceError
+from sillytherin.workspace.errors import WorkspaceError
 from sillytherin.workspace.kaggle.account import (
     REFUSED_NOTICE,
     SIGNED_OUT_NOTICE,

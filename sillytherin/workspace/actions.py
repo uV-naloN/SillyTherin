@@ -34,10 +34,11 @@ from sillytherin.contracts.kaggle import KaggleAccountStatus, KaggleImportSelect
 from sillytherin.contracts.notebook import NotebookProps
 from sillytherin.settings import keep_chat_choices
 from sillytherin.tools import dataset_describe
-from sillytherin.workspace import ErrorCode, WorkspaceError, store
+from sillytherin.workspace import store
 from sillytherin.workspace.datasets.created import missing_notice
 from sillytherin.workspace.datasets.dtos.settings import DatasetsSettings
 from sillytherin.workspace.datasets.service import DatasetService
+from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 from sillytherin.workspace.kaggle.account import KaggleAccountService
 from sillytherin.workspace.kaggle.callback import CallbackListener
 from sillytherin.workspace.kaggle.dataset_downloads import (

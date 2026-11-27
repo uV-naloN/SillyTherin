@@ -7,7 +7,8 @@ import pytest
 
 from sillytherin.contracts.datasets import DatasetPlan, PlannedFile
 from sillytherin.tools import dataset_delete, dataset_download, notebook_run
-from sillytherin.workspace import ErrorCode, store
+from sillytherin.workspace import store
+from sillytherin.workspace.errors import ErrorCode
 from sillytherin.workspace.service import NotebookService
 from tests.chat.fakes import FakeAsker, in_chat
 from tests.conftest import FakeDatasetService

@@ -13,8 +13,8 @@ from sillytherin.tools.approval import DELETE_CHOICE, DELETE_OR_KEEP, ask_choice
 from sillytherin.tools.arguments import ToolArguments, TrimmedText
 from sillytherin.tools.errors import error_json
 from sillytherin.tools.services import ToolServices
-from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.datasets.service import human_size
+from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 
 
 def step_title(args: dict) -> str:

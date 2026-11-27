@@ -21,8 +21,8 @@ from sillytherin.config import DATASET_MAX_RESULTS
 from sillytherin.tools.arguments import ToolArguments
 from sillytherin.tools.services import ToolServices
 from sillytherin.tools.titles import shorten
-from sillytherin.workspace import WorkspaceError
 from sillytherin.workspace.datasets.describe import look_first_message
+from sillytherin.workspace.errors import WorkspaceError
 
 PER_SOURCE = 8  # results asked from each catalog before merging
 DESCRIPTION_MAX = 220
