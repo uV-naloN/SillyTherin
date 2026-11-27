@@ -19,7 +19,6 @@ from sillytherin.observability.dtos.reply_trace import (
 )
 
 MAX_MODEL_CAPTURE_BYTES = 262_144
-MAX_MODEL_JSON_DEPTH = 32
 
 
 def encode_model_input(messages: Sequence[BaseMessage]) -> str:

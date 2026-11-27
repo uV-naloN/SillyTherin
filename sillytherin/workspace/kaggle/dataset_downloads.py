@@ -24,7 +24,6 @@ from sillytherin.workspace.kaggle.dtos._dataset_downloads import (
 from sillytherin.workspace.kaggle.dtos.downloads import KaggleFileDownload
 
 DOWNLOAD_ACTION = "kg_download_dataset"
-DOWNLOAD_PROMPT = "kaggle_download"
 MAX_PENDING_IMPORTS = 8
 DatasetRpc = Literal["GetDataset", "ListDatasetFiles", "DownloadDataset"]
 DATASET_RPC_URLS: dict[DatasetRpc, str] = {

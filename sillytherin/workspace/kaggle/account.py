@@ -8,7 +8,6 @@ import contextlib
 import secrets
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Protocol
 
 import httpx
 
@@ -40,14 +39,6 @@ NOTICE_FOR_FAILURE: dict[oauth.SignInFailure, str] = {
 }
 STATE_BYTES = 32
 EXPIRY_MARGIN_SECONDS = 300  # refresh a little early so a download never starts with a token about to expire
-
-
-class KaggleAccount(Protocol):
-    """What dataset downloads need from the account."""
-
-    async def access_token(self) -> str | None:
-        """A Bearer token for api.kaggle.com, or None when no account is connected."""
-        ...
 
 
 AccountChanged = Callable[[KaggleAccountStatus], Awaitable[None]]
