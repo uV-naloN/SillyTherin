@@ -11,8 +11,8 @@ from langchain_core.tools import ToolException, tool
 from pydantic import Field
 
 from sillytherin.config import READ_PAGE_MAX_CHARS
-from sillytherin.tools.arguments import NonBlankText, ToolArguments
-from sillytherin.tools.titles import short_url
+from sillytherin.tools.shared.arguments import NonBlankText, ToolArguments
+from sillytherin.tools.shared.titles import short_url
 
 
 def check_public_url(url: str) -> None:

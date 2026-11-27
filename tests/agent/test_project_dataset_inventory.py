@@ -11,7 +11,7 @@ from sillytherin import turn
 from sillytherin.agent.model import ToolArgumentStream
 from sillytherin.progress import Progress
 from sillytherin.tools import dataset_list
-from sillytherin.tools.services import ToolServices
+from sillytherin.tools.shared.services import ToolServices
 from sillytherin.workspace import actions, store
 from sillytherin.workspace.datasets.created import CreatedDatasets
 from sillytherin.workspace.datasets.service import DatasetService

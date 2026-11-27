@@ -39,7 +39,7 @@ from sillytherin.observability.turn_runner import ObservedTurnRunner
 from sillytherin.server.events import AskOpened, ServerEvent
 from sillytherin.server.web_chat import OpenPrompts, SocketAsker
 from sillytherin.tools import web_search
-from sillytherin.tools.approval import RUN_OR_SKIP
+from sillytherin.tools.shared.approval import RUN_OR_SKIP
 from sillytherin.turn import TurnHooks, TurnViews, run_turn
 from tests.agent.conftest import ready_chat, run_one_turn
 from tests.chat.fakes import FakeAnswerView, FakeAsker, FakeProgressView, in_chat

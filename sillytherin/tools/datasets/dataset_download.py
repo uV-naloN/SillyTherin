@@ -14,21 +14,21 @@ from langchain_core.tools import ToolException, tool
 from pydantic import AfterValidator, Field
 
 from sillytherin.contracts.datasets import DatasetPlan
-from sillytherin.tools.approval import (
+from sillytherin.tools.shared.approval import (
     DOWNLOAD_AGAIN_CHOICE,
     DOWNLOAD_AGAIN_OR_SKIP,
     DOWNLOAD_CHOICE,
     DOWNLOAD_OR_SKIP,
     ask_choice,
 )
-from sillytherin.tools.arguments import ToolArguments, TrimmedText
-from sillytherin.tools.errors import error_json
-from sillytherin.tools.services import (
+from sillytherin.tools.shared.arguments import ToolArguments, TrimmedText
+from sillytherin.tools.shared.errors import error_json
+from sillytherin.tools.shared.services import (
     ProjectDatasetLookup,
     ToolServices,
     UndescribedDatasets,
 )
-from sillytherin.tools.titles import shorten
+from sillytherin.tools.shared.titles import shorten
 from sillytherin.workspace.datasets import links
 from sillytherin.workspace.datasets.describe import look_first_message
 from sillytherin.workspace.datasets.service import REF_PREFIXES, human_size

@@ -36,7 +36,7 @@ from sillytherin.server.events import (
     ThinkingDelta,
     Toast,
 )
-from sillytherin.tools.approval import (
+from sillytherin.tools.shared.approval import (
     APPROVAL_TIMEOUT_SECONDS,
     DOWNLOAD_CHOICE,
     DOWNLOAD_OR_SKIP,

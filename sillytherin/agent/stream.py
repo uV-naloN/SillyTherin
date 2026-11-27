@@ -10,7 +10,7 @@ from sillytherin.agent.model import ToolArgumentStream
 from sillytherin.agent.tool_progress import NativeToolProgress
 from sillytherin.chat.ports import AnswerView, ThinkingStep
 from sillytherin.progress import Progress
-from sillytherin.tools.services import ToolServices
+from sillytherin.tools.shared.services import ToolServices
 
 RECURSION_SAFETY_NET = 200  # LangGraph's own step limit; the round limit always answers well before it
 WRITING_LABEL = "Writing answer"

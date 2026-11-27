@@ -1,6 +1,6 @@
 """Only the chat that opened a prompt can answer it, once, with an offered choice."""
 
-from sillytherin.tools import approval
+from sillytherin.tools.shared import approval
 from tests.server.conftest import (
     events_until,
     open_tab,

@@ -56,7 +56,7 @@ from sillytherin.tools import (
     dataset_download,
     notebook_run,
 )
-from sillytherin.tools.services import ToolServices
+from sillytherin.tools.shared.services import ToolServices
 from sillytherin.workspace import actions
 from sillytherin.workspace.datasets.links import find_pasted_links
 from sillytherin.workspace.service import NotebookRunOutcome

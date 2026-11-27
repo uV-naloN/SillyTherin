@@ -6,8 +6,8 @@ Read-only: it never runs the user's cells.
 from langchain.tools import ToolRuntime
 from langchain_core.tools import tool
 
-from sillytherin.tools.arguments import ToolArguments
-from sillytherin.tools.services import ToolServices
+from sillytherin.tools.shared.arguments import ToolArguments
+from sillytherin.tools.shared.services import ToolServices
 
 
 def step_title(args: dict) -> str:

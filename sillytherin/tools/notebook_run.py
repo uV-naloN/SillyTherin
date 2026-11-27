@@ -10,9 +10,9 @@ from langchain_core.tools import ToolException, tool
 from pydantic import Field
 
 from sillytherin.config import MODEL_AUTO_RUN, RISKY_CODE_NEEDS_APPROVAL
-from sillytherin.tools.approval import RUN_CHOICE, RUN_OR_SKIP, ask_choice
-from sillytherin.tools.arguments import NonBlankText, ToolArguments
-from sillytherin.tools.services import ToolServices
+from sillytherin.tools.shared.approval import RUN_CHOICE, RUN_OR_SKIP, ask_choice
+from sillytherin.tools.shared.arguments import NonBlankText, ToolArguments
+from sillytherin.tools.shared.services import ToolServices
 from sillytherin.workspace import risk
 from sillytherin.workspace.errors import CellCompilationError, WorkspaceError
 from sillytherin.workspace.service import NotebookRunOutcome

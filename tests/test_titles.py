@@ -1,5 +1,5 @@
 from sillytherin.tools import read_page, web_search
-from sillytherin.tools.titles import TITLE_MAX, short_url, shorten
+from sillytherin.tools.shared.titles import TITLE_MAX, short_url, shorten
 
 
 def test_short_text_is_unchanged():

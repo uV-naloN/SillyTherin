@@ -18,9 +18,9 @@ from langchain_core.tools import ToolException, tool
 from pydantic import AfterValidator, Field
 
 from sillytherin.config import DATASET_MAX_RESULTS
-from sillytherin.tools.arguments import ToolArguments
-from sillytherin.tools.services import ToolServices
-from sillytherin.tools.titles import shorten
+from sillytherin.tools.shared.arguments import ToolArguments
+from sillytherin.tools.shared.services import ToolServices
+from sillytherin.tools.shared.titles import shorten
 from sillytherin.workspace.datasets.describe import look_first_message
 from sillytherin.workspace.errors import WorkspaceError
 

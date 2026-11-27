@@ -10,9 +10,9 @@ from langchain.tools import ToolRuntime
 from langchain_core.tools import ToolException, tool
 from pydantic import Field
 
-from sillytherin.tools.arguments import ToolArguments, TrimmedText
-from sillytherin.tools.errors import error_json
-from sillytherin.tools.services import ToolServices
+from sillytherin.tools.shared.arguments import ToolArguments, TrimmedText
+from sillytherin.tools.shared.errors import error_json
+from sillytherin.tools.shared.services import ToolServices
 from sillytherin.workspace.errors import ErrorCode, WorkspaceError
 
 

@@ -12,7 +12,7 @@ from sillytherin.tools import (
     dataset_download,
     notebook_run,
 )
-from sillytherin.tools.services import ToolServices
+from sillytherin.tools.shared.services import ToolServices
 
 TEST_CALL_ID = "call-1"
 

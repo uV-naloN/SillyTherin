@@ -10,8 +10,8 @@ from langchain_core.tools import tool
 from pydantic import Field
 
 from sillytherin.config import SEARCH_MAX_RESULTS
-from sillytherin.tools.arguments import NonBlankText, ToolArguments
-from sillytherin.tools.titles import shorten
+from sillytherin.tools.shared.arguments import NonBlankText, ToolArguments
+from sillytherin.tools.shared.titles import shorten
 
 
 def search(query: str) -> list[dict]:

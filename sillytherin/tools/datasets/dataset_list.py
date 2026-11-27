@@ -5,8 +5,8 @@ import json
 from langchain.tools import ToolRuntime
 from langchain_core.tools import tool
 
-from sillytherin.tools.arguments import ToolArguments
-from sillytherin.tools.services import ToolServices
+from sillytherin.tools.shared.arguments import ToolArguments
+from sillytherin.tools.shared.services import ToolServices
 from sillytherin.workspace.datasets.describe import one_line
 from sillytherin.workspace.datasets.service import human_size
 

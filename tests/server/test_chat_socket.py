@@ -11,7 +11,8 @@ from sillytherin.chat.ports import ChatState
 from sillytherin.contracts.chat import AgentMode, UserMessage
 from sillytherin.server.events import MAX_FRAME_BYTES
 from sillytherin.server.socket import ChatSessions
-from sillytherin.tools import approval, web_search
+from sillytherin.tools import web_search
+from sillytherin.tools.shared import approval
 from sillytherin.turn import TurnViews
 from sillytherin.workspace import actions
 from tests.scripted_chat_model import ScriptedChatModel
