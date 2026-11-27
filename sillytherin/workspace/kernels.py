@@ -32,10 +32,6 @@ from nbformat import NotebookNode
 
 from sillytherin.config import (
     CELL_TIMEOUT_SECONDS,
-    DOCKER_CPUS,
-    DOCKER_IMAGE,
-    DOCKER_MEMORY,
-    DOCKER_PIDS_LIMIT,
     KERNEL_IDLE_MINUTES,
     MAX_IMAGE_KB,
     MAX_OUTPUT_CHARS,
@@ -44,6 +40,8 @@ from sillytherin.config import (
 from sillytherin.workspace import ErrorCode, WorkspaceError
 from sillytherin.workspace.datasets.pool import KERNEL_POOL_ROOT
 from sillytherin.workspace.datasets.views import VIEWS_DIR
+from sillytherin.workspace.dtos._kernels import ContainerMounts, DockerSettings
+from sillytherin.workspace.dtos.kernels import NotebookBindings, RunResult, RunStatus
 
 CONTAINER_PREFIX = "rc-kernel-"
 SCOPE_LABEL = "sillytherin.scope"  # which workspaces folder a container belongs to
@@ -73,18 +71,7 @@ BINDINGS_EXPR = (
 )
 
 KernelStatus = Literal["off", "starting", "idle", "busy", "dead", "unavailable"]
-RunStatus = Literal["done", "error", "interrupted", "timeout"]
 OnOutput = Callable[[NotebookNode], Awaitable[None]]
-
-
-@dataclass
-class RunResult:
-    status: RunStatus
-    execution_count: int | None
-    outputs: list[NotebookNode] = field(default_factory=list)  # nbformat outputs, ready to save
-    error_name: str | None = None
-    kernel_generation: str | None = None
-    missing_name: str | None = None
 
 
 def missing_global_name(error_name: str | None, error_value: object) -> str | None:
@@ -92,15 +79,6 @@ def missing_global_name(error_name: str | None, error_value: object) -> str | No
         return None
     match = MISSING_GLOBAL.fullmatch(error_value)
     return match.group(1) if match else None
-
-
-@dataclass(frozen=True)
-class NotebookBindings:
-    """Metadata from the live notebook namespace, without values."""
-
-    modules: dict[str, str]  # public alias to dotted module name
-    variables: list[str]  # public names other than module aliases
-    truncated: bool  # some names were omitted, not confirmed absent
 
 
 @dataclass
@@ -148,23 +126,6 @@ def decode_notebook_bindings(value: dict) -> NotebookBindings | None:
         )
     except (KeyError, ValueError, TypeError, SyntaxError, AttributeError):
         return None
-
-
-@dataclass
-class DockerSettings:
-    image: str = DOCKER_IMAGE
-    memory: str = DOCKER_MEMORY
-    cpus: float = DOCKER_CPUS
-    pids_limit: int = DOCKER_PIDS_LIMIT
-
-
-@dataclass
-class ContainerMounts:
-    """Host folders bound into a kernel container."""
-
-    files_dir: Path  # → /work, read-write
-    conn_dir: Path  # → /conn, read-only
-    dataset_view_dir: Path  # → /.dataset-pool, read-only; only the project's own datasets
 
 
 @dataclass

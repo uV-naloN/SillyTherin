@@ -37,7 +37,8 @@ from sillytherin.observability.langfuse import (
 )
 from sillytherin.observability.reply_trace import TraceClock
 from sillytherin.observability.turn_runner import ObservedTurnRunner
-from sillytherin.server.app import ServerSettings, create_app
+from sillytherin.server.app import create_app
+from sillytherin.server.dtos.app import ServerSettings
 from sillytherin.server.events import ServerEvent
 from sillytherin.server.socket import ChatSessions
 from sillytherin.server.web_chat import SocketAnswerView

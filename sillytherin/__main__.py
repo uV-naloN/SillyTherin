@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from fastapi import FastAPI
 
-    from sillytherin.server.app import ServerSettings
+    from sillytherin.server.dtos.app import ServerSettings
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
@@ -35,7 +35,7 @@ def warn_about_dev_mode() -> None:
 
 def server_settings(arguments: argparse.Namespace, page_dir: Path) -> "ServerSettings":
     """What the server needs from the start arguments; only --dev adds the Vite page's origins."""
-    from sillytherin.server.app import ServerSettings
+    from sillytherin.server.dtos.app import ServerSettings
     from sillytherin.server.guard import DEV_PAGE_ORIGINS
 
     extra_origins = DEV_PAGE_ORIGINS if arguments.dev else frozenset()

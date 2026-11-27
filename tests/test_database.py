@@ -18,7 +18,8 @@ from sillytherin.workspace.datasets import store as ds
 from sillytherin.workspace.datasets.dtos.pool import PoolEntry, PoolFile
 from sillytherin.workspace.datasets.dtos.store import ProjectDataset
 from sillytherin.workspace.datasets.pool import DatasetPool
-from sillytherin.workspace.kernels import ContainerMounts, KernelRegistry
+from sillytherin.workspace.dtos._kernels import ContainerMounts
+from sillytherin.workspace.kernels import KernelRegistry
 
 APP_TABLES = {"projects", "pool_entries", "pool_files", "project_datasets", "project_dataset_files"}
 UNKNOWN_REVISION = "9999"

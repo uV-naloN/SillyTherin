@@ -4,13 +4,12 @@ import asyncio
 import subprocess
 from collections.abc import AsyncIterator, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager, nullcontext
-from dataclasses import dataclass
-from pathlib import Path
 
 from fastapi import FastAPI, Request, Response, WebSocket
 from fastapi.responses import FileResponse, PlainTextResponse
 
 from sillytherin.chat_start import switches_for
+from sillytherin.server.dtos.app import ServerSettings
 from sillytherin.server.guard import is_allowed_host
 from sillytherin.server.socket import ChatSessions, serve_chat
 from sillytherin.workspace import actions
@@ -21,13 +20,6 @@ CONTENT_SECURITY_POLICY = (
     "font-src 'self'; img-src 'self' data:; connect-src 'self'; "
     "frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
 )
-
-
-@dataclass(frozen=True)
-class ServerSettings:
-    port: int
-    page_dir: Path  # the built page; empty until the page exists
-    extra_origins: frozenset[str] = frozenset()  # the Vite dev page, only with --dev
 
 
 NO_PAGE_YET = "The SillyTherin page isn't built yet."

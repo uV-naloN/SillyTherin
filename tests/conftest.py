@@ -6,11 +6,8 @@ from uuid import uuid4
 import nbformat
 import pytest
 
-from sillytherin.workspace.kernels import (
-    NotebookBindings,
-    RunResult,
-    missing_global_name,
-)
+from sillytherin.workspace.dtos.kernels import NotebookBindings, RunResult
+from sillytherin.workspace.kernels import missing_global_name
 from sillytherin.workspace.service import NotebookService
 
 

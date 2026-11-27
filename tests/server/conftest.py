@@ -9,7 +9,8 @@ from starlette.testclient import TestClient
 
 from sillytherin import config, llm, turn
 from sillytherin.server import app as server_app
-from sillytherin.server.app import ServerSettings, create_app
+from sillytherin.server.app import create_app
+from sillytherin.server.dtos.app import ServerSettings
 from sillytherin.server.socket import ChatSessions
 from sillytherin.workspace import actions
 from sillytherin.workspace.datasets.dtos.settings import DatasetsSettings

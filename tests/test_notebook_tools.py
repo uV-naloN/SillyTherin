@@ -14,12 +14,8 @@ import pytest
 
 from sillytherin.tools import notebook_read, notebook_run
 from sillytherin.workspace import ErrorCode, WorkspaceError, kernels, store
-from sillytherin.workspace.kernels import (
-    CellCompilationError,
-    KernelRegistry,
-    NotebookBindings,
-    RunResult,
-)
+from sillytherin.workspace.dtos.kernels import NotebookBindings, RunResult
+from sillytherin.workspace.kernels import CellCompilationError, KernelRegistry
 from sillytherin.workspace.service import NotebookProps, NotebookService
 from tests.chat.fakes import FakeAsker, in_chat
 from tests.conftest import FakeKernels

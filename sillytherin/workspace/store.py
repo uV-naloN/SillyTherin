@@ -11,7 +11,6 @@ import logging
 import os
 import re
 import unicodedata
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
@@ -24,6 +23,7 @@ from sillytherin.config import WORKSPACES_DIR
 from sillytherin.db.engine import database_for
 from sillytherin.db.schema import projects
 from sillytherin.workspace import ErrorCode, WorkspaceError
+from sillytherin.workspace.dtos.projects import Project
 
 log = logging.getLogger(__name__)
 
@@ -42,13 +42,6 @@ CellType = Literal["code", "markdown"]
 Direction = Literal["up", "down"]
 CELL_TYPES = ("code", "markdown")
 DIRECTIONS = ("up", "down")
-
-
-@dataclass
-class Project:
-    id: str  # safe slug, also the folder name
-    name: str  # display name, any text (1-80 chars)
-    created_at: str  # ISO 8601, UTC
 
 
 # ---- projects ----------------------------------------------------------------

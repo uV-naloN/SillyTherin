@@ -22,12 +22,8 @@ from nbformat import NotebookNode
 
 from sillytherin.config import NOTEBOOK_READ_MAX_CHARS, WORKSPACES_DIR
 from sillytherin.workspace import ErrorCode, WorkspaceError, store
-from sillytherin.workspace.kernels import (
-    KernelRegistry,
-    KernelStatus,
-    NotebookBindings,
-    RunResult,
-)
+from sillytherin.workspace.dtos.kernels import NotebookBindings, RunResult
+from sillytherin.workspace.kernels import KernelRegistry, KernelStatus
 from sillytherin.workspace.recovery import require_repeatable_correction
 from sillytherin.workspace.store import CellType, Direction
 

@@ -3,12 +3,8 @@
 import pytest
 from starlette.testclient import TestClient
 
-from sillytherin.server.app import (
-    CONTENT_SECURITY_POLICY,
-    NO_PAGE_YET,
-    ServerSettings,
-    create_app,
-)
+from sillytherin.server.app import CONTENT_SECURITY_POLICY, NO_PAGE_YET, create_app
+from sillytherin.server.dtos.app import ServerSettings
 from tests.server.conftest import OWN_PAGE, PORT
 
 # ---- Page files · API
