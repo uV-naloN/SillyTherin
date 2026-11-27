@@ -1,40 +1,23 @@
-// Logo, workspace switcher, New chat, Settings, theme and notebook toggles.
-import { Moon, PanelRight, Plus, SlidersHorizontal, Sun } from "lucide-react";
+// Workspace switcher, theme toggle, and notebook toggle.
+import { Moon, PanelRight, Sun } from "lucide-react";
 import { WorkspaceSwitcher } from "@/chat/components/WorkspaceSwitcher";
-import logoDark from "@/assets/logo_dark.svg";
-import logoLight from "@/assets/logo_light.svg";
 import type { Theme } from "@/chat/lib/theme";
 
 export interface AppHeaderProps {
   projectName: string | null;
   theme: Theme;
   isNotebookOpen: boolean;
-  onNewChat: () => void;
-  onOpenSettings: () => void;
   onToggleTheme: () => void;
   onToggleNotebook: () => void;
 }
 
-const ICON_BUTTON = "inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground";
+const ICON_BUTTON = "inline-flex size-9 items-center justify-center rounded-lg shrink-0 text-muted-foreground hover:bg-accent hover:text-foreground";
 
-export function AppHeader({ projectName, theme, isNotebookOpen, onNewChat, onOpenSettings, onToggleTheme, onToggleNotebook }: AppHeaderProps): JSX.Element {
+export function AppHeader({ projectName, theme, isNotebookOpen, onToggleTheme, onToggleNotebook }: AppHeaderProps): JSX.Element {
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
-      <img src={theme === "dark" ? logoDark : logoLight} alt="SillyTherin" className="h-6 w-auto" />
-      {projectName && (
-        <>
-          <span className="h-5 w-px bg-border" aria-hidden />
-          <WorkspaceSwitcher fallbackName={projectName} />
-        </>
-      )}
+    <header className="flex h-14 min-w-0 shrink-0 items-center gap-2 border-b px-2 sm:gap-3 sm:px-4">
+      {projectName && <WorkspaceSwitcher fallbackName={projectName} />}
       <span className="flex-1" />
-      <button type="button" onClick={onNewChat} className="inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-[13px] font-medium hover:bg-accent">
-        <Plus className="size-4" aria-hidden />
-        New chat
-      </button>
-      <button type="button" aria-label="Settings" onClick={onOpenSettings} className={ICON_BUTTON}>
-        <SlidersHorizontal className="size-[18px]" aria-hidden />
-      </button>
       <button type="button" aria-label="Switch light or dark theme" onClick={onToggleTheme} className={ICON_BUTTON}>
         {theme === "dark" ? <Sun className="size-[18px]" aria-hidden /> : <Moon className="size-[18px]" aria-hidden />}
       </button>
@@ -44,10 +27,10 @@ export function AppHeader({ projectName, theme, isNotebookOpen, onNewChat, onOpe
         aria-pressed={isNotebookOpen}
         title="Ctrl+\"
         onClick={onToggleNotebook}
-        className="inline-flex h-9 w-[9.75rem] items-center justify-center gap-2 whitespace-nowrap rounded-lg border px-3 text-[13px] font-medium hover:bg-accent aria-pressed:border-transparent aria-pressed:bg-muted"
+        className="inline-flex h-9 w-9 shrink-0 items-center sm:w-[9.75rem] justify-center gap-2 whitespace-nowrap rounded-lg border text-[13px] font-medium hover:bg-accent aria-pressed:border-transparent aria-pressed:bg-muted"
       >
         <PanelRight className="size-4" aria-hidden />
-        {isNotebookOpen ? "Hide notebook" : "Notebook"}
+        <span className="sr-only sm:not-sr-only">{isNotebookOpen ? "Hide notebook" : "Notebook"}</span>
       </button>
     </header>
   );

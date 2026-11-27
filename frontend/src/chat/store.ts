@@ -1,6 +1,7 @@
 // The chat's state. Only applyEvent changes it in answer to the server, so every event's effect
 // is one pure function the tests can check without a socket or a page.
 import { create } from "zustand";
+import type { AgentMode } from "@/chat/events";
 import { effortAfterModelChange, effortLevelsOf, restoredPicks, type Picks } from "@/chat/lib/effortLevels";
 import type { Choice, ChatLine, Picker, ReplyInterruptionReason, ServerEvent, SessionReady, SettingSwitch, ToastKind } from "@/chat/events";
 import type { ConnectionStatus } from "@/chat/connection";
@@ -61,8 +62,11 @@ export interface ChatState {
   toasts: ToastView[];
   kaggle: KagglePopupView | null;
   picked: { model: string; effort: string };
+  agentMode: AgentMode;
   nextId: number; // for toasts and lines the page adds itself
 }
+
+const DEFAULT_AGENT_MODE: AgentMode = "auto";
 
 export const emptyChat = (): ChatState => ({
   chatId: null,
@@ -78,6 +82,7 @@ export const emptyChat = (): ChatState => ({
   toasts: [],
   kaggle: null,
   picked: { model: "", effort: "" },
+  agentMode: DEFAULT_AGENT_MODE,
   nextId: 1,
 });
 
@@ -131,6 +136,7 @@ function sessionReady(state: ChatState, event: SessionReady): ChatState {
     settings: event.settings,
     panel: event.panel,
     picked: pickedFrom(event.pickers, state.picked),
+    agentMode: event.agent_mode ?? DEFAULT_AGENT_MODE,
   };
 }
 
@@ -165,10 +171,12 @@ function streamingAnswerId(state: ChatState): string | null {
 /** The state after one server event; events it can't place leave it unchanged */
 export function applyEvent(state: ChatState, event: ServerEvent): ChatState {
   switch (event.type) {
+    case "agent_mode.changed":
+      return { ...state, agentMode: event.mode };
     case "session.ready":
       return sessionReady(state, event);
     case "chat.closed":
-      return { ...state, chatId: null, messages: [], prompts: [], kagglePrompts: [], notice: RESTART_NOTICE };
+      return { ...state, chatId: null, agentMode: DEFAULT_AGENT_MODE, messages: [], prompts: [], kagglePrompts: [], notice: RESTART_NOTICE };
     case "reply.started":
       return withAnswer(state, event.message_id);
     case "reply.delta":

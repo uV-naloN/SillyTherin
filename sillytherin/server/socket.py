@@ -13,6 +13,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
 
 from sillytherin.chat.current import ChatContext, current_chat
+from sillytherin.chat.mode import DEFAULT_AGENT_MODE, AgentMode
 from sillytherin.chat_start import (
     HISTORY_KEY,
     SETTINGS_KEY,
@@ -24,6 +25,8 @@ from sillytherin.chat_start import (
 )
 from sillytherin.server.events import (
     MAX_FRAME_BYTES,
+    AgentModeChanged,
+    AgentModeSet,
     AskAnswer,
     ChatClosed,
     ChatLine,
@@ -137,6 +140,7 @@ class OpenChat:
     tasks: set[asyncio.Task[None]] = field(default_factory=set)  # panel actions still running
     kaggle: KaggleSocketSelections = field(default_factory=KaggleSocketSelections)
     run_reply: TurnRunner = run_turn
+    agent_mode: AgentMode = DEFAULT_AGENT_MODE
 
     def reset_kaggle_socket(self) -> None:
         self.kaggle.cancel()
@@ -259,7 +263,10 @@ async def new_chat_ready(chat: OpenChat) -> SessionReady:
     start_chat_values(chat.state)
     pickers, switches = await opening_controls(chat.state, actions.kaggle_account.status())
     panel = await actions.open_chat(chat.link)
-    return SessionReady(chat_id=chat.chat_id, messages=[], pickers=pickers, settings=switches, panel=dict(panel))
+    return SessionReady(
+        chat_id=chat.chat_id, messages=[], pickers=pickers, settings=switches,
+        panel=dict(panel), agent_mode=chat.agent_mode,
+    )
 
 
 async def resumed_chat_ready(chat: OpenChat) -> SessionReady:
@@ -272,6 +279,7 @@ async def resumed_chat_ready(chat: OpenChat) -> SessionReady:
         pickers=await pickers_for(current_picks(chat.state)),
         settings=switches,
         panel=dict(panel),
+        agent_mode=chat.agent_mode,
     )
 
 
@@ -330,8 +338,13 @@ async def on_chat_send(chat: OpenChat, event: ChatSend) -> None:
         asker=chat.asker,
         settings=chat.link.settings,
     )
-    message = UserMessage(text=event.text, model=event.model, effort=event.effort)
+    message = UserMessage(text=event.text, model=event.model, effort=event.effort, agent_mode=chat.agent_mode)
     chat.turn = asyncio.create_task(in_chat(chat, chat.run_reply(chat.state, message, views)))
+
+
+async def on_agent_mode_set(chat: OpenChat, event: AgentModeSet) -> None:
+    chat.agent_mode = event.mode
+    await chat.outbox.send(AgentModeChanged(mode=chat.agent_mode))
 
 
 async def on_chat_stop(chat: OpenChat, event: ChatStop) -> None:
@@ -447,6 +460,7 @@ EventHandler = Callable[[OpenChat, Any], Awaitable[None]]
 # One handler per page event; a new event type adds an entry here
 EVENT_HANDLERS: dict[type[PageEvent], EventHandler] = {
     ChatSend: on_chat_send,
+    AgentModeSet: on_agent_mode_set,
     ChatStop: on_chat_stop,
     SettingsUpdate: on_settings_update,
     AskAnswer: on_ask_answer,

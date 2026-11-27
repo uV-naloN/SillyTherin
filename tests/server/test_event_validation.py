@@ -3,10 +3,18 @@
 import json
 
 import pytest
+from starlette.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
 from sillytherin import config
-from sillytherin.server.events import MAX_FRAME_BYTES, MAX_MESSAGE_CHARS
+from sillytherin.chat_start import SETTINGS_KEY
+from sillytherin.server.events import (
+    MAX_FRAME_BYTES,
+    MAX_MESSAGE_CHARS,
+    AgentModeSet,
+    parse_page_event,
+)
+from sillytherin.server.socket import ChatSessions
 from tests.server.conftest import events_until, open_tab, send_message
 
 # ---- Event validation · API
@@ -131,3 +139,65 @@ def test_panel_action_outside_the_allow_list_is_refused(client, services):
 
     assert result["error"]["code"] == "BAD_PAYLOAD"
     assert (result["version"], result["cells"]) == (before["version"], before["cells"])
+
+
+def test_accepts_free_agent_mode_event() -> None:
+    event = parse_page_event(json.dumps({"type": "agent_mode.set", "mode": "free"}))
+    assert event == AgentModeSet(type="agent_mode.set", mode="free")
+
+
+def assert_mode_update_refused(client: TestClient, sessions: ChatSessions, frame: str) -> None:
+    with open_tab(client) as tab:
+        chat_id = tab.receive_json()["chat_id"]
+        tab.send_json({"type": "agent_mode.set", "mode": "manual"})
+        assert tab.receive_json()["mode"] == "manual"
+        chat = sessions.resume(chat_id)
+        assert chat is not None
+        original_settings = dict(chat.state.get(SETTINGS_KEY) or {})
+        original_history = history_length(sessions, chat_id)
+
+        assert refused(tab, frame) == {"type": "error", "code": "BAD_EVENT", "message": "Not a valid event."}
+        assert chat.agent_mode == "manual"
+        assert chat.state.get(SETTINGS_KEY) == original_settings
+        assert history_length(sessions, chat_id) == original_history
+        assert chat.turn is None
+
+
+def test_rejects_agent_mode_event_with_missing_mode(client: TestClient, sessions: ChatSessions) -> None:
+    assert_mode_update_refused(client, sessions, '{"type":"agent_mode.set"}')
+
+
+def test_rejects_agent_mode_event_with_null_mode(client: TestClient, sessions: ChatSessions) -> None:
+    assert_mode_update_refused(client, sessions, '{"type":"agent_mode.set","mode":null}')
+
+
+def test_rejects_agent_mode_event_with_empty_mode(client: TestClient, sessions: ChatSessions) -> None:
+    assert_mode_update_refused(client, sessions, '{"type":"agent_mode.set","mode":""}')
+
+
+def test_rejects_agent_mode_event_with_whitespace_mode(client: TestClient, sessions: ChatSessions) -> None:
+    assert_mode_update_refused(client, sessions, '{"type":"agent_mode.set","mode":"  "}')
+
+
+def test_rejects_agent_mode_event_with_non_string_mode(client: TestClient, sessions: ChatSessions) -> None:
+    assert_mode_update_refused(client, sessions, '{"type":"agent_mode.set","mode":7}')
+
+
+def test_rejects_agent_mode_event_with_unknown_mode(client: TestClient, sessions: ChatSessions) -> None:
+    assert_mode_update_refused(client, sessions, '{"type":"agent_mode.set","mode":"all"}')
+
+
+def test_rejects_agent_mode_event_with_wrong_case(client: TestClient, sessions: ChatSessions) -> None:
+    assert_mode_update_refused(client, sessions, '{"type":"agent_mode.set","mode":"Manual"}')
+
+
+def test_rejects_agent_mode_event_with_markup(client: TestClient, sessions: ChatSessions) -> None:
+    assert_mode_update_refused(client, sessions, '{"type":"agent_mode.set","mode":"<script>"}')
+
+
+def test_rejects_agent_mode_event_with_extra_permission(client: TestClient, sessions: ChatSessions) -> None:
+    assert_mode_update_refused(client, sessions, '{"type":"agent_mode.set","mode":"free","admin":true}')
+
+
+def test_rejects_agent_mode_event_with_target_chat_id(client: TestClient, sessions: ChatSessions) -> None:
+    assert_mode_update_refused(client, sessions, '{"type":"agent_mode.set","mode":"free","chat_id":"other"}')

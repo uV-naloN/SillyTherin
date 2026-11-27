@@ -24,6 +24,7 @@ from sillytherin.agent.model import (
 from sillytherin.agent.round_limit import RoundLimit
 from sillytherin.agent.stream import stream_agent
 from sillytherin.agent.tool_errors import NotebookBatchGuard, ToolErrorBoundary
+from sillytherin.chat.mode import DEFAULT_AGENT_MODE, AgentMode
 from sillytherin.chat.ports import (
     AnswerView,
     Asker,
@@ -88,6 +89,7 @@ class UserMessage:
     text: str
     model: str  # model id from the Model picker; kept only if it is offered
     effort: str  # level from the Effort picker; kept only if it is offered
+    agent_mode: AgentMode = DEFAULT_AGENT_MODE
 
 
 @dataclass(frozen=True)

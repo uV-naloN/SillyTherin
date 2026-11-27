@@ -2,6 +2,8 @@
 // sillytherin/server/events.py. The server checks page events strictly, so field names matter.
 import type { NotebookProps } from "@/panel/types";
 
+export type AgentMode = "manual" | "auto" | "free";
+
 export type ToastKind = "info" | "success" | "warning" | "error";
 
 export interface Choice {
@@ -42,12 +44,13 @@ export interface ChatLine {
 // ---- page → server
 
 export interface ChatSend { type: "chat.send"; text: string; model: string; effort: string }
+export interface AgentModeSet { type: "agent_mode.set"; mode: AgentMode }
 export interface ChatStop { type: "chat.stop" }
 export interface SettingsUpdate { type: "settings.update"; values: Record<string, boolean> }
 export interface AskAnswer { type: "ask.answer"; ask_id: string; choice: string }
 export interface PanelAction { type: "panel.action"; request_id: string; name: string; payload: Record<string, unknown> }
 
-export type PageEvent = ChatSend | ChatStop | SettingsUpdate | AskAnswer | PanelAction;
+export type PageEvent = ChatSend | AgentModeSet | ChatStop | SettingsUpdate | AskAnswer | PanelAction;
 
 // ---- server → page
 
@@ -58,7 +61,9 @@ export interface SessionReady {
   pickers: Picker[];
   settings: SettingSwitch[];
   panel: NotebookProps;
+  agent_mode?: AgentMode;
 }
+export interface AgentModeChanged { type: "agent_mode.changed"; mode: AgentMode }
 export interface ChatClosed { type: "chat.closed" }
 export interface ReplyStarted { type: "reply.started"; message_id: string }
 export interface ReplyDelta { type: "reply.delta"; message_id: string; text: string }
@@ -90,7 +95,7 @@ export interface KagglePopup { type: "kaggle.popup"; state: "waiting" | "connect
 export interface ErrorEvent { type: "error"; code: "BAD_EVENT" | "BUSY" | "UNKNOWN_ASK" | "INTERNAL"; message: string }
 
 export type ServerEvent =
-  | SessionReady | ChatClosed
+  | SessionReady | AgentModeChanged | ChatClosed
   | ReplyStarted | ReplyDelta | ReplyEnded
   | GroupLabel | GroupDone | ThinkingDelta | StepDone
   | ChatMessage | AskOpened | AskClosed | Toast

@@ -17,6 +17,7 @@ from pydantic import (
     model_serializer,
 )
 
+from sillytherin.chat.mode import DEFAULT_AGENT_MODE, AgentMode
 from sillytherin.chat.ports import Choice, ReplyInterruptionReason, ToastKind
 from sillytherin.chat.widgets import Picker, SettingSwitch
 
@@ -46,6 +47,13 @@ class ChatSend(PageEvent):
     text: str = Field(min_length=1, max_length=MAX_MESSAGE_CHARS)
     model: str = Field(max_length=200)
     effort: str = Field(max_length=MAX_ID_CHARS)
+
+
+class AgentModeSet(PageEvent):
+    model_config = ConfigDict(extra="forbid", strict=True, frozen=True)
+
+    type: Literal["agent_mode.set"]
+    mode: AgentMode
 
 
 class ChatStop(PageEvent):
@@ -78,7 +86,7 @@ class PanelAction(PageEvent):
     payload: dict[str, Any]
 
 
-AnyPageEvent = Annotated[ChatSend | ChatStop | SettingsUpdate | AskAnswer | PanelAction, Field(discriminator="type")]
+AnyPageEvent = Annotated[ChatSend | AgentModeSet | ChatStop | SettingsUpdate | AskAnswer | PanelAction, Field(discriminator="type")]
 
 
 _PAGE_EVENTS: TypeAdapter[PageEvent] = TypeAdapter(AnyPageEvent)
@@ -130,6 +138,12 @@ class SessionReady(ServerEvent):
     pickers: list[Picker]
     settings: list[SettingSwitch]
     panel: dict[str, Any]  # NotebookProps of the chat's project
+    agent_mode: AgentMode = DEFAULT_AGENT_MODE
+
+
+class AgentModeChanged(ServerEvent):
+    type: Literal["agent_mode.changed"] = "agent_mode.changed"
+    mode: AgentMode
 
 
 class ChatClosed(ServerEvent):

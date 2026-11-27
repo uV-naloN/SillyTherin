@@ -1,6 +1,6 @@
 // Message box
 // Baseline: Given an idle chat · When you type hi and press Enter
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell } from "@/chat/components/AppShell";
 import { Composer } from "@/chat/components/Composer";
@@ -221,5 +221,120 @@ describe("Picks are remembered", () => {
     render(<Composer isStreaming={false} onSend={vi.fn(() => true)} onStop={vi.fn()} />);
     pickModel("Claude", "GPT");
     expect(localStorage.getItem(PICKS_KEY)).toBeNull();
+  });
+});
+
+describe("Agent mode picker", () => {
+  const modeButton = (mode = "Auto") => screen.getByRole<HTMLButtonElement>("button", { name: `Agent mode: ${mode}` });
+
+  const chooseFree = () => {
+    fireEvent.pointerDown(modeButton(), { button: 0 });
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Free" }));
+  };
+
+  it("shows Auto and the three choices", () => {
+    renderWithChat(<AppShell />);
+    expect(screen.getByRole("button", { name: "Agent mode: Auto" })).toBeTruthy();
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Agent mode: Auto" }), { button: 0 });
+    expect(screen.getByRole("menuitemradio", { name: "Manual" })).toBeTruthy();
+    expect(screen.getByRole("menuitemradio", { name: "Auto" }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("menuitemradio", { name: "Free" })).toBeTruthy();
+  });
+  it("selects Manual by keyboard", async () => {
+    const { sender } = renderWithChat(<AppShell />);
+    const trigger = modeButton();
+    trigger.focus();
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    const manual = screen.getByRole("menuitemradio", { name: "Manual" });
+    expect(document.activeElement).toBe(manual);
+    fireEvent.keyDown(manual, { key: "Enter" });
+
+    expect(sender.send).toHaveBeenCalledTimes(1);
+    expect(sender.send).toHaveBeenCalledWith({ type: "agent_mode.set", mode: "manual" });
+    expect(screen.queryByRole("menu")).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+    act(() => useChat.getState().apply({ type: "agent_mode.changed", mode: "manual" }));
+    expect(modeButton("Manual")).toBeTruthy();
+  });
+
+  it("selects Free by pointer", () => {
+    const { sender } = renderWithChat(<AppShell />);
+    chooseFree();
+    expect(sender.send).toHaveBeenCalledWith({ type: "agent_mode.set", mode: "free" });
+    act(() => useChat.getState().apply({ type: "agent_mode.changed", mode: "free" }));
+    fireEvent.pointerDown(modeButton("Free"), { button: 0 });
+    expect(screen.getByRole("menuitemradio", { name: "Free", checked: true })).toBeTruthy();
+  });
+
+  it("restores mode on ready", () => {
+    renderWithChat(<AppShell />);
+    act(() => useChat.getState().apply(sessionReady({ agent_mode: "manual" })));
+    fireEvent.pointerDown(modeButton("Manual"), { button: 0 });
+    expect(screen.getByRole("menuitemradio", { name: "Manual", checked: true })).toBeTruthy();
+  });
+
+  it("resets mode with a new session", () => {
+    startChat([], sessionReady({ agent_mode: "free" }));
+    renderWithChat(<AppShell />);
+    act(() => useChat.getState().apply({ type: "chat.closed" }));
+    expect(modeButton()).toBeTruthy();
+    act(() => useChat.getState().apply(sessionReady({ chat_id: "replacement" })));
+    expect(modeButton()).toBeTruthy();
+  });
+
+  it("preserves mode across project switches", () => {
+    startChat([], sessionReady({ agent_mode: "manual" }));
+    renderWithChat(<AppShell />);
+    const { chatId, panel } = useChat.getState();
+    act(() => useChat.getState().apply({
+      type: "panel.project_changed",
+      props: { ...panel!, project: { id: "other-project", name: "Other project" } },
+    }));
+    expect(useChat.getState().chatId).toBe(chatId);
+    expect(modeButton("Manual")).toBeTruthy();
+  });
+
+  it("defaults to Auto on older ready payload", () => {
+    startChat([], sessionReady({ agent_mode: undefined }));
+    renderWithChat(<AppShell />);
+    expect(modeButton()).toBeTruthy();
+  });
+
+  it("dismisses the menu without selecting", async () => {
+    const { sender } = renderWithChat(<AppShell />);
+    const trigger = modeButton();
+    fireEvent.pointerDown(trigger, { button: 0 });
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+    expect(screen.queryByRole("menu")).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+    expect(sender.send).not.toHaveBeenCalled();
+  });
+
+  it("cannot change mode while offline", () => {
+    startChat([], sessionReady({ agent_mode: "manual" }));
+    useChat.getState().setStatus("reconnecting");
+    const { sender } = renderWithChat(<AppShell />);
+    const trigger = modeButton("Manual");
+    expect(trigger.disabled).toBe(true);
+    fireEvent.pointerDown(trigger, { button: 0 });
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(sender.send).not.toHaveBeenCalled();
+  });
+
+  it("retains confirmed mode on rejected write", () => {
+    renderWithChat(<AppShell />);
+    chooseFree();
+    act(() => useChat.getState().apply({ type: "error", code: "BAD_EVENT", message: "Not a valid event." }));
+    expect(screen.getByText("Not a valid event.")).toBeTruthy();
+    expect(modeButton()).toBeTruthy();
+    expect(useChat.getState().messages).toEqual([]);
+  });
+
+  it("retains mode until acknowledgement", () => {
+    renderWithChat(<AppShell />);
+    chooseFree();
+    expect(modeButton()).toBeTruthy();
+    act(() => useChat.getState().apply({ type: "agent_mode.changed", mode: "free" }));
+    expect(modeButton("Free")).toBeTruthy();
   });
 });
