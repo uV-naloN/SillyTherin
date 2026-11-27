@@ -1,7 +1,7 @@
+
 """What the notebook panel shows, shared with the chat and the tools."""
 
 import re
-from dataclasses import dataclass
 from typing import Literal, NotRequired, TypedDict
 
 PROJECT_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
@@ -11,14 +11,6 @@ PROJECT_ID_MAX = 40
 CellType = Literal["code", "markdown"]
 
 KernelStatus = Literal["off", "starting", "idle", "busy", "dead", "unavailable"]
-
-
-@dataclass
-class CellCompilationError(Exception):
-    """A compile rejection reported without a traceback."""
-
-    message: str
-    line_number: int | None = None
 
 
 CellStatus = Literal["idle", "queued", "running", "done", "error", "interrupted", "timeout"]

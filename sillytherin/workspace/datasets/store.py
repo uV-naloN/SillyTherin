@@ -28,6 +28,7 @@ from sillytherin.db.schema import (
     project_datasets,
     projects,
 )
+from sillytherin.errors import SillytherinError
 from sillytherin.workspace import store
 from sillytherin.workspace.datasets.dtos.store import ProjectDataset
 from sillytherin.workspace.errors import ErrorCode, WorkspaceError
@@ -191,7 +192,7 @@ def save_project_datasets(project_id: str, datasets: list[ProjectDataset], root:
             _insert_project_dataset(connection, project_pk, entry_pks[dataset.pool_entry], position, dataset)
 
 
-class UnknownPoolEntry(ValueError):
+class UnknownPoolEntry(SillytherinError, ValueError):
     """A project dataset names a pool entry the database doesn't have (save the index first)."""
 
 

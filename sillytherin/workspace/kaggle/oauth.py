@@ -13,6 +13,7 @@ from typing import Literal
 
 import httpx
 
+from sillytherin.errors import SillytherinError
 from sillytherin.workspace.kaggle.dtos.oauth import OAuthClient, PkcePair, TokenGrant
 
 OAUTH_CLIENT_NAME = "SillyTherin"  # what Kaggle's approval page and kaggle.com → Settings show
@@ -29,7 +30,7 @@ HTTP_OK = 200
 SignInFailure = Literal["cancelled", "timed_out", "refused", "signed_out", "revoke_unreachable"]
 
 
-class KaggleSignInError(Exception):
+class KaggleSignInError(SillytherinError):
     """Kaggle refused or didn't finish a sign-in step; `reason` picks the fixed message shown to the user."""
 
     def __init__(self, reason: SignInFailure):

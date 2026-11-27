@@ -10,6 +10,7 @@ from typing import Protocol
 import httpx
 
 from sillytherin.contracts.kaggle import KaggleAccountStatus
+from sillytherin.errors import SillytherinError
 from sillytherin.workspace.kaggle.account import SIGNED_OUT_NOTICE, HttpFactory
 from sillytherin.workspace.kaggle.dtos._my_datasets import (
     ListingState,
@@ -37,7 +38,7 @@ class AccountForListing(Protocol):
     async def access_token(self) -> str | None: ...
 
 
-class ListingFailed(Exception):
+class ListingFailed(SillytherinError):
     """Kaggle didn't give a usable list; `state` is what the window shows instead."""
 
     def __init__(self, state: ListingState):

@@ -1,5 +1,9 @@
 """Why a workspace action was rejected: the error codes and the exception that carries them."""
 
+from dataclasses import dataclass
+
+from sillytherin.errors import SillytherinError
+
 
 class ErrorCode:
     """Error codes returned to the panel and the model."""
@@ -33,7 +37,7 @@ class ErrorCode:
     KAGGLE_SIGNIN = "KAGGLE_SIGNIN"  # connecting to Kaggle failed or was cancelled
 
 
-class WorkspaceError(Exception):
+class WorkspaceError(SillytherinError):
     """A rejected workspace action, with a code the panel can show.
 
     `details` carries structured data for the model, e.g. NO_SPACE sizes.
@@ -44,3 +48,11 @@ class WorkspaceError(Exception):
         self.code = code
         self.message = message
         self.details = details
+
+
+@dataclass
+class CellCompilationError(SillytherinError):
+    """A compile rejection reported without a traceback."""
+
+    message: str
+    line_number: int | None = None

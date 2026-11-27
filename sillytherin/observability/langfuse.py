@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Protocol
 
 from pydantic import SecretStr, TypeAdapter
 
+from sillytherin.errors import SillytherinError
 from sillytherin.observability.dtos.langfuse import (
     ExportLoss,
     LangfuseSettings,
@@ -48,7 +49,7 @@ CLOUD_HOSTS = {
 }
 
 
-class WorkerStartupError(Exception):
+class WorkerStartupError(SillytherinError):
     def __init__(self, reason: WorkerStartupFailure) -> None:
         super().__init__(reason.value)
         self.reason = reason

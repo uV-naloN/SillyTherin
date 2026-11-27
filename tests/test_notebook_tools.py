@@ -12,11 +12,11 @@ from unittest.mock import AsyncMock, MagicMock
 import nbformat
 import pytest
 
-from sillytherin.contracts.notebook import CellCompilationError, NotebookProps
+from sillytherin.contracts.notebook import NotebookProps
 from sillytherin.tools import notebook_read, notebook_run
 from sillytherin.workspace import kernels, store
 from sillytherin.workspace.dtos.kernels import NotebookBindings, RunResult
-from sillytherin.workspace.errors import ErrorCode, WorkspaceError
+from sillytherin.workspace.errors import CellCompilationError, ErrorCode, WorkspaceError
 from sillytherin.workspace.kernels import KernelRegistry
 from sillytherin.workspace.service import NotebookService
 from tests.chat.fakes import FakeAsker, in_chat

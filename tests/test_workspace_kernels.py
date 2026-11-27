@@ -11,14 +11,13 @@ from pathlib import Path
 
 import pytest
 
-from sillytherin.contracts.notebook import CellCompilationError
 from sillytherin.workspace import kernels, store
 from sillytherin.workspace.datasets import store as ds
 from sillytherin.workspace.datasets.dtos._views import ViewFile
 from sillytherin.workspace.datasets.pool import POOL_DIR, DatasetPool
 from sillytherin.workspace.datasets.views import VIEWS_DIR, ProjectViews
 from sillytherin.workspace.dtos._kernels import ContainerMounts, DockerSettings
-from sillytherin.workspace.errors import ErrorCode, WorkspaceError
+from sillytherin.workspace.errors import CellCompilationError, ErrorCode, WorkspaceError
 from sillytherin.workspace.kernels import SCOPE_LABEL, KernelRegistry, _docker
 from sillytherin.workspace.service import NotebookService, output_props
 
