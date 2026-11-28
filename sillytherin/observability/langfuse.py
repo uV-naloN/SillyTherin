@@ -95,7 +95,7 @@ def configure_observability(environment: Mapping[str, str]) -> ObservabilityLaye
     if settings is None:
         return None
 
-    from sillytherin.observability.agent_observer import observe_answer_wait
+    from sillytherin.observability.tool_wait import observe_answer_wait
     from sillytherin.observability.turn_runner import ObservedTurnRunner
     from sillytherin.turn import run_turn
 

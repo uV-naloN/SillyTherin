@@ -7,10 +7,7 @@ from typing import Protocol
 
 from sillytherin.chat.ports import ChatState
 from sillytherin.contracts.chat import UserMessage
-from sillytherin.observability.agent_observer import (
-    NativeStageObserver,
-    ToolWaitMiddleware,
-)
+from sillytherin.observability.agent_observer import NativeStageObserver
 from sillytherin.observability.answer_capture import AnswerCapture
 from sillytherin.observability.dtos.reply_trace import (
     RecordingLoss,
@@ -22,6 +19,7 @@ from sillytherin.observability.reply_trace import (
     ReplyTraceSink,
     TraceClock,
 )
+from sillytherin.observability.tool_wait import ToolWaitMiddleware
 from sillytherin.turn import TurnHooks, TurnOutcome, TurnViews
 
 

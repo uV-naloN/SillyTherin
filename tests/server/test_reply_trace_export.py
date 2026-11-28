@@ -11,7 +11,6 @@ import pytest
 from starlette.testclient import TestClient
 
 from sillytherin.observability import langfuse
-from sillytherin.observability.agent_observer import observe_answer_wait
 from sillytherin.observability.answer_capture import AnswerCapture
 from sillytherin.observability.dtos.langfuse import (
     ExportLoss,
@@ -36,6 +35,7 @@ from sillytherin.observability.langfuse import (
     read_settings,
 )
 from sillytherin.observability.reply_trace import TraceClock
+from sillytherin.observability.tool_wait import observe_answer_wait
 from sillytherin.observability.turn_runner import ObservedTurnRunner
 from sillytherin.server.app import create_app
 from sillytherin.server.dtos.app import ServerSettings

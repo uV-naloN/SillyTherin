@@ -15,10 +15,7 @@ from sillytherin.agent import stream
 from sillytherin.chat.ports import ChatState
 from sillytherin.chat_start import HISTORY_KEY, PICKS_KEY
 from sillytherin.contracts.chat import UserMessage
-from sillytherin.observability.agent_observer import (
-    NativeStageObserver,
-    observe_answer_wait,
-)
+from sillytherin.observability.agent_observer import NativeStageObserver
 from sillytherin.observability.answer_capture import AnswerCapture
 from sillytherin.observability.dtos.reply_trace import (
     RecordingLoss,
@@ -35,6 +32,7 @@ from sillytherin.observability.reply_trace import (
     ReplyRecorder,
     TraceClock,
 )
+from sillytherin.observability.tool_wait import observe_answer_wait
 from sillytherin.observability.turn_runner import ObservedTurnRunner
 from sillytherin.server.events import AskOpened, ServerEvent
 from sillytherin.server.web_chat import OpenPrompts, SocketAsker
