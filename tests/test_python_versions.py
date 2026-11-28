@@ -1,6 +1,6 @@
 """Which Python versions the app starts on, now that nothing blocks 3.14."""
 
-from sillytherin.config import setup_problems
+from core.configuration.config import setup_problems
 
 A_KEY = "sk-or-test-key"
 

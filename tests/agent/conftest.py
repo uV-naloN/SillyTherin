@@ -6,12 +6,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from sillytherin import llm, turn
-from sillytherin.chat_start import HISTORY_KEY, PICKS_KEY, SETTINGS_KEY
-from sillytherin.contracts.chat import ModelInfo, Picks, UserMessage
-from sillytherin.tools import web_search
-from sillytherin.turn import TurnRunner, TurnViews, run_turn
-from sillytherin.workspace import actions
+from core.agent import llm
+from core.chat import turn
+from core.chat.chat_start import HISTORY_KEY, PICKS_KEY, SETTINGS_KEY
+from core.chat.turn import TurnRunner, TurnViews, run_turn
+from core.contracts.chat import ModelInfo, Picks, UserMessage
+from core.tools import web_search
+from core.workspace import actions
 from tests.chat.fakes import (
     FakeAnswerView,
     FakeAsker,

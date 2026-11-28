@@ -1,6 +1,6 @@
 [tool.vulture]
-paths = ["sillytherin", "tests", "vulture_whitelist.py"]
-exclude = [".venv/", "sillytherin/db/migrations/"]
+paths = ["core", "observability", "tests", "vulture_whitelist.py"]
+exclude = [".venv/", "core/db/migrations/"]
 min_confidence = 80
 sort_by_size = true
 

@@ -5,7 +5,7 @@ import json
 
 import pytest
 
-from sillytherin.tools import dataset_search as ds
+from core.tools import dataset_search as ds
 from tests.tool_calls import call_tool
 
 

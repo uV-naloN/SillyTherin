@@ -7,11 +7,11 @@ from types import SimpleNamespace
 import nbformat
 import pytest
 
-from sillytherin import turn
-from sillytherin.contracts.notebook import CellCompilationError
-from sillytherin.tools import notebook_run
-from sillytherin.workspace import actions, store
-from sillytherin.workspace.service import NotebookService
+from core.chat import turn
+from core.tools import notebook_run
+from core.workspace import actions, store
+from core.workspace.errors import CellCompilationError
+from core.workspace.service import NotebookService
 from tests.agent.conftest import history_of, ready_chat, run_one_turn
 from tests.conftest import FakeKernels
 from tests.scripted_chat_model import ScriptedChatModel, text_chunk, tool_call_chunk

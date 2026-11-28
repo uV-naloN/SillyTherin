@@ -4,9 +4,9 @@ import json
 
 import pytest
 
-from sillytherin.server.socket import GENERIC_FAILURE
-from sillytherin.workspace import actions
-from sillytherin.workspace.kaggle.dtos._my_datasets import (
+from core.server.socket import GENERIC_FAILURE
+from core.workspace import actions
+from core.workspace.kaggle.dtos._my_datasets import (
     MyDatasetsAnswer,
     OwnedDataset,
 )

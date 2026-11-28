@@ -8,9 +8,10 @@ import json
 
 import pytest
 
-from sillytherin.tools import dataset_describe
-from sillytherin.workspace import ErrorCode, store
-from sillytherin.workspace.datasets import sources as src
+from core.tools import dataset_describe
+from core.workspace import store
+from core.workspace.datasets import sources as src
+from core.workspace.errors import ErrorCode
 from tests.conftest import fake_lookup
 from tests.datasets.test_dataset_service import R2, Env, yes
 from tests.tool_calls import call_tool, failure_text, fake_services

@@ -2,9 +2,9 @@
 
 import asyncio
 
-from sillytherin.agent.model import APP_TITLE, build_chat_model
-from sillytherin.contracts.chat import Picks
-from sillytherin.turn import model_request
+from core.agent.model import APP_TITLE, build_chat_model
+from core.chat.turn import model_request
+from core.contracts.chat import Picks
 from tests.agent.conftest import (
     EVERY_SWITCH_ON,
     PLAIN,

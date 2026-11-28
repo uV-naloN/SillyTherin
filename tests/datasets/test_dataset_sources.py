@@ -9,10 +9,10 @@ import asyncio
 import httpx
 import pytest
 
-from sillytherin.contracts.datasets import PlannedFile
-from sillytherin.workspace import ErrorCode, WorkspaceError
-from sillytherin.workspace.datasets import links
-from sillytherin.workspace.datasets import sources as src
+from core.contracts.datasets import PlannedFile
+from core.workspace.datasets import links
+from core.workspace.datasets import sources as src
+from core.workspace.errors import ErrorCode, WorkspaceError
 from tests.conftest import catalog_client, fake_lookup
 
 SHA = "a" * 40

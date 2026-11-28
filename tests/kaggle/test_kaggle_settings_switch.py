@@ -2,12 +2,12 @@
 
 import asyncio
 
-from sillytherin.contracts.kaggle import KaggleAccountStatus
-from sillytherin.settings import build_widgets
-from sillytherin.workspace.kaggle import settings_switch as switch
-from sillytherin.workspace.kaggle.account import CANCELLED_NOTICE, REFUSED_NOTICE
-from sillytherin.workspace.kaggle.dtos.callback import CallbackResult
-from sillytherin.workspace.kaggle.settings_switch import (
+from core.configuration.settings import build_widgets
+from core.contracts.kaggle import KaggleAccountStatus
+from core.workspace.kaggle import settings_switch as switch
+from core.workspace.kaggle.account import CANCELLED_NOTICE, REFUSED_NOTICE
+from core.workspace.kaggle.dtos.callback import CallbackResult
+from core.workspace.kaggle.settings_switch import (
     ChatSide,
     account_change,
     apply_account_change,
@@ -102,7 +102,7 @@ def test_switch_shows_not_connected() -> None:
 
 def test_account_change_resends_settings_to_every_chat(monkeypatch) -> None:
     # Changed: two live chats; the account becomes connected · Then: both get Settings with the switch on, each with its own model widgets · Demonstrates: one account for every open chat
-    from sillytherin.workspace import actions
+    from core.workspace import actions
 
     received: dict[str, list] = {}
 
@@ -196,7 +196,7 @@ def test_popup_updates_when_sign_in_ends(tmp_path) -> None:
 
 def test_unchanged_switch_does_nothing(monkeypatch) -> None:
     # Changed: other settings change, the switch doesn't · Then: no account call, no toast · Demonstrates: changing thinking effort doesn't touch Kaggle
-    from sillytherin.workspace import actions
+    from core.workspace import actions
 
     applied: list[str] = []
 

@@ -6,15 +6,15 @@ import pytest
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
-from sillytherin import config
-from sillytherin.chat_start import SETTINGS_KEY
-from sillytherin.server.events import (
+from core.chat.chat_start import SETTINGS_KEY
+from core.configuration import config
+from core.server.events import (
     MAX_FRAME_BYTES,
     MAX_MESSAGE_CHARS,
     AgentModeSet,
     parse_page_event,
 )
-from sillytherin.server.socket import ChatSessions
+from core.server.socket import ChatSessions
 from tests.server.conftest import events_until, open_tab, send_message
 
 # ---- Event validation · API

@@ -7,11 +7,11 @@ import urllib.parse
 from dataclasses import asdict
 from pathlib import Path
 
-from sillytherin.config import KAGGLE_TOKEN_FILE, WORKSPACES_DIR
-from sillytherin.workspace.kaggle.callback import CallbackListener
-from sillytherin.workspace.kaggle.dtos.callback import CallbackResult
-from sillytherin.workspace.kaggle.my_datasets import LIST_DATASETS_URL
-from sillytherin.workspace.kaggle.settings_switch import (
+from core.configuration.config import KAGGLE_TOKEN_FILE, WORKSPACES_DIR
+from core.workspace.kaggle.callback import CallbackListener
+from core.workspace.kaggle.dtos.callback import CallbackResult
+from core.workspace.kaggle.my_datasets import LIST_DATASETS_URL
+from core.workspace.kaggle.settings_switch import (
     apply_account_change,
     kaggle_switch,
 )
@@ -26,7 +26,7 @@ from tests.kaggle.test_kaggle_account import Harness
 from tests.kaggle.test_kaggle_settings_switch import FakeChat, settle
 
 TOKENS = (ACCESS_TOKEN, REFRESHED_ACCESS_TOKEN, REFRESH_TOKEN)
-KAGGLE_SOURCES = Path(__file__).resolve().parents[2] / "sillytherin" / "workspace" / "kaggle"
+KAGGLE_SOURCES = Path(__file__).resolve().parents[2] / "core" / "workspace" / "kaggle"
 ALLOWED_KAGGLE_URLS = {
     "https://www.kaggle.com/api/v1/oauth2/authorize",
     "https://www.kaggle.com/api/v1/oauth2/token",

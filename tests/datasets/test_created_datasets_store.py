@@ -5,11 +5,11 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-from sillytherin.db.engine import database_for
-from sillytherin.workspace import store
-from sillytherin.workspace.datasets import created_store as cds
-from sillytherin.workspace.datasets.created import CreatedDatasets
-from sillytherin.workspace.datasets.dtos.created import CreatedDataset, FileSnapshot
+from core.db.engine import database_for
+from core.workspace import store
+from core.workspace.datasets import created_store as cds
+from core.workspace.datasets.created import CreatedDatasets
+from core.workspace.datasets.dtos.created import CreatedDataset, FileSnapshot
 
 IRIS = FileSnapshot(path="Iris.csv", size_bytes=4551, mtime_ns=1_763_000_000_000_000_000, inode=812_345)
 

@@ -8,14 +8,14 @@ from dataclasses import dataclass
 import httpx
 import pytest
 
-from sillytherin.workspace import actions
-from sillytherin.workspace.kaggle import oauth
-from sillytherin.workspace.kaggle.dtos._my_datasets import (
+from core.workspace import actions
+from core.workspace.kaggle import oauth
+from core.workspace.kaggle.dtos._my_datasets import (
     MyDatasetsAnswer,
     OwnedDataset,
 )
-from sillytherin.workspace.kaggle.dtos.token_file import SavedSignIn
-from sillytherin.workspace.kaggle.my_datasets import (
+from core.workspace.kaggle.dtos.token_file import SavedSignIn
+from core.workspace.kaggle.my_datasets import (
     LIST_DATASETS_URL,
     MAX_LISTED_DATASETS,
     ROWS_PER_PAGE,

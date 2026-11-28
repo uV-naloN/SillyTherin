@@ -12,12 +12,13 @@ from unittest.mock import AsyncMock, MagicMock
 import nbformat
 import pytest
 
-from sillytherin.contracts.notebook import CellCompilationError, NotebookProps
-from sillytherin.tools import notebook_read, notebook_run
-from sillytherin.workspace import ErrorCode, WorkspaceError, kernels, store
-from sillytherin.workspace.dtos.kernels import NotebookBindings, RunResult
-from sillytherin.workspace.kernels import KernelRegistry
-from sillytherin.workspace.service import NotebookService
+from core.contracts.notebook import NotebookProps
+from core.tools import notebook_read, notebook_run
+from core.workspace import kernels, store
+from core.workspace.dtos.kernels import NotebookBindings, RunResult
+from core.workspace.errors import CellCompilationError, ErrorCode, WorkspaceError
+from core.workspace.kernels import KernelRegistry
+from core.workspace.service import NotebookService
 from tests.chat.fakes import FakeAsker, in_chat
 from tests.conftest import FakeKernels
 from tests.tool_calls import call_tool, failure_text, fake_services
@@ -335,7 +336,7 @@ def test_dependent_step_fails_without_setup_replay(project: NotebookProject, fak
     fake_kernels.results["len(data)"] = ("error", [
         nbformat.v4.new_output("error", ename="NameError", evalue="name 'data' is not defined", traceback=[]),
     ])
-    from sillytherin.workspace.service import NotebookRunOutcome
+    from core.workspace.service import NotebookRunOutcome
     assert run(service.run_for_model(project_id, "len(data)")) is NotebookRunOutcome.RESTART_REQUIRED
     assert fake_kernels.executed == ["data = [1, 2]", "len(data)"]
     assert len(store.load_notebook(project_id, root).cells) == 2

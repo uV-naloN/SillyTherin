@@ -11,14 +11,15 @@ from langchain_core.messages import ToolMessage
 from langchain_core.tools import BaseTool, ToolException
 from langchain_openrouter.chat_models import _convert_message_to_dict
 
-from sillytherin import turn
-from sillytherin.agent.tool_errors import INVALID_TOOL_ARGUMENTS
-from sillytherin.agent.tool_progress import NativeToolProgress
-from sillytherin.chat_start import HISTORY_KEY, PICKS_KEY
-from sillytherin.contracts.chat import UserMessage
-from sillytherin.contracts.datasets import DatasetPlan
-from sillytherin.progress import Progress
-from sillytherin.tools import (
+from core.agent.tool_errors import INVALID_TOOL_ARGUMENTS
+from core.agent.tool_progress import NativeToolProgress
+from core.chat import turn
+from core.chat.chat_start import HISTORY_KEY, PICKS_KEY
+from core.chat.progress import Progress
+from core.chat.turn import TurnViews
+from core.contracts.chat import UserMessage
+from core.contracts.datasets import DatasetPlan
+from core.tools import (
     chosen_tools,
     dataset_delete,
     dataset_describe,
@@ -30,10 +31,10 @@ from sillytherin.tools import (
     read_page,
     web_search,
 )
-from sillytherin.turn import TurnViews
-from sillytherin.workspace import ErrorCode, WorkspaceError, actions, store
-from sillytherin.workspace.datasets.service import DatasetService
-from sillytherin.workspace.service import NotebookService
+from core.workspace import actions, store
+from core.workspace.datasets.service import DatasetService
+from core.workspace.errors import ErrorCode, WorkspaceError
+from core.workspace.service import NotebookService
 from tests.agent.conftest import (
     EVERY_SWITCH_ON,
     PLAIN,
@@ -52,7 +53,7 @@ from tests.chat.fakes import (
 from tests.conftest import FakeDatasetService, FakeKernels
 from tests.datasets.test_dataset_tools import STARTED, view
 from tests.scripted_chat_model import ScriptedChatModel, text_chunk, tool_call_chunk
-from tests.tool_calls import TEST_CALL_ID, call_tool, fake_services
+from tests.tool_calls import TEST_CALL_ID, call_tool, fake_services, tool_defined_in
 
 TOOL_CASES = (
     (web_search.web_search, {"query": "iris"}),
@@ -76,7 +77,7 @@ INVALID_ARGUMENTS_START = INVALID_TOOL_ARGUMENTS.removesuffix(".")
 
 def tool_of(module: ModuleType) -> BaseTool:
     """The tool a module defines, which carries the module's own name."""
-    return getattr(module, module.__name__.rsplit(".", 1)[-1])
+    return tool_defined_in(module)
 
 
 def monitor_tools(
@@ -113,7 +114,7 @@ async def run_native_call(tool: BaseTool, arguments: dict) -> ToolMessage:
 
 
 def in_chat_state() -> FakeChatState:
-    from sillytherin.chat.current import this_chat
+    from core.chat.current import this_chat
 
     return this_chat().state
 

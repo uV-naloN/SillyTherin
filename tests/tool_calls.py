@@ -1,3 +1,5 @@
+from types import ModuleType
+
 """Call a tool the way the agent does, with fake services in its runtime context."""
 
 import dataclasses
@@ -6,15 +8,23 @@ from langchain.tools import ToolRuntime
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import BaseTool
 
-from sillytherin.tools import (
+from core.tools import (
     dataset_delete,
     dataset_describe,
     dataset_download,
     notebook_run,
 )
-from sillytherin.tools.services import ToolServices
+from core.tools.shared.services import ToolServices
 
 TEST_CALL_ID = "call-1"
+DATASET_TOOLS_PACKAGE = "core.tools.datasets"
+
+
+def tool_defined_in(module: ModuleType) -> BaseTool:
+    """The tool a module defines; dataset tool modules drop the `dataset_` prefix their tool names carry."""
+    module_name = module.__name__.rsplit(".", 1)[-1]
+    is_dataset_tool = module.__name__.startswith(f"{DATASET_TOOLS_PACKAGE}.")
+    return getattr(module, f"dataset_{module_name}" if is_dataset_tool else module_name)
 
 
 async def call_tool(tool: BaseTool, arguments: dict, services: ToolServices | None) -> ToolMessage:
@@ -39,7 +49,7 @@ async def call_tool_output(tool: BaseTool, arguments: dict, services: ToolServic
 
 def failure_text(message: ToolMessage) -> str:
     """What a failed call told the model, without the shared failure prefix."""
-    from sillytherin.agent.tool_errors import TOOL_FAILURE_PREFIX
+    from core.agent.tool_errors import TOOL_FAILURE_PREFIX
 
     assert message.status == "error", message.content
     return message.content.removeprefix(TOOL_FAILURE_PREFIX)

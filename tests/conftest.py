@@ -6,9 +6,9 @@ from uuid import uuid4
 import nbformat
 import pytest
 
-from sillytherin.workspace.dtos.kernels import NotebookBindings, RunResult
-from sillytherin.workspace.kernels import missing_global_name
-from sillytherin.workspace.service import NotebookService
+from core.workspace.dtos.kernels import NotebookBindings, RunResult
+from core.workspace.kernels import missing_global_name
+from core.workspace.service import NotebookService
 
 
 class FakeKernels:
@@ -76,7 +76,7 @@ def _docker_ready() -> str | None:
     """None when Docker and the kernel image are ready, else why not."""
     import subprocess
 
-    from sillytherin.config import DOCKER_IMAGE
+    from core.configuration.config import DOCKER_IMAGE
 
     try:
         if subprocess.run(["docker", "info"], capture_output=True, timeout=15).returncode != 0:
@@ -101,7 +101,7 @@ def pytest_collection_modifyitems(config, items):
 @pytest.fixture(autouse=True)
 def close_workspace_databases():
     """Each test's tmp_path workspace gets its own SQLite engine; close them all after the test."""
-    from sillytherin.db.engine import close_all_databases
+    from core.db.engine import close_all_databases
 
     yield
     close_all_databases()

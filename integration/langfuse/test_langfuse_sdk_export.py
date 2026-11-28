@@ -16,15 +16,16 @@ from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
 )
 from pydantic import SecretStr
 
-from sillytherin.chat.ports import ChatState
-from sillytherin.contracts.chat import UserMessage
-from sillytherin.observability.agent_observer import NativeStageObserver
-from sillytherin.observability.dtos.langfuse import (
+from core.chat.ports import ChatState
+from core.chat.turn import TurnHooks, TurnOutcome, TurnViews
+from core.contracts.chat import UserMessage
+from observability.agent_observer import NativeStageObserver
+from observability.dtos.langfuse import (
     ExportLoss,
     LangfuseSettings,
     LossReason,
 )
-from sillytherin.observability.dtos.reply_trace import (
+from observability.dtos.reply_trace import (
     ModelExchange,
     ModelOutputState,
     ReplyContent,
@@ -34,19 +35,18 @@ from sillytherin.observability.dtos.reply_trace import (
     SpanKind,
     SpanOutcome,
 )
-from sillytherin.observability.langfuse import (
+from observability.langfuse import (
     read_settings,
     resolve_cloud_endpoint,
     worker_environment,
 )
-from sillytherin.observability.langfuse_worker import (
+from observability.langfuse_worker import (
     GuardedSession,
     open_sdk_exporter,
     validate_encoded_batch,
 )
-from sillytherin.observability.reply_trace import TraceClock
-from sillytherin.observability.turn_runner import ObservedTurnRunner
-from sillytherin.turn import TurnHooks, TurnOutcome, TurnViews
+from observability.reply_trace import TraceClock
+from observability.turn_runner import ObservedTurnRunner
 from tests.chat.fakes import FakeAnswerView, FakeAsker, FakeChatState, FakeProgressView
 
 MARKER = "private-sentinel"
@@ -179,7 +179,7 @@ def test_failed_export_snapshot_excludes_exception_and_traceback(
 
 
 def test_unlisted_tool_label_is_replaced_before_export(http: HttpBoundary, settings: LangfuseSettings) -> None:
-    from sillytherin.observability.reply_trace import ReplyRecorder
+    from observability.reply_trace import ReplyRecorder
 
     recorder = ReplyRecorder(TraceClock(lambda: 1000, lambda: 10))
     recorder.start_reply()
@@ -364,7 +364,7 @@ def test_root_output_mismatch_blocks_wire_request(http: HttpBoundary, settings: 
 
 
 def test_worker_rejects_inconsistent_reply_state(http: HttpBoundary, settings: LangfuseSettings) -> None:
-    from sillytherin.observability.langfuse_worker import validate_reply_content
+    from observability.langfuse_worker import validate_reply_content
     with pytest.raises(ValueError):
         validate_reply_content(content_trace().content, SpanOutcome.FAILED)
     assert not http.attempts
@@ -373,7 +373,7 @@ def test_worker_rejects_inconsistent_reply_state(http: HttpBoundary, settings: L
 def test_worker_rejects_non_string_content(http: HttpBoundary, settings: LangfuseSettings) -> None:
     from dataclasses import asdict
 
-    from sillytherin.observability.langfuse_worker import trace_message
+    from observability.langfuse_worker import trace_message
     payload = asdict(content_trace())
     payload["content"]["message"] = 42
     with pytest.raises(ValueError):
@@ -384,7 +384,7 @@ def test_worker_rejects_non_string_content(http: HttpBoundary, settings: Langfus
 def test_worker_rejects_unknown_content_property(http: HttpBoundary, settings: LangfuseSettings) -> None:
     from dataclasses import asdict
 
-    from sillytherin.observability.langfuse_worker import trace_message
+    from observability.langfuse_worker import trace_message
     payload = asdict(content_trace())
     payload["content"]["extra"] = "private"
     with pytest.raises(ValueError):

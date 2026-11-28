@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from sillytherin.workspace.kernels import (
+from core.workspace.kernels import (
     BINDINGS_EXPR,
     KernelRegistry,
     _Kernel,

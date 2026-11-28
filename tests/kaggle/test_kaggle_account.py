@@ -5,10 +5,10 @@ import json
 
 import pytest
 
-from sillytherin.contracts.kaggle import KaggleAccountStatus
-from sillytherin.workspace import ErrorCode, WorkspaceError
-from sillytherin.workspace.kaggle import oauth
-from sillytherin.workspace.kaggle.account import (
+from core.contracts.kaggle import KaggleAccountStatus
+from core.workspace.errors import ErrorCode, WorkspaceError
+from core.workspace.kaggle import oauth
+from core.workspace.kaggle.account import (
     CANCELLED_NOTICE,
     REFUSED_NOTICE,
     REVOKE_UNREACHABLE_NOTICE,
@@ -16,9 +16,9 @@ from sillytherin.workspace.kaggle.account import (
     TIMED_OUT_NOTICE,
     KaggleAccountService,
 )
-from sillytherin.workspace.kaggle.dtos.callback import CallbackResult
-from sillytherin.workspace.kaggle.dtos.token_file import SavedSignIn
-from sillytherin.workspace.kaggle.token_file import TokenFile
+from core.workspace.kaggle.dtos.callback import CallbackResult
+from core.workspace.kaggle.dtos.token_file import SavedSignIn
+from core.workspace.kaggle.token_file import TokenFile
 from tests.kaggle.fakes import (
     CLIENT_ID,
     REFRESH_TOKEN,

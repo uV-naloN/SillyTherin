@@ -9,9 +9,10 @@ from types import ModuleType
 import pytest
 from langchain_core.tools import BaseTool
 
-from sillytherin.chat_start import HISTORY_KEY, PICKS_KEY
-from sillytherin.contracts.chat import UserMessage
-from sillytherin.tools import (
+from core.chat.chat_start import HISTORY_KEY, PICKS_KEY
+from core.chat.turn import TurnViews, run_turn
+from core.contracts.chat import UserMessage
+from core.tools import (
     NOTEBOOK_TOOLS,
     TOOLS,
     dataset_delete,
@@ -24,8 +25,8 @@ from sillytherin.tools import (
     read_page,
     web_search,
 )
-from sillytherin.turn import TurnViews, run_turn
-from sillytherin.workspace import ErrorCode, WorkspaceError, actions
+from core.workspace import actions
+from core.workspace.errors import ErrorCode, WorkspaceError
 from tests.agent.conftest import ready_chat
 from tests.chat.fakes import (
     FakeAnswerView,
@@ -44,6 +45,7 @@ from tests.tool_calls import (
     call_tool_output,
     failure_text,
     fake_services,
+    tool_defined_in,
 )
 
 TOOL_MODULES = (
@@ -406,6 +408,6 @@ def test_fieldless_tools_reject_extra_fields(module: ModuleType) -> None:
     # Given notebook_read or dataset_list gets {"x": 1} · When it is called
     # Then it fails with invalid arguments
     # Demonstrates: tools without arguments still reject extra fields
-    native = getattr(module, module.__name__.rsplit(".", 1)[-1])
+    native = tool_defined_in(module)
     message = asyncio.run(call_tool(native, {"x": 1}, unreachable_services()))
     assert failure_text(message) == "Invalid tool arguments (x: Extra inputs are not permitted)."

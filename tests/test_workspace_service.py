@@ -6,8 +6,9 @@ import asyncio
 import nbformat
 import pytest
 
-from sillytherin.workspace import ErrorCode, WorkspaceError, actions, store
-from sillytherin.workspace.service import output_props
+from core.workspace import actions, store
+from core.workspace.errors import ErrorCode, WorkspaceError
+from core.workspace.service import output_props
 from tests.test_workspace_store import FakeSession
 from tests.tool_calls import call_tool, fake_services
 
@@ -209,7 +210,7 @@ def test_running_a_note_is_rejected(nb_ab, root, fake_kernels):
 
 def test_risky_model_code_never_runs_without_click(root, service_factory, fake_kernels):
     # Demonstrates: injected risky code can't run alone
-    from sillytherin.tools import notebook_run
+    from core.tools import notebook_run
 
     pid = store.create_project("P", root).id
     svc = service_factory(root)
@@ -252,7 +253,7 @@ def test_absolute_and_drive_paths_rejected(root, bad):
 @pytest.mark.parametrize("host", ["0.0.0.0", "192.168.1.5", "::", "example.com"])
 def test_startup_refuses_non_local_host(host):
     # Demonstrates: the app only serves on localhost
-    from sillytherin.config import check_local_host
+    from core.configuration.config import check_local_host
 
     with pytest.raises(RuntimeError, match="localhost"):
         check_local_host(host)
@@ -324,8 +325,8 @@ def project_p(root):
 @pytest.fixture
 def wired(root, project_p, fake_kernels):
     """(NotebookService, DatasetService, pushed props) wired the way actions.py wires them."""
-    from sillytherin.workspace.datasets.service import DatasetService
-    from sillytherin.workspace.service import NotebookService
+    from core.workspace.datasets.service import DatasetService
+    from core.workspace.service import NotebookService
 
     pushed = []
 
@@ -390,7 +391,7 @@ def test_dataset_list_after_run_includes_file(wired):
     # Changed: then call `dataset_list`
     # Then: result has `/work/Iris.csv`
     # Demonstrates: the assistant sees it
-    from sillytherin.tools import dataset_list
+    from core.tools import dataset_list
 
     service, datasets, _pushed = wired
     run(service.run_for_model("p", "write:Iris.csv"))
@@ -430,7 +431,7 @@ def test_scan_error_does_not_fail_the_run(root, project_p, fake_kernels, caplog)
     # Changed: scan raises `OSError`
     # Then: cell result returned, error logged
     # Demonstrates: a scan problem never breaks the notebook
-    from sillytherin.workspace.service import NotebookService
+    from core.workspace.service import NotebookService
 
     def broken_scan(project_id):
         raise OSError("disk went away")
@@ -544,7 +545,7 @@ def test_toast_not_repeated_within_one_opening(wired, iris_listed_then_gone):
 
 @pytest.fixture
 def file_created_in_q(root, project_p, monkeypatch):
-    from sillytherin.workspace.datasets.service import DatasetService
+    from core.workspace.datasets.service import DatasetService
 
     store.create_project("Q", root, project_id="q")
     datasets = DatasetService(root=root)
@@ -591,7 +592,7 @@ def test_payload_project_field_is_ignored(root, file_created_in_q, service_facto
 
 def created_by(datasets, project_id: str = "p") -> dict[str, str | None]:
     """path -> who created it, for the project's created rows."""
-    from sillytherin.workspace.datasets import created_store as cds
+    from core.workspace.datasets import created_store as cds
 
     return {d.snapshot.path: d.created_by for d in cds.load_created_datasets(project_id, datasets.root)}
 
@@ -653,7 +654,7 @@ def test_row_from_before_this_change_is_read_freely(wired, root):
     # Then: `describe_need` → `"write"` (any project file may be read)
     from sqlalchemy import text
 
-    from sillytherin.db.engine import database_for
+    from core.db.engine import database_for
 
     service, datasets, _pushed = wired
     (store.project_dir("p", root) / store.FILES_DIR / "old.parquet").write_bytes(b"not parquet")  # columns unknown

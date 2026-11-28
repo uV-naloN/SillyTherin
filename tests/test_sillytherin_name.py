@@ -4,14 +4,14 @@ import importlib.util
 import subprocess
 from pathlib import Path
 
-from sillytherin import config
-from sillytherin.__main__ import main
-from sillytherin.db import engine as db
-from sillytherin.tools import dataset_search
-from sillytherin.workspace import store
-from sillytherin.workspace.datasets import sources
-from sillytherin.workspace.kaggle.callback import CONNECTED_PAGE
-from sillytherin.workspace.kernels import PROJECT_LABEL, SCOPE_LABEL
+from core.__main__ import main
+from core.configuration import config
+from core.db import engine as db
+from core.tools import dataset_search
+from core.workspace import store
+from core.workspace.datasets import sources
+from core.workspace.kaggle.callback import CONNECTED_PAGE
+from core.workspace.kernels import PROJECT_LABEL, SCOPE_LABEL
 
 REPO = Path(__file__).resolve().parents[1]
 OLD_NAME = "researchchat"
@@ -26,7 +26,7 @@ def test_start_command_is_sillytherin():
     # Changed: nothing
     # Then: sillytherin's own module starts the app; researchchat can't be imported
     # Demonstrates: nothing calls across to an old package
-    assert main.__module__ == "sillytherin.__main__"
+    assert main.__module__ == "core.__main__"
     assert importlib.util.find_spec(OLD_NAME) is None
 
 

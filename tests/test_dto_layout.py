@@ -6,18 +6,21 @@ from pathlib import Path
 
 import pytest
 
-PACKAGE_ROOT = Path(__file__).resolve().parent.parent / "sillytherin"
-EVENTS_FOLDER = PACKAGE_ROOT / "server" / "events"
+REPO_ROOT = Path(__file__).resolve().parent.parent
+CORE_ROOT = REPO_ROOT / "core"
+PACKAGE_ROOTS = (CORE_ROOT, REPO_ROOT / "observability")
+OWN_PACKAGE_NAMES = tuple(root.name for root in PACKAGE_ROOTS)
+EVENTS_FOLDER = CORE_ROOT / "server" / "events"
 EVENT_LOGIC_FILES = {"parse.py"}
 CONVERTER_PREFIXES = ("to_", "from_")
 CHECK_DECORATORS = {"field_validator", "model_validator", "model_serializer", "field_serializer"}
-# sillytherin.config only holds constants, so a DTO may read its defaults from it
-ALLOWED_PACKAGE_MODULES = ("sillytherin.contracts", "sillytherin.server.events", "sillytherin.config")
+# core.configuration.config only holds constants, so a DTO may read its defaults from it
+ALLOWED_PACKAGE_MODULES = ("core.contracts", "core.server.events", "core.configuration.config")
 
 
 def find_dto_files() -> list[Path]:
-    dto_folders = [folder for folder in PACKAGE_ROOT.rglob("dtos") if folder.is_dir()]
-    dto_folders.append(PACKAGE_ROOT / "contracts")
+    dto_folders = [folder for root in PACKAGE_ROOTS for folder in root.rglob("dtos") if folder.is_dir()]
+    dto_folders.append(CORE_ROOT / "contracts")
     files = [file for folder in dto_folders for file in folder.rglob("*.py")]
     events = [file for file in EVENTS_FOLDER.glob("*.py") if file.name not in EVENT_LOGIC_FILES]
     return sorted(files + events)
@@ -32,7 +35,7 @@ def read_tree(file: Path) -> ast.Module:
 
 
 def module_name_of(file: Path) -> str:
-    relative = file.relative_to(PACKAGE_ROOT.parent).with_suffix("")
+    relative = file.relative_to(REPO_ROOT).with_suffix("")
     return ".".join(relative.parts)
 
 
@@ -46,7 +49,7 @@ def imported_modules(tree: ast.Module) -> Iterator[str]:
 
 
 def is_allowed_import(module: str) -> bool:
-    if not module.startswith("sillytherin"):
+    if not module.startswith(OWN_PACKAGE_NAMES):
         return True
     is_dto_module = ".dtos" in module
     return is_dto_module or module.startswith(ALLOWED_PACKAGE_MODULES)
@@ -78,7 +81,7 @@ def owner_of(private_file: Path) -> Path:
 
 def find_importers_of(module: str) -> list[Path]:
     importers = []
-    for file in PACKAGE_ROOT.rglob("*.py"):
+    for file in (file for root in PACKAGE_ROOTS for file in root.rglob("*.py")):
         if module in imported_modules(read_tree(file)):
             importers.append(file)
     return importers

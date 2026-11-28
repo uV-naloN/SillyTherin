@@ -3,8 +3,8 @@
 
 import pytest
 
-from sillytherin.workspace import risk
-from sillytherin.workspace.risk import check
+from core.workspace import risk
+from core.workspace.risk import check
 
 BASELINE = 'import pandas as pd\ndf = pd.read_csv("data.csv")\ndf.describe()'
 

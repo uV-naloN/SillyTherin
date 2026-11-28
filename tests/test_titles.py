@@ -1,5 +1,5 @@
-from sillytherin.tools import read_page, web_search
-from sillytherin.tools.titles import TITLE_MAX, short_url, shorten
+from core.tools import read_page, web_search
+from core.tools.shared.titles import TITLE_MAX, short_url, shorten
 
 
 def test_short_text_is_unchanged():
@@ -46,7 +46,7 @@ def test_every_registered_tool_has_a_step_title():
     # Negative · Changed: a tool module without step_title
     # Then: each tool the model can call gives a non-empty chat step title, even with no arguments
     # Demonstrates: every native tool has a progress title even with invalid input.
-    from sillytherin.tools import NOTEBOOK_TOOLS, TOOLS, native_tool_step_title
+    from core.tools import NOTEBOOK_TOOLS, TOOLS, native_tool_step_title
 
     for tool in TOOLS + NOTEBOOK_TOOLS:
         assert native_tool_step_title(tool.name, {}).strip(), tool.name
