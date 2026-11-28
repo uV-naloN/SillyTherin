@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SillyTherin Design Canvas</title>
+  <link rel="stylesheet" href="canvas-viewer.css">
+  <script type="module" src="canvas-viewer.js"></script>
+</head>
+<body>
+  <header class="toolbar">
+    <div class="identity">
+      <span class="mark" aria-hidden="true">S</span>
+      <div><h1>SillyTherin</h1><span class="subtitle">Design canvas</span></div>
+    </div>
+    <div class="zoom-controls" aria-label="Canvas zoom">
+      <button id="zoom-out" aria-label="Zoom out">−</button>
+      <output id="zoom-level" aria-label="Zoom level">—</output>
+      <button id="zoom-in" aria-label="Zoom in">+</button>
+      <button id="fit-width">Fit width</button>
+      <button id="fit-all">Fit all</button>
+    </div>
+  </header>
+  <main>
+    <aside aria-label="Artboard navigator">
+      <div class="sidebar-heading"><h2>Artboards</h2><span id="board-count"></span></div>
+      <input type="search" id="search" aria-label="Search artboards" placeholder="Search artboards…">
+      <nav id="board-list" aria-label="Artboards"></nav>
+    </aside>
+    <section id="viewport" aria-label="Pan and zoom canvas" tabindex="0">
+      <div id="world"></div>
+      <p id="canvas-hint">Drag to pan · Scroll to zoom · Double-click to preview</p>
+      <p id="load-status" role="status">Loading artboards…</p>
+    </section>
+  </main>
+  <dialog id="preview" aria-labelledby="preview-title">
+    <div class="preview-toolbar">
+      <button id="close-preview">← Canvas</button>
+      <h2 id="preview-title"></h2>
+      <div id="theme-controls" aria-label="Preview theme">
+        <button data-theme="light">Light</button>
+        <button data-theme="dark">Dark</button>
+        <button data-theme="both">Both</button>
+      </div>
+      <a id="open-original" target="_blank" rel="noopener">Open original ↗</a>
+    </div>
+    <div id="preview-stage"><div id="preview-clip"></div></div>
+  </dialog>
+</body>
+</html>

@@ -1,0 +1,1078 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SillyTherin app shell</title>
+<script src="./_runtime/react.js"></script>
+<script src="./_runtime/react-dom.js"></script>
+<script src="./_runtime/support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;1,400&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.ib{width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;border-radius:8px;color:var(--mfg);padding:0}
+.ob{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:1px solid var(--border);background:var(--bg);color:var(--fg);border-radius:8px;font:500 13px Inter,sans-serif}
+.ni{display:flex;align-items:center;gap:10px;height:36px;padding:0 12px;border-radius:8px;font-size:14px;font-weight:500;color:var(--mfg)}
+.ni.on{background:var(--muted);color:var(--fg)}
+.rw{display:flex;align-items:center;gap:24px;padding:16px 0;border-top:1px solid var(--border)}
+.rw:first-child{border-top:0}
+.rx{flex:1;min-width:0}
+.rt{font-size:14px;font-weight:500;line-height:20px;color:var(--fg)}
+.rd{font-size:14px;line-height:20px;color:var(--mfg);margin-top:2px}
+.rv{font-size:14px;color:var(--mfg);white-space:nowrap}
+.sw{width:36px;height:20px;border-radius:999px;background:var(--primary);position:relative;flex-shrink:0}
+.sw i{position:absolute;right:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+.mi{display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:8px}
+.mi b{display:block;font-size:14px;font-weight:500;line-height:20px;color:var(--fg)}
+.mi span.s{display:block;font-size:13px;line-height:18px;color:var(--mfg)}
+.mi span.c{margin-left:auto;font-size:12px;color:var(--mfg);white-space:nowrap}
+.kr{display:grid;grid-template-columns:minmax(0,1fr) 72px 104px 92px 140px;gap:12px;align-items:center;padding:12px 20px;border-bottom:1px solid var(--border);font-size:13px}
+.kh{padding:8px 20px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--mfg);background:var(--nav)}
+.kt{font-size:14px;font-weight:500;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kn{font:12px/18px 'JetBrains Mono',monospace;color:var(--mfg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.km{color:var(--mfg)}
+.ka{justify-self:end;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;white-space:nowrap}
+.kd{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:1px solid var(--border);background:var(--bg);color:var(--fg);border-radius:8px;font:500 13px Inter,sans-serif}
+.pb{display:inline-flex;align-items:center;height:36px;padding:0 16px;border:0;border-radius:8px;background:var(--primary);color:var(--pfg);font:500 14px Inter,sans-serif}
+.ol{display:inline-flex;align-items:center;height:36px;padding:0 16px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);font:500 14px Inter,sans-serif}
+.dc{display:flex;flex-direction:column;gap:10px;padding:10px 10px 10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg);box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.dr{display:flex;align-items:center;gap:10px;min-width:0}
+.di{flex:none;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:var(--muted);color:var(--mfg)}
+.dn{font-size:13.5px;font-weight:600;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dm{font-size:12px;line-height:1.4;color:var(--mfg);white-space:nowrap}
+.db{flex:none;padding:0 8px;border-radius:999px;font-size:11px;font-weight:500;line-height:20px;white-space:nowrap}
+.dx{flex:none;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:8px;background:transparent;color:var(--mfg);padding:0}
+.dd{display:flex;flex-direction:column;gap:12px;margin:0 -10px -10px -12px;padding:12px;border-top:1px solid var(--border)}
+.df{display:grid;grid-template-columns:auto 1fr;gap:6px 20px;margin:0;font-size:12px;line-height:18px}
+.df dt{color:var(--mfg)}
+.df dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.dp{display:flex;align-items:center;gap:8px;min-height:36px;padding:6px 4px 6px 12px;box-sizing:border-box;border:1px solid var(--border);border-radius:8px;background:var(--nav);font:12.5px/18px 'JetBrains Mono',monospace;color:var(--fg)}
+.dp span{flex:1;min-width:0;overflow-wrap:anywhere}
+.dl{display:flex;justify-content:space-between;gap:12px;padding:6px 12px;font:12px/18px 'JetBrains Mono',monospace;border-top:1px solid var(--border)}
+.dl:first-child{border-top:0}
+.dl b{font-weight:400;color:var(--mfg);font-family:Inter,sans-serif}
+.dk{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);font:500 12px Inter,sans-serif}
+.dk.dz{border-color:transparent;background:transparent;color:var(--err)}
+.ub{margin:0;align-self:flex-end;max-width:560px;padding:10px 16px;border-radius:16px;background:var(--muted);font-size:15px;line-height:22px}
+.us{align-self:flex-end;display:inline-flex;align-items:center;gap:6px;margin-top:-16px;font-size:12px;line-height:16px;color:var(--mfg)}
+.ar{display:flex;align-items:flex-start;gap:12px}
+.ab{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px}
+.at{margin:0;font-size:15px;line-height:24px}
+.sb{display:flex;align-items:center;gap:10px;height:38px;box-sizing:border-box;padding:0 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-weight:500}
+.pc{overflow:hidden;border:1px solid var(--tintb);border-radius:12px;background:var(--bg)}
+.ph{display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--tint);font-size:14px;font-weight:600}
+.pd{padding:12px 16px;display:flex;flex-direction:column;gap:12px;font-size:14px;line-height:20px}
+.cp{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;height:26px;padding:0 10px;border:0;border-radius:999px;background:var(--muted);color:var(--mfg);font:400 12px Inter,sans-serif}
+.cl{padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--nav);font:12.5px/18px 'JetBrains Mono',monospace;white-space:pre}
+.ck{display:flex;align-items:center;gap:10px;height:32px;padding:0 12px;font-size:13.5px}
+.gh{padding:8px 12px 4px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--mfg);display:flex;justify-content:space-between}
+.fl{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500}
+.hr{display:flex;align-items:center;gap:8px;min-height:54px;box-sizing:border-box;padding:6px 6px 6px 12px;border-radius:8px}
+.ht{font-size:13.5px;line-height:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hs{font-size:12px;line-height:17px;color:var(--mfg);margin-top:1px}
+.hm{flex:none;display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:500;color:var(--primary);white-space:nowrap}
+.hp{display:flex;align-items:center;height:28px;padding:0 10px;border-radius:6px;background:var(--fg);color:var(--bg);font:500 12px Inter,sans-serif;white-space:nowrap}
+.fi{height:36px;box-sizing:border-box;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);font:14px Inter,sans-serif}
+</style>
+</helmet>
+<div style="{{ rootStyle }}">
+
+  <header style="margin-left: {{ historyOffset }}; height: 56px; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid var(--border)">
+    <sc-if value="{{ isNotHistory }}" hint-placeholder-val="{{ true }}">
+    <svg role="img" aria-label="SillyTherin" width="113" height="24" viewBox="0 0 1134 240"><defs><clipPath id="hl-cut"><rect x="464" y="70" width="130" height="158"></rect></clipPath><linearGradient id="hl-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#42A5F5"></stop><stop offset="1" stop-color="#1565C0"></stop></linearGradient></defs><g transform="translate(10 8)"><path d="M152 68 L156 86 M156 86 L149 97 M156 86 L165 95" stroke="#EF5350" stroke-width="5" stroke-linecap="round" fill="none"></path><path d="M150 52 C150 30 124 22 100 22 C70 22 48 40 48 64 C48 92 76 98 100 104 C128 111 154 120 154 146 C154 172 128 182 100 182 C76 182 54 172 46 150" fill="none" stroke="url(#hl-body)" stroke-width="34" stroke-linecap="round"></path><ellipse cx="146" cy="50" rx="23" ry="21" fill="url(#hl-body)"></ellipse><circle cx="141" cy="44" r="8" fill="#fff"></circle><circle cx="143" cy="45" r="4" fill="#0D1B2A"></circle></g><g fill="none" style="stroke: var(--logo)" stroke-width="24" stroke-linejoin="round"><path d="M332 64 C326 50 314 42 298 42 C278 42 264 52 264 70 C264 90 282 95 298 100 C316 105 332 111 332 130 C332 148 316 158 298 158 C280 158 266 150 262 136"></path><path d="M371 70 V170"></path><path d="M410 25 V170"></path><path d="M449 25 V170"></path><path d="M593 42 H691"></path><path d="M642 42 V170"></path><path d="M718 25 V170"></path><path d="M718 120 C718 96 732 82 752 82 C772 82 784 96 784 120 V170"></path><path d="M823 120 H893 A35 38 0 1 0 882 147"></path><path d="M932 70 V170"></path><path d="M932 122 C932 96 948 82 976 82"></path><path d="M1007 70 V170"></path><path d="M1046 70 V170"></path><path d="M1046 120 C1046 96 1060 82 1080 82 C1100 82 1112 96 1112 120 V170"></path><g clip-path="url(#hl-cut)"><path d="M482 56 L534 172"></path><path d="M576 56 L506 234"></path></g></g><g style="fill: var(--logo)"><circle cx="371" cy="38" r="14"></circle><circle cx="1007" cy="38" r="14"></circle></g></svg>
+    <span style="width: 1px; height: 20px; background: var(--border)"></span>
+    </sc-if>
+    <button type="button" aria-label="Workspace Default, switch workspace" style="{{ workspaceButtonStyle }}">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg>
+      Default
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--mfg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5"></path><path d="m7 9 5-5 5 5"></path></svg>
+    </button>
+    <span style="flex: 1"></span>
+    <button type="button" class="ob"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>New chat</button>
+    <button type="button" class="ib" aria-label="Settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 4h-7"></path><path d="M10 4H3"></path><path d="M21 12h-9"></path><path d="M8 12H3"></path><path d="M21 20h-5"></path><path d="M12 20H3"></path><path d="M14 2v4"></path><path d="M8 10v4"></path><path d="M16 18v4"></path></svg></button>
+    <button type="button" class="ib" aria-label="Switch light or dark theme">
+      <sc-if value="{{ isDark }}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg></sc-if>
+      <sc-if value="{{ isLight }}" hint-placeholder-val="{{ true }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg></sc-if>
+    </button>
+    <button type="button" aria-pressed="{{ notebookPressed }}" style="{{ notebookToggleStyle }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M15 3v18"></path></svg>{{ notebookToggleLabel }}</button>
+  </header>
+
+  <div style="display: flex; height: 844px; margin-left: {{ historyOffset }}">
+
+    <sc-if value="{{ hasHistoryList }}" hint-placeholder-val="{{ false }}">
+      <nav aria-label="Chat history" style="position: absolute; left: 0; top: 0; height: 900px; z-index: 2; width: 272px; flex-shrink: 0; box-sizing: border-box; display: flex; flex-direction: column; border-right: 1px solid var(--border); background: var(--nav)">
+        <div style="display: flex; align-items: center; height: 56px; flex-shrink: 0; box-sizing: border-box; padding: 0 8px 0 16px; border-bottom: 1px solid var(--border)">
+          <svg role="img" aria-label="SillyTherin" width="113" height="24" viewBox="0 0 1134 240"><defs><clipPath id="nl-cut"><rect x="464" y="70" width="130" height="158"></rect></clipPath><linearGradient id="nl-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#42A5F5"></stop><stop offset="1" stop-color="#1565C0"></stop></linearGradient></defs><g transform="translate(10 8)"><path d="M152 68 L156 86 M156 86 L149 97 M156 86 L165 95" stroke="#EF5350" stroke-width="5" stroke-linecap="round" fill="none"></path><path d="M150 52 C150 30 124 22 100 22 C70 22 48 40 48 64 C48 92 76 98 100 104 C128 111 154 120 154 146 C154 172 128 182 100 182 C76 182 54 172 46 150" fill="none" stroke="url(#nl-body)" stroke-width="34" stroke-linecap="round"></path><ellipse cx="146" cy="50" rx="23" ry="21" fill="url(#nl-body)"></ellipse><circle cx="141" cy="44" r="8" fill="#fff"></circle><circle cx="143" cy="45" r="4" fill="#0D1B2A"></circle></g><g fill="none" style="stroke: var(--logo)" stroke-width="24" stroke-linejoin="round"><path d="M332 64 C326 50 314 42 298 42 C278 42 264 52 264 70 C264 90 282 95 298 100 C316 105 332 111 332 130 C332 148 316 158 298 158 C280 158 266 150 262 136"></path><path d="M371 70 V170"></path><path d="M410 25 V170"></path><path d="M449 25 V170"></path><path d="M593 42 H691"></path><path d="M642 42 V170"></path><path d="M718 25 V170"></path><path d="M718 120 C718 96 732 82 752 82 C772 82 784 96 784 120 V170"></path><path d="M823 120 H893 A35 38 0 1 0 882 147"></path><path d="M932 70 V170"></path><path d="M932 122 C932 96 948 82 976 82"></path><path d="M1007 70 V170"></path><path d="M1046 70 V170"></path><path d="M1046 120 C1046 96 1060 82 1080 82 C1100 82 1112 96 1112 120 V170"></path><g clip-path="url(#nl-cut)"><path d="M482 56 L534 172"></path><path d="M576 56 L506 234"></path></g></g><g style="fill: var(--logo)"><circle cx="371" cy="38" r="14"></circle><circle cx="1007" cy="38" r="14"></circle></g></svg>
+          <span style="flex: 1"></span>
+          <button type="button" class="ib" aria-label="Hide chat history" title="Hide chat history" onClick="{{ toggleHistory }}" style="width: 32px; height: 32px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path><path d="m16 15-3-3 3-3"></path></svg></button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; height: 44px; flex-shrink: 0; box-sizing: border-box; padding: 0 16px">
+          <span style="font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--mfg)">Chats in Default</span>
+          <sc-if value="{{ hasHistoryRows }}" hint-placeholder-val="{{ true }}"><span style="min-width: 20px; height: 20px; box-sizing: border-box; padding: 0 6px; border-radius: 999px; background: var(--muted); color: var(--mfg); font-size: 11.5px; font-weight: 500; line-height: 20px; text-align: center">{{ historyCount }}</span></sc-if>
+        </div>
+        <sc-if value="{{ hasHistoryRows }}" hint-placeholder-val="{{ true }}">
+          <div style="flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 2px; padding: 0 8px">
+            <sc-for list="{{ historyRows }}" as="row" hint-placeholder-count="4">
+              <div class="hr" style="{{ row.style }}" aria-current="{{ row.current }}">
+                <div style="min-width: 0; flex: 1"><div class="ht" style="{{ row.titleStyle }}">{{ row.title }}</div><div class="hs">{{ row.date }}</div></div>
+                <sc-if value="{{ row.isReplying }}" hint-placeholder-val="{{ false }}"><span class="hm" role="status"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>Replying</span></sc-if>
+                <sc-if value="{{ row.isWaiting }}" hint-placeholder-val="{{ false }}"><span class="db" style="background: var(--tint); color: var(--primary)">Needs you</span></sc-if>
+                <sc-if value="{{ row.showDelete }}" hint-placeholder-val="{{ false }}"><button type="button" class="dx" aria-label="Delete chat {{ row.title }}" style="{{ row.deleteStyle }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button></sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isHistoryEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 28px 0; text-align: center; color: var(--mfg)">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path></svg>
+            <p style="margin: 0; font-size: 13.5px; line-height: 20px">Your chats will appear here once you send a message.</p>
+          </div>
+        </sc-if>
+        <div style="padding: 10px 16px 14px; border-top: 1px solid var(--border); font-size: 12px; line-height: 17px; color: var(--mfg)">Chats are kept until you delete them.</div>
+      </nav>
+    </sc-if>
+
+    <sc-if value="{{ isHistoryCollapsed }}" hint-placeholder-val="{{ false }}">
+      <div style="position: absolute; left: 0; top: 0; height: 900px; z-index: 2; width: 52px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 0; border-right: 1px solid var(--border); background: var(--nav)">
+        <div style="display: flex; align-items: center; justify-content: center; width: 100%; height: 56px; flex-shrink: 0; box-sizing: border-box; border-bottom: 1px solid var(--border)"><svg role="img" aria-label="SillyTherin" width="28" height="28" viewBox="0 0 220 220" style="flex-shrink: 0; margin-top: 2px"><defs><linearGradient id="rl-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#42A5F5"></stop><stop offset="1" stop-color="#1565C0"></stop></linearGradient></defs><g transform="translate(10 8)"><path d="M152 68 L156 86 M156 86 L149 97 M156 86 L165 95" stroke="#EF5350" stroke-width="5" stroke-linecap="round" fill="none"></path><path d="M150 52 C150 30 124 22 100 22 C70 22 48 40 48 64 C48 92 76 98 100 104 C128 111 154 120 154 146 C154 172 128 182 100 182 C76 182 54 172 46 150" fill="none" stroke="url(#rl-body)" stroke-width="34" stroke-linecap="round"></path><ellipse cx="146" cy="50" rx="23" ry="21" fill="url(#rl-body)"></ellipse><circle cx="141" cy="44" r="8" fill="#fff"></circle><circle cx="143" cy="45" r="4" fill="#0D1B2A"></circle></g></svg></div>
+        <div style="height: 4px"></div>
+        <button type="button" class="ib" aria-label="Show chat history" title="Show chat history" onClick="{{ toggleHistory }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path><path d="m14 9 3 3-3 3"></path></svg></button>
+      </div>
+    </sc-if>
+
+    <div style="{{ leftColumnStyle }}">
+
+      <sc-if value="{{ isStartView }}" hint-placeholder-val="{{ true }}">
+        <div style="flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 48px 24px; text-align: center">
+          <svg role="img" aria-label="SillyTherin" width="302" height="64" viewBox="0 0 1134 240"><defs><clipPath id="sl-cut"><rect x="464" y="70" width="130" height="158"></rect></clipPath><linearGradient id="sl-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#42A5F5"></stop><stop offset="1" stop-color="#1565C0"></stop></linearGradient></defs><g transform="translate(10 8)"><path d="M152 68 L156 86 M156 86 L149 97 M156 86 L165 95" stroke="#EF5350" stroke-width="5" stroke-linecap="round" fill="none"></path><path d="M150 52 C150 30 124 22 100 22 C70 22 48 40 48 64 C48 92 76 98 100 104 C128 111 154 120 154 146 C154 172 128 182 100 182 C76 182 54 172 46 150" fill="none" stroke="url(#sl-body)" stroke-width="34" stroke-linecap="round"></path><ellipse cx="146" cy="50" rx="23" ry="21" fill="url(#sl-body)"></ellipse><circle cx="141" cy="44" r="8" fill="#fff"></circle><circle cx="143" cy="45" r="4" fill="#0D1B2A"></circle></g><g fill="none" style="stroke: var(--logo)" stroke-width="24" stroke-linejoin="round"><path d="M332 64 C326 50 314 42 298 42 C278 42 264 52 264 70 C264 90 282 95 298 100 C316 105 332 111 332 130 C332 148 316 158 298 158 C280 158 266 150 262 136"></path><path d="M371 70 V170"></path><path d="M410 25 V170"></path><path d="M449 25 V170"></path><path d="M593 42 H691"></path><path d="M642 42 V170"></path><path d="M718 25 V170"></path><path d="M718 120 C718 96 732 82 752 82 C772 82 784 96 784 120 V170"></path><path d="M823 120 H893 A35 38 0 1 0 882 147"></path><path d="M932 70 V170"></path><path d="M932 122 C932 96 948 82 976 82"></path><path d="M1007 70 V170"></path><path d="M1046 70 V170"></path><path d="M1046 120 C1046 96 1060 82 1080 82 C1100 82 1112 96 1112 120 V170"></path><g clip-path="url(#sl-cut)"><path d="M482 56 L534 172"></path><path d="M576 56 L506 234"></path></g></g><g style="fill: var(--logo)"><circle cx="371" cy="38" r="14"></circle><circle cx="1007" cy="38" r="14"></circle></g></svg>
+          <p style="margin: 0; font-size: 15px; line-height: 24px; color: var(--mfg)">Ask anything, or paste a dataset link to get started.</p>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isChatView }}" hint-placeholder-val="{{ false }}">
+        <div style="flex: 1; min-height: 0; overflow: hidden; padding: 24px 16px 0">
+          <div style="max-width: 768px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px">
+            <p style="margin: 0; align-self: flex-end; padding: 10px 16px; border-radius: 16px; background: var(--muted); font-size: 15px; line-height: 22px">Hi! In one short sentence, what can you help me with?</p>
+            <div style="display: flex; align-items: flex-start; gap: 12px">
+              <svg role="img" aria-label="SillyTherin" width="28" height="28" viewBox="0 0 220 220" style="flex-shrink: 0; margin-top: 2px"><defs><linearGradient id="av-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#42A5F5"></stop><stop offset="1" stop-color="#1565C0"></stop></linearGradient></defs><g transform="translate(10 8)"><path d="M152 68 L156 86 M156 86 L149 97 M156 86 L165 95" stroke="#EF5350" stroke-width="5" stroke-linecap="round" fill="none"></path><path d="M150 52 C150 30 124 22 100 22 C70 22 48 40 48 64 C48 92 76 98 100 104 C128 111 154 120 154 146 C154 172 128 182 100 182 C76 182 54 172 46 150" fill="none" stroke="url(#av-body)" stroke-width="34" stroke-linecap="round"></path><ellipse cx="146" cy="50" rx="23" ry="21" fill="url(#av-body)"></ellipse><circle cx="141" cy="44" r="8" fill="#fff"></circle><circle cx="143" cy="45" r="4" fill="#0D1B2A"></circle></g></svg>
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+                <div style="border: 1px solid var(--border); border-radius: 10px; background: var(--bg); overflow: hidden">
+                  <button type="button" style="display: flex; align-items: center; gap: 10px; width: 100%; height: 38px; box-sizing: border-box; padding: 0 12px; border: 0; background: transparent; color: var(--fg); font: 500 14px Inter, sans-serif; text-align: left">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--mfg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
+                    <span style="flex: 1">1 step · 1s</span>
+                    <sc-if value="{{ isStepsOpen }}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--mfg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></sc-if>
+                    <sc-if value="{{ isStepsClosed }}" hint-placeholder-val="{{ true }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--mfg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></sc-if>
+                  </button>
+                  <sc-if value="{{ isStepsOpen }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding: 12px 20px 14px; border-top: 1px solid var(--border)">
+                      <div style="font-size: 14px; font-weight: 500; line-height: 20px">Thinking</div>
+                      <div style="font-size: 14px; font-style: italic; line-height: 20px; color: var(--mfg)">The user is asking for a one-sentence summary of what I can help them with. I should provide a concise answer.</div>
+                    </div>
+                  </sc-if>
+                </div>
+                <p style="margin: 0; font-size: 15px; line-height: 24px">I can help you with research, data analysis, coding, and finding or working with datasets.</p>
+                <button type="button" style="align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: transparent; color: var(--mfg); font: 400 13px Inter, sans-serif"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>Copy answer</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isProtoChat }}" hint-placeholder-val="{{ false }}">
+        <div style="flex: 1; min-height: 0; overflow: hidden; padding: 24px 16px 0">
+          <div style="max-width: 768px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px">
+
+            <sc-if value="{{ hasDeliveryMessage }}" hint-placeholder-val="{{ false }}">
+              <p class="ub">Find a public dataset on air quality in Hanoi.</p>
+              <sc-if value="{{ isMsgWaiting }}" hint-placeholder-val="{{ false }}"><span class="us" role="status"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>Sending…</span></sc-if>
+              <sc-if value="{{ isMsgAccepted }}" hint-placeholder-val="{{ false }}"><span class="us" role="status"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>Received</span></sc-if>
+              <sc-if value="{{ isMsgUnsent }}" hint-placeholder-val="{{ false }}">
+                <div class="us" role="alert" style="color: var(--err); gap: 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg><span>Not sent. SillyTherin couldn't be reached.</span><button type="button" class="dk">Try again</button><button type="button" class="dk">Edit message</button></div>
+              </sc-if>
+              <sc-if value="{{ isMsgAccepted }}" hint-placeholder-val="{{ false }}">
+                <div class="ar"><svg role="img" aria-label="SillyTherin" width="28" height="28" viewBox="0 0 220 220" style="flex-shrink: 0; margin-top: 2px"><defs><linearGradient id="av-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#42A5F5"></stop><stop offset="1" stop-color="#1565C0"></stop></linearGradient></defs><g transform="translate(10 8)"><path d="M152 68 L156 86 M156 86 L149 97 M156 86 L165 95" stroke="#EF5350" stroke-width="5" stroke-linecap="round" fill="none"></path><path d="M150 52 C150 30 124 22 100 22 C70 22 48 40 48 64 C48 92 76 98 100 104 C128 111 154 120 154 146 C154 172 128 182 100 182 C76 182 54 172 46 150" fill="none" stroke="url(#av-body)" stroke-width="34" stroke-linecap="round"></path><ellipse cx="146" cy="50" rx="23" ry="21" fill="url(#av-body)"></ellipse><circle cx="141" cy="44" r="8" fill="#fff"></circle><circle cx="143" cy="45" r="4" fill="#0D1B2A"></circle></g></svg><div class="ab"><div class="sb" style="color: var(--mfg)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg><span style="color: var(--fg)">Working · searching the web</span></div></div></div>
+              </sc-if>
+            </sc-if>
+
+            <sc-if value="{{ isDescribeImport }}" hint-placeholder-val="{{ false }}">
+              <p class="ub">What's inside the Hanoi traffic counts 2025 dataset on Kaggle?</p>
+              <div class="ar"><svg role="img" aria-label="SillyTherin" width="28" height="28" viewBox="0 0 220 220" style="flex-shrink: 0; margin-top: 2px"><defs><linearGradient id="av-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#42A5F5"></stop><stop offset="1" stop-color="#1565C0"></stop></linearGradient></defs><g transform="translate(10 8)"><path d="M152 68 L156 86 M156 86 L149 97 M156 86 L165 95" stroke="#EF5350" stroke-width="5" stroke-linecap="round" fill="none"></path><path d="M150 52 C150 30 124 22 100 22 C70 22 48 40 48 64 C48 92 76 98 100 104 C128 111 154 120 154 146 C154 172 128 182 100 182 C76 182 54 172 46 150" fill="none" stroke="url(#av-body)" stroke-width="34" stroke-linecap="round"></path><ellipse cx="146" cy="50" rx="23" ry="21" fill="url(#av-body)"></ellipse><circle cx="141" cy="44" r="8" fill="#fff"></circle><circle cx="143" cy="45" r="4" fill="#0D1B2A"></circle></g></svg><div class="ab">
+                <p class="at">It has hourly vehicle counts from road sensors across Hanoi for 2025, split by vehicle type. It is 310 MB and licensed CC0.</p>
+                <span class="cp"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path></svg>Read from the Kaggle page · nothing added to this project</span>
+              </div></div>
+              <p class="ub">Download it into this project.</p>
+              <div class="ar"><svg role="img" aria-label="SillyTherin" width="28" height="28" viewBox="0 0 220 220" style="flex-shrink: 0; margin-top: 2px"><defs><linearGradient id="av-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#42A5F5"></stop><stop offset="1" stop-color="#1565C0"></stop></linearGradient></defs><g transform="translate(10 8)"><path d="M152 68 L156 86 M156 86 L149 97 M156 86 L165 95" stroke="#EF5350" stroke-width="5" stroke-linecap="round" fill="none"></path><path d="M150 52 C150 30 124 22 100 22 C70 22 48 40 48 64 C48 92 76 98 100 104 C128 111 154 120 154 146 C154 172 128 182 100 182 C76 182 54 172 46 150" fill="none" stroke="url(#av-body)" stroke-width="34" stroke-linecap="round"></path><ellipse cx="146" cy="50" rx="23" ry="21" fill="url(#av-body)"></ellipse><circle cx="141" cy="44" r="8" fill="#fff"></circle><circle cx="143" cy="45" r="4" fill="#0D1B2A"></circle></g></svg><div class="ab">
+                <div class="sb" style="color: var(--mfg)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg><span style="color: var(--fg)">1 step · downloaded from Kaggle</span></div>
+                <div class="dc" style="max-width: 420px"><div class="dr"><span class="di"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5V19A9 3 0 0 0 21 19V5"></path><path d="M3 12A9 3 0 0 0 21 12"></path></svg></span><div style="flex: 1; min-width: 0"><div class="dn">Hanoi traffic counts 2025</div><div class="dm">Kaggle · 310 MB</div></div><span class="db" style="background: var(--tint); color: var(--ok)">Ready</span></div></div>
+                <p class="at">It's in the Datasets tab and ready to use.</p>
+              </div></div>
+            </sc-if>
+
+            <sc-if value="{{ isFreePick }}" hint-placeholder-val="{{ false }}">
+              <p class="ub">Find a dataset on Hanoi air quality and download it.</p>
+              <div class="ar"><svg role="img" aria-label="SillyTherin" width="28" height="28" viewBox="0 0 220 220" style="flex-shrink: 0; margin-top: 2px"><defs><linearGradient id="av-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#42A5F5"></stop><stop offset="1" stop-color="#1565C0"></stop></linearGradient></defs><g transform="translate(10 8)"><path d="M152 68 L156 86 M156 86 L149 97 M156 86 L165 95" stroke="#EF5350" stroke-width="5" stroke-linecap="round" fill="none"></path><path d="M150 52 C150 30 124 22 100 22 C70 22 48 40 48 64 C48 92 76 98 100 104 C128 111 154 120 154 146 C154 172 128 182 100 182 C76 182 54 172 46 150" fill="none" stroke="url(#av-body)" stroke-width="34" stroke-linecap="round"></path><ellipse cx="146" cy="50" rx="23" ry="21" fill="url(#av-body)"></ellipse><circle cx="141" cy="44" r="8" fill="#fff"></circle><circle cx="143" cy="45" r="4" fill="#0D1B2A"></circle></g></svg><div class="ab">
+                <div class="sb" style="color: var(--mfg)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg><span style="color: var(--fg)">2 steps · searched Kaggle, downloaded</span></div>
+                <p class="at">I picked Vietnam air quality, daily, because it has Hanoi readings for every day of 2025. It's in the Datasets tab.</p>
+                <div class="dc" style="max-width: 420px"><div class="dr"><span class="di"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5V19A9 3 0 0 0 21 19V5"></path><path d="M3 12A9 3 0 0 0 21 12"></path></svg></span><div style="flex: 1; min-width: 0"><div class="dn">Vietnam air quality, daily</div><div class="dm">Kaggle · 48 MB · CC BY 4.0</div></div><span class="db" style="background: var(--tint); color: var(--ok)">Ready</span></div></div>
+                <span class="cp">Free mode chose this dataset for you. Risky actions still ask first.</span>
+              </div></div>
+            </sc-if>
+
+            <sc-if value="{{ isManualApproval }}" hint-placeholder-val="{{ false }}">
+              <p class="ub">Find a public dataset on Hanoi air quality.</p>
+              <div class="ar"><svg role="img" aria-label="SillyTherin" width="28" height="28" viewBox="0 0 220 220" style="flex-shrink: 0; margin-top: 2px"><defs><linearGradient id="av-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#42A5F5"></stop><stop offset="1" stop-color="#1565C0"></stop></linearGradient></defs><g transform="translate(10 8)"><path d="M152 68 L156 86 M156 86 L149 97 M156 86 L165 95" stroke="#EF5350" stroke-width="5" stroke-linecap="round" fill="none"></path><path d="M150 52 C150 30 124 22 100 22 C70 22 48 40 48 64 C48 92 76 98 100 104 C128 111 154 120 154 146 C154 172 128 182 100 182 C76 182 54 172 46 150" fill="none" stroke="url(#av-body)" stroke-width="34" stroke-linecap="round"></path><ellipse cx="146" cy="50" rx="23" ry="21" fill="url(#av-body)"></ellipse><circle cx="141" cy="44" r="8" fill="#fff"></circle><circle cx="143" cy="45" r="4" fill="#0D1B2A"></circle></g></svg><div class="ab">
+                <div class="pc"><div class="ph"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path></svg>Manual mode: allow this step?</div><div class="pd">
+                  <span>Search the web for “Hanoi air quality dataset”.</span>
+                  <div class="cl">web_search · 1 query</div>
+                  <div style="display: flex; gap: 8px"><button type="button" class="pb">Allow</button><button type="button" class="ol">Skip</button></div>
+                </div></div>
+                <span class="cp">Nothing runs until you choose. Skip leaves this step out.</span>
+              </div></div>
+            </sc-if>
+
+            <sc-if value="{{ isRiskyApproval }}" hint-placeholder-val="{{ false }}">
+              <p class="ub">Clean up the project and remove the old sensor files.</p>
+              <div class="ar"><svg role="img" aria-label="SillyTherin" width="28" height="28" viewBox="0 0 220 220" style="flex-shrink: 0; margin-top: 2px"><defs><linearGradient id="av-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#42A5F5"></stop><stop offset="1" stop-color="#1565C0"></stop></linearGradient></defs><g transform="translate(10 8)"><path d="M152 68 L156 86 M156 86 L149 97 M156 86 L165 95" stroke="#EF5350" stroke-width="5" stroke-linecap="round" fill="none"></path><path d="M150 52 C150 30 124 22 100 22 C70 22 48 40 48 64 C48 92 76 98 100 104 C128 111 154 120 154 146 C154 172 128 182 100 182 C76 182 54 172 46 150" fill="none" stroke="url(#av-body)" stroke-width="34" stroke-linecap="round"></path><ellipse cx="146" cy="50" rx="23" ry="21" fill="url(#av-body)"></ellipse><circle cx="141" cy="44" r="8" fill="#fff"></circle><circle cx="143" cy="45" r="4" fill="#0D1B2A"></circle></g></svg><div class="ab">
+                <p class="at">I found 3 files from the 2024 sensor runs.</p>
+                <div class="pc"><div class="ph"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path></svg>Risky action, check first</div><div class="pd">
+                  <span>Delete these 3 files from this project? They can't be brought back.</span>
+                  <div class="cl">pm25_run_2024_01.csv
+pm25_run_2024_02.csv
+pm25_run_2024_03.csv</div>
+                  <div style="display: flex; gap: 8px"><button type="button" class="pb" style="background: var(--err); color: var(--pfg)">Delete files</button><button type="button" class="ol">Skip</button></div>
+                </div></div>
+              </div></div>
+            </sc-if>
+
+            <sc-if value="{{ isSteering }}" hint-placeholder-val="{{ false }}">
+              <p class="ub">Plot daily PM2.5 for Hanoi in 2025.</p>
+              <div class="ar"><svg role="img" aria-label="SillyTherin" width="28" height="28" viewBox="0 0 220 220" style="flex-shrink: 0; margin-top: 2px"><defs><linearGradient id="av-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#42A5F5"></stop><stop offset="1" stop-color="#1565C0"></stop></linearGradient></defs><g transform="translate(10 8)"><path d="M152 68 L156 86 M156 86 L149 97 M156 86 L165 95" stroke="#EF5350" stroke-width="5" stroke-linecap="round" fill="none"></path><path d="M150 52 C150 30 124 22 100 22 C70 22 48 40 48 64 C48 92 76 98 100 104 C128 111 154 120 154 146 C154 172 128 182 100 182 C76 182 54 172 46 150" fill="none" stroke="url(#av-body)" stroke-width="34" stroke-linecap="round"></path><ellipse cx="146" cy="50" rx="23" ry="21" fill="url(#av-body)"></ellipse><circle cx="141" cy="44" r="8" fill="#fff"></circle><circle cx="143" cy="45" r="4" fill="#0D1B2A"></circle></g></svg><div class="ab">
+                <p class="at">Loading Vietnam air quality, daily. Hanoi has 365 days of readings, so I'll group them by week and draw one line for</p>
+              </div></div>
+              <p class="ub">Actually, compare Hanoi with Ho Chi Minh City instead.</p>
+              <span class="us"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>Applied to the reply in progress</span>
+              <div class="ar"><svg role="img" aria-label="SillyTherin" width="28" height="28" viewBox="0 0 220 220" style="flex-shrink: 0; margin-top: 2px"><defs><linearGradient id="av-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#42A5F5"></stop><stop offset="1" stop-color="#1565C0"></stop></linearGradient></defs><g transform="translate(10 8)"><path d="M152 68 L156 86 M156 86 L149 97 M156 86 L165 95" stroke="#EF5350" stroke-width="5" stroke-linecap="round" fill="none"></path><path d="M150 52 C150 30 124 22 100 22 C70 22 48 40 48 64 C48 92 76 98 100 104 C128 111 154 120 154 146 C154 172 128 182 100 182 C76 182 54 172 46 150" fill="none" stroke="url(#av-body)" stroke-width="34" stroke-linecap="round"></path><ellipse cx="146" cy="50" rx="23" ry="21" fill="url(#av-body)"></ellipse><circle cx="141" cy="44" r="8" fill="#fff"></circle><circle cx="143" cy="45" r="4" fill="#0D1B2A"></circle></g></svg><div class="ab">
+                <div class="cl" style="white-space: normal; font-family: Inter, sans-serif; font-size: 13px">Stopped: loading hanoi_2025_hourly.csv · Already finished: hanoi_2025_daily.csv</div>
+                <p class="at">Switching to a comparison. I'll load Ho Chi Minh City's daily readings and draw both cities on one chart▍</p>
+              </div></div>
+            </sc-if>
+
+            <sc-if value="{{ hasGoalChat }}" hint-placeholder-val="{{ false }}">
+              <p class="ub">Compare PM2.5 in Hanoi and Ho Chi Minh City for 2025 and tell me which month was worst.</p>
+              <sc-if value="{{ isGoalWorking }}" hint-placeholder-val="{{ false }}">
+                <div class="ar"><svg role="img" aria-label="SillyTherin" width="28" height="28" viewBox="0 0 220 220" style="flex-shrink: 0; margin-top: 2px"><defs><linearGradient id="av-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#42A5F5"></stop><stop offset="1" stop-color="#1565C0"></stop></linearGradient></defs><g transform="translate(10 8)"><path d="M152 68 L156 86 M156 86 L149 97 M156 86 L165 95" stroke="#EF5350" stroke-width="5" stroke-linecap="round" fill="none"></path><path d="M150 52 C150 30 124 22 100 22 C70 22 48 40 48 64 C48 92 76 98 100 104 C128 111 154 120 154 146 C154 172 128 182 100 182 C76 182 54 172 46 150" fill="none" stroke="url(#av-body)" stroke-width="34" stroke-linecap="round"></path><ellipse cx="146" cy="50" rx="23" ry="21" fill="url(#av-body)"></ellipse><circle cx="141" cy="44" r="8" fill="#fff"></circle><circle cx="143" cy="45" r="4" fill="#0D1B2A"></circle></g></svg><div class="ab"><div class="sb" style="color: var(--mfg)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg><span style="color: var(--fg)">Working · step 2 of 4</span></div><p class="at">The dataset is loaded. Now keeping only the two cities.</p></div></div>
+              </sc-if>
+              <sc-if value="{{ isGoalWaiting }}" hint-placeholder-val="{{ false }}">
+                <div class="ar"><svg role="img" aria-label="SillyTherin" width="28" height="28" viewBox="0 0 220 220" style="flex-shrink: 0; margin-top: 2px"><defs><linearGradient id="av-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#42A5F5"></stop><stop offset="1" stop-color="#1565C0"></stop></linearGradient></defs><g transform="translate(10 8)"><path d="M152 68 L156 86 M156 86 L149 97 M156 86 L165 95" stroke="#EF5350" stroke-width="5" stroke-linecap="round" fill="none"></path><path d="M150 52 C150 30 124 22 100 22 C70 22 48 40 48 64 C48 92 76 98 100 104 C128 111 154 120 154 146 C154 172 128 182 100 182 C76 182 54 172 46 150" fill="none" stroke="url(#av-body)" stroke-width="34" stroke-linecap="round"></path><ellipse cx="146" cy="50" rx="23" ry="21" fill="url(#av-body)"></ellipse><circle cx="141" cy="44" r="8" fill="#fff"></circle><circle cx="143" cy="45" r="4" fill="#0D1B2A"></circle></g></svg><div class="ab">
+                  <div class="pc"><div class="ph"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path></svg>Your choice is needed</div><div class="pd">
+                    <span>Ho Chi Minh City has 12 days with no readings. Fill them from the nearest station, or leave them out of the monthly average?</span>
+                    <div style="display: flex; gap: 8px"><button type="button" class="pb">Fill from nearest station</button><button type="button" class="ol">Leave them out</button></div>
+                  </div></div>
+                </div></div>
+              </sc-if>
+              <sc-if value="{{ isGoalDone }}" hint-placeholder-val="{{ false }}">
+                <div class="ar"><svg role="img" aria-label="SillyTherin" width="28" height="28" viewBox="0 0 220 220" style="flex-shrink: 0; margin-top: 2px"><defs><linearGradient id="av-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#42A5F5"></stop><stop offset="1" stop-color="#1565C0"></stop></linearGradient></defs><g transform="translate(10 8)"><path d="M152 68 L156 86 M156 86 L149 97 M156 86 L165 95" stroke="#EF5350" stroke-width="5" stroke-linecap="round" fill="none"></path><path d="M150 52 C150 30 124 22 100 22 C70 22 48 40 48 64 C48 92 76 98 100 104 C128 111 154 120 154 146 C154 172 128 182 100 182 C76 182 54 172 46 150" fill="none" stroke="url(#av-body)" stroke-width="34" stroke-linecap="round"></path><ellipse cx="146" cy="50" rx="23" ry="21" fill="url(#av-body)"></ellipse><circle cx="141" cy="44" r="8" fill="#fff"></circle><circle cx="143" cy="45" r="4" fill="#0D1B2A"></circle></g></svg><div class="ab">
+                  <div class="sb" style="color: var(--mfg)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg><span style="color: var(--fg)">4 steps · 38s</span></div>
+                  <div style="border: 1px solid var(--border); border-radius: 12px; overflow: hidden">
+                    <div style="padding: 10px 16px; background: var(--nav); border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--mfg)">Result for review</div>
+                    <div style="padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 21px">
+                      <b style="font-size: 15px; font-weight: 600">January was the worst month in both cities.</b>
+                      <span>Hanoi averaged the highest PM2.5 in January, about twice its July level. Ho Chi Minh City peaked in the same month, at a lower level. The 12 missing days were filled from the nearest station.</span>
+                      <div style="display: flex; gap: 8px"><button type="button" class="dk">Open chart in notebook</button><button type="button" class="dk">Copy answer</button></div>
+                    </div>
+                  </div>
+                </div></div>
+              </sc-if>
+            </sc-if>
+
+            <sc-if value="{{ isKnowledgeAnswer }}" hint-placeholder-val="{{ false }}">
+              <p class="ub">Which sensor did we move in October?</p>
+              <div class="ar"><svg role="img" aria-label="SillyTherin" width="28" height="28" viewBox="0 0 220 220" style="flex-shrink: 0; margin-top: 2px"><defs><linearGradient id="av-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#42A5F5"></stop><stop offset="1" stop-color="#1565C0"></stop></linearGradient></defs><g transform="translate(10 8)"><path d="M152 68 L156 86 M156 86 L149 97 M156 86 L165 95" stroke="#EF5350" stroke-width="5" stroke-linecap="round" fill="none"></path><path d="M150 52 C150 30 124 22 100 22 C70 22 48 40 48 64 C48 92 76 98 100 104 C128 111 154 120 154 146 C154 172 128 182 100 182 C76 182 54 172 46 150" fill="none" stroke="url(#av-body)" stroke-width="34" stroke-linecap="round"></path><ellipse cx="146" cy="50" rx="23" ry="21" fill="url(#av-body)"></ellipse><circle cx="141" cy="44" r="8" fill="#fff"></circle><circle cx="143" cy="45" r="4" fill="#0D1B2A"></circle></g></svg><div class="ab">
+                <p class="at">Sensor S-14 moved from Hoan Kiem to Cau Giay on 12 October, because of building work at the old site.</p>
+                <button type="button" class="cp"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path></svg>Source: field-notes-oct.md</button>
+              </div></div>
+              <p class="ub">What was its calibration offset?</p>
+              <div class="ar"><svg role="img" aria-label="SillyTherin" width="28" height="28" viewBox="0 0 220 220" style="flex-shrink: 0; margin-top: 2px"><defs><linearGradient id="av-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#42A5F5"></stop><stop offset="1" stop-color="#1565C0"></stop></linearGradient></defs><g transform="translate(10 8)"><path d="M152 68 L156 86 M156 86 L149 97 M156 86 L165 95" stroke="#EF5350" stroke-width="5" stroke-linecap="round" fill="none"></path><path d="M150 52 C150 30 124 22 100 22 C70 22 48 40 48 64 C48 92 76 98 100 104 C128 111 154 120 154 146 C154 172 128 182 100 182 C76 182 54 172 46 150" fill="none" stroke="url(#av-body)" stroke-width="34" stroke-linecap="round"></path><ellipse cx="146" cy="50" rx="23" ry="21" fill="url(#av-body)"></ellipse><circle cx="141" cy="44" r="8" fill="#fff"></circle><circle cx="143" cy="45" r="4" fill="#0D1B2A"></circle></g></svg><div class="ab">
+                <p class="at">I couldn't find that in this project's notes or documents.</p>
+              </div></div>
+            </sc-if>
+
+            <sc-if value="{{ isTrafficChat }}" hint-placeholder-val="{{ false }}">
+              <p class="ub">Which hours are the busiest in the Hanoi traffic counts?</p>
+              <div class="ar"><svg role="img" aria-label="SillyTherin" width="28" height="28" viewBox="0 0 220 220" style="flex-shrink: 0; margin-top: 2px"><defs><linearGradient id="av-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#42A5F5"></stop><stop offset="1" stop-color="#1565C0"></stop></linearGradient></defs><g transform="translate(10 8)"><circle cx="100" cy="100" r="80" fill="url(#av-body)"></circle></g></svg><div class="ab">
+                <p class="at">Traffic peaks between 07:00 and 08:00 and again between 17:00 and 18:00 on weekdays.</p>
+              </div></div>
+            </sc-if>
+
+            <sc-if value="{{ isReopenedChat }}" hint-placeholder-val="{{ false }}">
+              <p class="ub">Compare PM2.5 in Hanoi and Ho Chi Minh City for 2025.</p>
+              <div class="ar"><svg role="img" aria-label="SillyTherin" width="28" height="28" viewBox="0 0 220 220" style="flex-shrink: 0; margin-top: 2px"><defs><linearGradient id="av-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#42A5F5"></stop><stop offset="1" stop-color="#1565C0"></stop></linearGradient></defs><g transform="translate(10 8)"><path d="M152 68 L156 86 M156 86 L149 97 M156 86 L165 95" stroke="#EF5350" stroke-width="5" stroke-linecap="round" fill="none"></path><path d="M150 52 C150 30 124 22 100 22 C70 22 48 40 48 64 C48 92 76 98 100 104 C128 111 154 120 154 146 C154 172 128 182 100 182 C76 182 54 172 46 150" fill="none" stroke="url(#av-body)" stroke-width="34" stroke-linecap="round"></path><ellipse cx="146" cy="50" rx="23" ry="21" fill="url(#av-body)"></ellipse><circle cx="141" cy="44" r="8" fill="#fff"></circle><circle cx="143" cy="45" r="4" fill="#0D1B2A"></circle></g></svg><div class="ab"><div class="sb" style="color: var(--mfg)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg><span style="color: var(--fg)">4 steps · 38s</span></div><p class="at">January was the worst month in both cities. The chart is in the notebook.</p></div></div>
+            </sc-if>
+
+          </div>
+        </div>
+      </sc-if>
+      <div style="padding: 8px 16px 16px">
+        <sc-if value="{{ hasGoal }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width: 768px; margin: 0 auto 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); overflow: hidden">
+            <div style="display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 12px">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+              <span style="font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--mfg)">Goal</span>
+              <span style="flex: 1; min-width: 0; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Find the worst 2025 month for PM2.5 in Hanoi and Ho Chi Minh City</span>
+              <button type="button" class="dk">Edit</button>
+              <button type="button" class="dx" aria-label="Clear goal"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+            </div>
+            <div style="border-top: 1px solid var(--border)">
+              <button type="button" aria-expanded="{{ checklistExpanded }}" style="display: flex; align-items: center; gap: 10px; width: 100%; height: 36px; padding: 0 12px; border: 0; background: transparent; color: var(--fg); font: 500 13.5px Inter, sans-serif; text-align: left">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--mfg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 17 2 2 4-4"></path><path d="m3 7 2 2 4-4"></path><path d="M13 6h8"></path><path d="M13 12h8"></path><path d="M13 18h8"></path></svg>
+                Checklist<span style="flex: 1; font-weight: 400; color: var(--mfg)">{{ checklistSummary }}</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--mfg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ checklistChevron }}"></path></svg>
+              </button>
+              <sc-if value="{{ isChecklistOpen }}" hint-placeholder-val="{{ false }}">
+                <div style="padding: 0 0 4px">
+                  <sc-for list="{{ checklist }}" as="step" hint-placeholder-count="4">
+                    <div class="ck" style="{{ step.rowStyle }}">
+                      <sc-if value="{{ step.isDone }}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; color: var(--ok)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span></sc-if>
+                      <sc-if value="{{ step.isActive }}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; color: var(--primary)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg></span></sc-if>
+                      <sc-if value="{{ step.isWaiting }}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; color: var(--primary)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg></span></sc-if>
+                      <sc-if value="{{ step.isTodo }}" hint-placeholder-val="{{ false }}"><span style="width: 12px; height: 12px; margin: 0 1px; box-sizing: border-box; border: 1.5px solid var(--mfg); border-radius: 50%"></span></sc-if>
+                      <span style="{{ step.textStyle }}">{{ step.text }}</span>
+                      <sc-if value="{{ step.isWaiting }}" hint-placeholder-val="{{ false }}"><span class="db" style="background: var(--tint); color: var(--primary)">Needs you</span></sc-if>
+                    </div>
+                  </sc-for>
+                  <div style="padding: 4px 12px 6px; font-size: 12px; color: var(--mfg)">The agent keeps this list. Ask in chat to change it.</div>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+        <div style="max-width: 768px; margin: 0 auto; border: 1px solid var(--border); border-radius: 16px; background: var(--bg); box-shadow: 0 1px 2px rgba(0,0,0,0.05)">
+          <label for="msg-box" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Message SillyTherin</label>
+          <textarea id="msg-box" rows="2" value="{{ composerText }}" readOnly="{{ true }}" placeholder="Ask SillyTherin anything, or paste a dataset link…" style="display: block; width: 100%; box-sizing: border-box; resize: none; border: 0; outline: none; background: transparent; padding: 14px 16px 6px; font: 15px/22px Inter, sans-serif; color: var(--fg)"></textarea>
+          <div style="display: flex; align-items: center; gap: 6px; padding: 8px 10px 10px">
+            <button type="button" style="display: inline-flex; align-items: center; gap: 8px; height: 32px; max-width: 256px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border); background: var(--bg); border-radius: 8px; color: var(--fg); font: 500 13px Inter, sans-serif">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ modelLabel }}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+            </button>
+            <button type="button" aria-label="Effort: Model default" style="width: 40px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: 0; background: transparent; border-radius: 8px; color: var(--fg); padding: 0"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 15 A8 8 0 0 1 20 15" style="stroke: var(--mfg)" stroke-width="2" stroke-linecap="round" stroke-dasharray="1.6 2.4"></path><line x1="12" y1="15" x2="12" y2="8.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line><circle cx="12" cy="15" r="1.6" fill="currentColor"></circle></svg></button>
+            <span style="flex: 1"></span>
+            <sc-if value="{{ isProto }}" hint-placeholder-val="{{ false }}">
+              <button type="button" aria-label="Agent mode {{ modeLabel }}" style="{{ modeButtonStyle }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path></svg>{{ modeLabel }}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+            </sc-if>
+            <button type="button" aria-label="Send message" style="{{ sendStyle }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <sc-if value="{{ isNotebookLayout }}" hint-placeholder-val="{{ false }}">
+      <div style="flex: 1; min-width: 0; box-sizing: border-box; padding: 20px 16px 0; background: var(--panel)">
+        <div role="tablist" aria-label="Notebook views" style="display: flex; gap: 8px; height: 40px; border-bottom: 1px solid var(--border)">
+          <button type="button" role="tab" style="{{ tabNotebookStyle }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 16 4-4-4-4"></path><path d="m6 8-4 4 4 4"></path><path d="m14.5 4-5 16"></path></svg>Notebook<span style="min-width: 18px; padding: 0 6px; border-radius: 999px; background: var(--muted); font-size: 12px; font-weight: 400; line-height: 18px; text-align: center">1</span></button>
+          <button type="button" role="tab" style="{{ tabDatasetsStyle }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5V19A9 3 0 0 0 21 19V5"></path><path d="M3 12A9 3 0 0 0 21 12"></path></svg>Datasets</button>
+          <sc-if value="{{ hasKnowledgeTab }}" hint-placeholder-val="{{ false }}"><button type="button" role="tab" style="{{ tabKnowledgeStyle }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>Knowledge</button></sc-if>
+        </div>
+
+        <sc-if value="{{ isNotebookTab }}" hint-placeholder-val="{{ true }}">
+          <div style="display: flex; align-items: center; gap: 5px; height: 48px; padding-left: 0; color: var(--mfg)">
+            <span style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 19l9-7-9-7z"></path><path d="M2 19l9-7-9-7z"></path></svg></span>
+            <span style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect></svg></span>
+            <span style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></span>
+            <span style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"></path><path d="M22 21H7"></path><path d="m5 11 9 9"></path></svg></span>
+            <span style="flex: 1"></span>
+            <span aria-label="Kernel status" style="width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: var(--mfg)"></span>
+          </div>
+          <div style="display: flex; align-items: flex-start; gap: 0; margin-top: 12px">
+            <span style="width: 28px; padding-top: 6px; color: var(--mfg)"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg></span>
+            <span style="width: 24px; height: 24px; margin: 3px 0 0 21px; border-radius: 50%; background: var(--muted); display: inline-flex; align-items: center; justify-content: center; color: var(--fg)"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 3l14 9-14 9z"></path></svg></span>
+            <span style="margin: 4px 7px 0 5px; font: 13px 'JetBrains Mono', monospace; color: var(--primary); white-space: pre">[ ]:</span>
+            <div style="flex: 1; height: 31px; box-sizing: border-box; padding: 5px 14px; border: 1px solid var(--border); background: var(--muted); font: 13px/20px 'JetBrains Mono', monospace; color: var(--mfg); white-space: nowrap; overflow: hidden">Write Python… Shift+Enter runs · Tab indents · Ctrl+/ comments</div>
+          </div>
+          <div style="display: flex; gap: 22px; margin: 36px 0 0 36px; font-size: 13px; color: var(--mfg)">
+            <span style="display: inline-flex; align-items: center; gap: 6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>Code</span>
+            <span style="display: inline-flex; align-items: center; gap: 6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>Note</span>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ hasKaggleCards }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 10px">
+            <div style="display: flex; align-items: center; justify-content: space-between">
+              <span style="font-size: 12px; color: var(--mfg)">4 datasets · 1 downloading · 1 failed</span>
+            </div>
+            <div style="display: flex; gap: 8px">
+              <div style="flex: 1; display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--mfg); font-size: 13px">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>Search datasets
+              </div>
+              <div style="display: flex; align-items: center; gap: 4px; height: 34px; padding: 0 8px 0 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); font-size: 12px">Newest first<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--mfg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></div>
+            </div>
+            <sc-for list="{{ kaggleCards }}" as="card" hint-placeholder-count="4">
+              <div class="dc" style="{{ card.boxStyle }}">
+                <div class="dr">
+                  <span class="di"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5V19A9 3 0 0 0 21 19V5"></path><path d="M3 12A9 3 0 0 0 21 12"></path></svg></span>
+                  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px">
+                    <div class="dn">{{ card.title }}</div>
+                    <div class="dm">Kaggle · {{ card.sizeText }}</div>
+                  </div>
+                  <sc-if value="{{ card.hasBadge }}" hint-placeholder-val="{{ true }}"><span class="db" style="{{ card.badgeStyle }}">{{ card.badge }}</span></sc-if>
+                  <sc-if value="{{ card.isDownloading }}" hint-placeholder-val="{{ false }}"><button type="button" class="dx" aria-label="Cancel download"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button></sc-if>
+                  <button type="button" class="dx" aria-label="{{ card.toggleLabel }}" style="{{ card.toggleStyle }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ card.chevron }}"></path></svg></button>
+                </div>
+                <sc-if value="{{ card.isDownloading }}" hint-placeholder-val="{{ false }}">
+                  <div role="progressbar" aria-label="Download progress" aria-valuenow="{{ card.pct }}" aria-valuemin="0" aria-valuemax="100" style="height: 4px; border-radius: 999px; background: var(--muted); overflow: hidden"><div style="{{ card.barStyle }}"></div></div>
+                </sc-if>
+                <sc-if value="{{ card.hasError }}" hint-placeholder-val="{{ false }}">
+                  <div style="display: flex; align-items: center; gap: 10px; padding-left: 42px"><span style="flex: 1; font-size: 12px; line-height: 18px; color: var(--err)">{{ card.error }}</span><button type="button" class="dk">Try again</button></div>
+                </sc-if>
+                <sc-if value="{{ card.isOpen }}" hint-placeholder-val="{{ false }}">
+                  <div class="dd">
+                    <dl class="df">
+                      <dt>Licence</dt><dd>{{ card.licence }}</dd>
+                      <dt>Files</dt><dd>2</dd>
+                      <dt>Shared</dt><dd>Also used by your workspace “Traffic study”, so it was ready at once</dd>
+                      <dt>Added</dt><dd>21 Nov 2026, 14:05</dd>
+                      <dt>Source</dt><dd><a href="https://www.kaggle.com/datasets">Open source page</a></dd>
+                    </dl>
+                    <div>
+                      <div style="margin-bottom: 6px; font-size: 12px; color: var(--mfg)">Path in notebook code</div>
+                      <div class="dp"><span>{{ card.path }}</span><button type="button" class="dx" aria-label="Copy dataset path"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg></button></div>
+                    </div>
+                    <div style="border: 1px solid var(--border); border-radius: 8px">
+                      <div class="dl"><span>survey_2024.csv</span><b>18.4 MB</b></div>
+                      <div class="dl"><span>codebook.pdf</span><b>3.6 MB</b></div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px">
+                      <button type="button" class="dk"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 16 4-4-4-4"></path><path d="m6 8-4 4 4 4"></path><path d="m14.5 4-5 16"></path></svg>Copy load code</button>
+                      <button type="button" class="dk"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="m10 13-2 2 2 2"></path><path d="m14 17 2-2-2-2"></path></svg>Insert code</button>
+                      <span style="flex: 1"></span>
+                      <button type="button" class="dk dz"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>Delete</button>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isDatasetsEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top: 15px; padding: 28px 24px 26px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); text-align: center; color: var(--mfg); font-size: 14px; line-height: 20px">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5V19A9 3 0 0 0 21 19V5"></path><path d="M3 12A9 3 0 0 0 21 12"></path></svg>
+            <p style="margin: 4px 0 0">No datasets in this project yet.</p>
+            <p style="margin: 6px 0 0">Ask the assistant, e.g. “find and download an iris dataset”.</p>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isKnowledgeTab }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 10px">
+            <div style="display: flex; align-items: center; gap: 8px">
+              <span style="flex: 1; font-size: 12px; color: var(--mfg)">3 items · used for answers in this project only</span>
+              <button type="button" class="dk"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>Add note or document</button>
+            </div>
+            <div class="dc"><div class="dr"><span class="di"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path></svg></span><div style="flex: 1; min-width: 0"><div class="dn">field-notes-oct.md</div><div class="dm">Note · 4 KB · added 14 Nov 2026</div></div><span class="db" style="background: var(--tint); color: var(--ok)">Ready</span></div></div>
+            <div class="dc"><div class="dr"><span class="di"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path></svg></span><div style="flex: 1; min-width: 0"><div class="dn">sensor-manual.pdf</div><div class="dm">Document · 2.1 MB · added 2 Nov 2026</div></div><span class="db" style="background: var(--tint); color: var(--ok)">Ready</span></div></div>
+            <div class="dc" style="border-color: var(--err)"><div class="dr"><span class="di"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path></svg></span><div style="flex: 1; min-width: 0"><div class="dn">site-photos.zip</div><div class="dm">Added 21 Nov 2026</div></div><span class="db" style="background: var(--tint); color: var(--err)">Not used</span></div>
+              <div style="padding-left: 42px; font-size: 12px; line-height: 18px; color: var(--err)">Can't be used for answers: zip files aren't a supported note or document.</div></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isColabNotebook }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; align-items: center; gap: 5px; height: 48px; color: var(--mfg)">
+            <span style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 19l9-7-9-7z"></path><path d="M2 19l9-7-9-7z"></path></svg></span>
+            <span style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect></svg></span>
+            <span style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></span>
+            <span style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"></path><path d="M22 21H7"></path><path d="m5 11 9 9"></path></svg></span>
+            <span style="flex: 1"></span>
+            <button type="button" aria-label="Runtime: Google Colab GPU, connected" style="{{ runtimeButtonStyle }}"><span style="width: 7px; height: 7px; border-radius: 50%; background: var(--ok)"></span>Colab GPU · T4<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+          </div>
+          <div style="display: flex; align-items: flex-start; margin-top: 12px">
+            <span style="width: 28px; padding-top: 6px; color: var(--mfg)"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg></span><span style="width: 24px; height: 24px; flex-shrink: 0; margin: 3px 0 0 21px; border-radius: 50%; background: var(--muted); display: inline-flex; align-items: center; justify-content: center; color: var(--fg)"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 3l14 9-14 9z"></path></svg></span>
+            <span style="margin: 4px 7px 0 5px; font: 13px 'JetBrains Mono', monospace; color: var(--primary); white-space: pre">{{ firstCellPrompt }}</span>
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+              <div style="padding: 5px 14px; border: 1px solid var(--border); background: var(--muted); font: 13px/20px 'JetBrains Mono', monospace; white-space: pre">import torch
+torch.cuda.get_device_name(0)</div>
+              <sc-if value="{{ hasCellRun }}" hint-placeholder-val="{{ false }}">
+                <div style="padding: 4px 14px; font: 13px/20px 'JetBrains Mono', monospace">'Tesla T4'</div>
+                <div style="display: inline-flex; align-items: center; gap: 6px; padding-left: 14px; font-size: 12px; color: var(--mfg)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>Ran on Colab GPU · 2.1 s</div>
+              </sc-if>
+            </div>
+          </div>
+          <sc-if value="{{ hasCellRun }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; align-items: flex-start; margin-top: 18px">
+              <span style="width: 28px; padding-top: 6px; color: var(--mfg)"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg></span><span style="width: 24px; height: 24px; flex-shrink: 0; margin: 3px 0 0 21px; border-radius: 50%; background: var(--muted); display: inline-flex; align-items: center; justify-content: center; color: var(--fg)"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 3l14 9-14 9z"></path></svg></span>
+              <span style="margin: 4px 7px 0 5px; font: 13px 'JetBrains Mono', monospace; color: var(--err); white-space: pre">[!]:</span>
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+                <div style="padding: 5px 14px; border: 1px solid var(--border); background: var(--muted); font: 13px/20px 'JetBrains Mono', monospace; white-space: pre">model.fit(X_train, y_train, epochs=20)</div>
+                <div role="alert" style="display: flex; align-items: center; gap: 10px; padding: 8px 14px; border: 1px solid var(--err); border-radius: 8px; font-size: 13px; line-height: 18px; color: var(--err)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg><span style="flex: 1">The connection to Colab dropped during this run. It did not finish.</span><button type="button" class="dk">Reconnect</button></div>
+              </div>
+            </div>
+          </sc-if>
+        </sc-if>
+      </div>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ isWorkspaceMenu }}" hint-placeholder-val="{{ false }}">
+    <div role="menu" aria-label="Workspaces" style="position: absolute; left: 155px; top: 48px; width: 210px; box-sizing: border-box; padding: 4px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); box-shadow: 0 4px 12px rgba(0,0,0,0.12)">
+      <div style="padding: 8px 10px; font-size: 12px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; color: var(--mfg)">Workspaces</div>
+      <div style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; font-size: 14px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>Default</div>
+      <div style="height: 1px; margin: 4px -4px; background: var(--border)"></div>
+      <div style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; font-size: 14px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>New workspace…</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isNewWorkspace }}" hint-placeholder-val="{{ false }}">
+    <div role="menu" aria-label="Workspaces" style="position: absolute; left: 155px; top: 48px; width: 295px; box-sizing: border-box; padding: 4px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); box-shadow: 0 4px 12px rgba(0,0,0,0.12)">
+      <div style="padding: 8px 10px; font-size: 12px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; color: var(--mfg)">Workspaces</div>
+      <div style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; font-size: 14px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>Default</div>
+      <div style="height: 1px; margin: 4px -4px; background: var(--border)"></div>
+      <div style="display: flex; align-items: center; gap: 6px; padding: 6px 4px 4px">
+        <label for="ws-name" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Workspace name</label>
+        <input id="ws-name" type="text" placeholder="Workspace name" style="flex: 1; min-width: 0; height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--mfg); border-radius: 8px; outline: 2px solid var(--border); background: var(--bg); color: var(--fg); font: 14px Inter, sans-serif">
+        <button type="button" style="height: 32px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--primary); color: var(--pfg); font: 500 14px Inter, sans-serif; opacity: 0.5">Create</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isModelPicker }}" hint-placeholder-val="{{ false }}">
+    <div role="listbox" aria-label="Models" style="position: absolute; left: 348px; top: 466px; width: 383px; height: 366px; box-sizing: border-box; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--card); box-shadow: 0 4px 16px rgba(0,0,0,0.12)">
+      <div style="display: flex; align-items: center; gap: 10px; height: 45px; box-sizing: border-box; padding: 0 14px; border-bottom: 1px solid var(--border); color: var(--mfg)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+        <span style="font-size: 15px">Search 476 models</span>
+      </div>
+      <div style="padding: 5px">
+        <div class="mi" style="background: var(--muted)"><div style="min-width: 0"><b>NVIDIA: Nemotron 3 Ultra (free)</b><span class="s">nvidia/nemotron-3-ultra-550b-a55b:free</span></div><span class="c">thinks · tools</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></div>
+        <div class="mi"><div style="min-width: 0"><b>AionLabs: Aion 3.5</b><span class="s">aion-labs/aion-3.5</span></div><span class="c" style="margin-right: 26px">thinks · tools</span></div>
+        <div class="mi"><div style="min-width: 0"><b>AionLabs: Aion 3.5 Mini</b><span class="s">aion-labs/aion-3.5-mini</span></div><span class="c" style="margin-right: 26px">thinks · tools</span></div>
+        <div class="mi"><div style="min-width: 0"><b>AionLabs: Aion-2.0</b><span class="s">aion-labs/aion-2.0</span></div><span class="c" style="margin-right: 26px">thinks · tools</span></div>
+        <div class="mi"><div style="min-width: 0"><b>AionLabs: Aion-3.0</b><span class="s">aion-labs/aion-3.0</span></div><span class="c" style="margin-right: 26px">thinks · tools</span></div>
+        <div class="mi"><div style="min-width: 0"><b>AionLabs: Aion-3.0-Mini</b><span class="s">aion-labs/aion-3.0-mini</span></div><span class="c" style="margin-right: 26px">thinks · tools</span></div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isEffortTooltip }}" hint-placeholder-val="{{ false }}">
+    <div role="tooltip" style="position: absolute; left: 564px; top: 806px; padding: 4px 8px; border-radius: 6px; background: var(--fg); color: var(--bg); font: 500 12px/16px Inter, sans-serif; white-space: nowrap">Effort: Model default</div>
+  </sc-if>
+
+  <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.5)"></div>
+    <section role="dialog" aria-modal="true" aria-label="Settings" style="position: absolute; left: 250px; top: 140px; width: 940px; height: 620px; display: flex; overflow: hidden; border-radius: 16px; background: var(--bg); box-shadow: 0 24px 64px rgba(0,0,0,0.3)">
+      <nav aria-label="Settings sections" style="width: 224px; box-sizing: border-box; flex-shrink: 0; display: flex; flex-direction: column; padding: 20px 12px 16px; border-right: 1px solid var(--border); background: var(--nav)">
+        <div style="padding: 0 12px 12px; font-size: 16px; font-weight: 600; line-height: 24px">Settings</div>
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <button type="button" class="ni {{ nav.general }}" style="border: 0; background: none; font-family: Inter, sans-serif"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 4h-7"></path><path d="M10 4H3"></path><path d="M21 12h-9"></path><path d="M8 12H3"></path><path d="M21 20h-5"></path><path d="M12 20H3"></path><path d="M14 2v4"></path><path d="M8 10v4"></path><path d="M16 18v4"></path></svg>General</button>
+          <button type="button" class="ni {{ nav.answers }}" style="border: 0; background: none; font-family: Inter, sans-serif"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path><path d="M9 18h6"></path><path d="M10 22h4"></path></svg>Answers</button>
+          <button type="button" class="ni {{ nav.tools }}" style="border: 0; background: none; font-family: Inter, sans-serif"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>Tools</button>
+          <button type="button" class="ni {{ nav.account }}" style="border: 0; background: none; font-family: Inter, sans-serif"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>Account</button>
+          <button type="button" class="ni {{ nav.about }}" style="border: 0; background: none; font-family: Inter, sans-serif"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>About</button>
+          <sc-if value="{{ hasProvidersNav }}" hint-placeholder-val="{{ false }}"><button type="button" class="ni {{ nav.providers }}" style="border: 0; background: none; font-family: Inter, sans-serif"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="8" x="2" y="2" rx="2"></rect><rect width="20" height="8" x="2" y="14" rx="2"></rect><path d="M6 6h.01"></path><path d="M6 18h.01"></path></svg>Providers</button></sc-if>
+        </div>
+        <span style="flex: 1"></span>
+        <div style="padding: 0 4px; font-size: 12px; color: var(--mfg)">Changes apply right away</div>
+      </nav>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+        <div style="display: flex; align-items: flex-start; gap: 16px; padding: 20px 24px 18px; border-bottom: 1px solid var(--border)">
+          <div style="flex: 1; min-width: 0">
+            <h2 style="margin: 0; font-size: 20px; font-weight: 600; line-height: 28px">{{ settingsTitle }}</h2>
+            <p style="margin: 2px 0 0; font-size: 14px; line-height: 20px; color: var(--mfg)">{{ settingsDetail }}</p>
+          </div>
+          <button type="button" class="ib" aria-label="Close" style="width: 32px; height: 32px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+        </div>
+        <div style="padding: 0 24px">
+
+          <sc-if value="{{ isSettingsGeneral }}" hint-placeholder-val="{{ true }}">
+            <div class="rw"><div class="rx"><div class="rt">Theme</div><div class="rd">Light or dark, for the chat and the notebook.</div></div>
+              <div role="radiogroup" aria-label="Theme" style="display: inline-flex; gap: 2px; padding: 2px; border-radius: 10px; background: var(--muted)">
+                <span style="{{ themeLightStyle }}">Light</span><span style="{{ themeDarkStyle }}">Dark</span>
+              </div></div>
+            <div class="rw"><div class="rx"><div class="rt">Notebook panel</div><div class="rd">Show or hide the notebook next to the chat.</div></div><span class="rv">Ctrl+\</span></div>
+          </sc-if>
+
+          <sc-if value="{{ isSettingsAnswers }}" hint-placeholder-val="{{ false }}">
+            <div class="rw"><div class="rx"><div class="rt">Show thinking</div><div class="rd">Show the model's reasoning above its answer.</div></div><span class="sw"><i></i></span></div>
+          </sc-if>
+
+          <sc-if value="{{ isSettingsTools }}" hint-placeholder-val="{{ false }}">
+            <div class="rw"><div class="rx"><div class="rt">Web search</div><div class="rd">Let the model search the internet and read pages when it needs to.</div></div><span class="sw"><i></i></span></div>
+            <div class="rw"><div class="rx"><div class="rt">Notebook</div><div class="rd">Let the model read your project notebook and run code in it. Risky code asks first.</div></div><span class="sw"><i></i></span></div>
+            <div class="rw"><div class="rx"><div class="rt">Risky code</div><div class="rd">Code the app flags as risky asks Run or Skip before it runs.</div></div><span class="rv">Always asks</span></div>
+          </sc-if>
+
+          <sc-if value="{{ isSettingsAccount }}" hint-placeholder-val="{{ false }}">
+            <div class="rw"><div class="rx"><div class="rt">Kaggle account</div><div class="rd">Not connected. Connect to sign in with Kaggle in your browser. Public datasets work without an account. To use your private or own Kaggle datasets, connect first.</div></div><button type="button" class="ob" style="height: 36px; padding: 0 18px; font-size: 14px; font-weight: 400">Connect</button></div>
+          </sc-if>
+
+          <sc-if value="{{ isSettingsAbout }}" hint-placeholder-val="{{ false }}">
+            <div class="rw"><div class="rx"><div class="rt">Version</div><div class="rd">The build you are running.</div></div><span class="rv">Development build</span></div>
+            <div class="rw"><div class="rx"><div class="rt">Runs on</div><div class="rd">Only this PC can open the app.</div></div><span class="rv">127.0.0.1</span></div>
+            <div class="rw"><div class="rx"><div class="rt">Models from</div><div class="rd">Every model in the picker comes from here.</div></div><span class="rv">OpenRouter</span></div>
+          </sc-if>
+          <sc-if value="{{ isSettingsProviders }}" hint-placeholder-val="{{ false }}">
+            <div class="rw"><div class="rx"><div class="rt">OpenRouter</div><div class="rd" style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px">https://openrouter.ai/api/v1</div></div><span class="db" style="background: var(--tint); color: var(--ok)">Connected</span><button type="button" class="ob">Edit</button></div>
+            <div class="rw"><div class="rx"><div class="rt">Work proxy</div><div class="rd" style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px">https://llm.example.internal/v1</div><div class="rd" style="color: var(--err)">Key rejected: the provider says this API key is not valid. Not ready.</div></div><button type="button" class="ob">Edit</button></div>
+            <div style="margin-top: 4px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; gap: 12px">
+              <div class="rt">Edit Work proxy</div>
+              <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+                <label class="fl" for="pv-name">Provider name<input id="pv-name" class="fi" type="text" value="Work proxy" readOnly="{{ true }}"></label>
+                <label class="fl" for="pv-url">Base URL<input id="pv-url" class="fi" type="url" value="https://llm.example.internal/v1" readOnly="{{ true }}"></label>
+              </div>
+              <label class="fl" for="pv-key">API key<input id="pv-key" class="fi" type="password" value="sample-key-shown-masked" readOnly="{{ true }}"></label>
+              <div style="display: flex; align-items: center; gap: 12px"><button type="button" class="pb">Save and connect</button><button type="button" class="ol">Add another provider</button><span style="font-size: 12px; color: var(--mfg)">The saved key stays masked.</span></div>
+            </div>
+          </sc-if>
+
+        </div>
+      </div>
+    </section>
+  </sc-if>
+
+  <sc-if value="{{ isSlashMenu }}" hint-placeholder-val="{{ false }}">
+    <div role="listbox" aria-label="Commands" style="position: absolute; left: 336px; top: 634px; width: 768px; box-sizing: border-box; padding: 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); box-shadow: 0 8px 24px rgba(0,0,0,0.12)">
+      <div style="padding: 6px 10px 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--mfg)">Commands</div>
+      <div role="option" aria-selected="true" style="display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 8px; background: var(--muted)">
+        <span style="width: 28px; height: 28px; flex-shrink: 0; border-radius: 8px; background: var(--tint); color: var(--primary); display: inline-flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5V19A9 3 0 0 0 21 19V5"></path><path d="M3 12A9 3 0 0 0 21 12"></path></svg></span>
+        <span style="font: 600 13px 'JetBrains Mono', monospace">/kaggle</span>
+        <span style="font-size: 13px; color: var(--mfg)">Show my own Kaggle datasets and download them into this project</span>
+      </div>
+      <div style="display: flex; gap: 16px; margin-top: 4px; padding: 8px 10px 4px; border-top: 1px solid var(--border); font-size: 12px; color: var(--mfg)">
+        <span>↑ ↓ move</span><span>Enter or Tab run</span><span>Esc close</span>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isKaggleWindow }}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.5)"></div>
+    <section role="dialog" aria-modal="true" aria-labelledby="kg-title" style="position: absolute; left: 330px; top: 100px; width: 780px; height: 700px; display: flex; flex-direction: column; overflow: hidden; border-radius: 16px; background: var(--bg); box-shadow: 0 24px 64px rgba(0,0,0,0.3)">
+      <div style="display: flex; align-items: flex-start; gap: 12px; padding: 20px 20px 16px; border-bottom: 1px solid var(--border)">
+        <span style="width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px; background: var(--tint); color: var(--primary); display: inline-flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5V19A9 3 0 0 0 21 19V5"></path><path d="M3 12A9 3 0 0 0 21 12"></path></svg></span>
+        <div style="flex: 1; min-width: 0">
+          <h2 id="kg-title" style="margin: 0; font-size: 20px; font-weight: 600; line-height: 28px">My Kaggle datasets</h2>
+          <p style="margin: 2px 0 0; font-size: 14px; line-height: 20px; color: var(--mfg)">{{ kaggleSubtitle }}</p>
+        </div>
+        <button type="button" class="ib" aria-label="Close" style="width: 32px; height: 32px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+      </div>
+
+      <sc-if value="{{ isKaggleList }}" hint-placeholder-val="{{ true }}">
+        <div style="padding: 12px 20px">
+          <label for="kg-search" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Search my datasets</label>
+          <div style="display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; color: var(--mfg)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+            <input id="kg-search" type="search" placeholder="Search by title or name" style="flex: 1; border: 0; outline: none; background: transparent; color: var(--fg); font: 14px Inter, sans-serif">
+            <span style="font-size: 12px">6 datasets</span>
+          </div>
+        </div>
+        <div class="kr kh"><span>Dataset</span><span>Size</span><span>Licence</span><span>Updated</span><span></span></div>
+        <div style="flex: 1; min-height: 0; overflow: hidden">
+          <sc-for list="{{ kaggleRows }}" as="row" hint-placeholder-count="6">
+            <div>
+              <div class="kr" style="{{ row.rowStyle }}">
+                <div style="min-width: 0"><div class="kt">{{ row.title }}</div><div class="kn">{{ row.ref }}</div></div>
+                <span>{{ row.size }}</span>
+                <span class="km">{{ row.licence }}</span>
+                <span class="km">{{ row.updated }}</span>
+                <sc-if value="{{ row.canDownload }}" hint-placeholder-val="{{ true }}"><span class="ka"><button type="button" class="kd"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="m7 10 5 5 5-5"></path><path d="M12 15V3"></path></svg>Download</button></span></sc-if>
+                <sc-if value="{{ row.isDownloading }}" hint-placeholder-val="{{ false }}"><span class="ka" role="status" style="color: var(--primary)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>Downloading… {{ row.pct }}%</span></sc-if>
+                <sc-if value="{{ row.isInProject }}" hint-placeholder-val="{{ false }}"><span class="ka" style="color: var(--ok)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>In this project</span></sc-if>
+              </div>
+              <sc-if value="{{ row.hasError }}" hint-placeholder-val="{{ false }}"><p style="margin: -6px 0 0; padding: 0 20px 10px; border-bottom: 1px solid var(--border); font-size: 12px; line-height: 18px; color: var(--err)">{{ row.error }}</p></sc-if>
+              <sc-if value="{{ row.isAsking }}" hint-placeholder-val="{{ false }}">
+                <div style="margin: 0 20px 12px; overflow: hidden; border: 1px solid var(--tintb); border-radius: 12px; background: var(--bg)">
+                  <div style="display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--tint); font-size: 14px; font-weight: 600"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="M9.1 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg>Large dataset, check first</div>
+                  <div style="padding: 12px 16px; display: flex; flex-direction: column; gap: 12px">
+                    <p style="margin: 0; font-size: 14px; line-height: 20px">This dataset is {{ row.size }}. Download it into this project?</p>
+                    <div style="display: flex; gap: 8px"><button type="button" class="pb">Download</button><button type="button" class="ol">Skip</button></div>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isKaggleLoading }}" hint-placeholder-val="{{ false }}">
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 10px; padding: 20px">
+          <p role="status" style="margin: 0 0 6px; display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--mfg)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>Loading your Kaggle datasets…</p>
+          <div aria-hidden="true" style="height: 48px; border-radius: 8px; background: var(--muted)"></div>
+          <div aria-hidden="true" style="height: 48px; border-radius: 8px; background: var(--muted); opacity: 0.8"></div>
+          <div aria-hidden="true" style="height: 48px; border-radius: 8px; background: var(--muted); opacity: 0.6"></div>
+          <div aria-hidden="true" style="height: 48px; border-radius: 8px; background: var(--muted); opacity: 0.4"></div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isKaggleMessage }}" hint-placeholder-val="{{ false }}">
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 40px; text-align: center">
+          <span style="{{ kaggleMessage.iconStyle }}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg></span>
+          <p style="margin: 0; max-width: 380px; font-size: 15px; line-height: 22px">{{ kaggleMessage.text }}</p>
+          <sc-if value="{{ kaggleMessage.hasButton }}" hint-placeholder-val="{{ true }}"><button type="button" class="pb">{{ kaggleMessage.button }}</button></sc-if>
+        </div>
+      </sc-if>
+
+      <div style="display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--border); font-size: 12px; color: var(--mfg)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        Only datasets your Kaggle account owns. The assistant isn't sent this list.
+      </div>
+    </section>
+  </sc-if>
+  <sc-if value="{{ isModeMenu }}" hint-placeholder-val="{{ false }}">
+    <div role="menu" aria-label="Agent mode" style="position: absolute; left: 744px; bottom: 68px; width: 360px; box-sizing: border-box; padding: 4px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); box-shadow: 0 8px 24px rgba(0,0,0,0.12)">
+      <div class="gh"><span>Agent mode</span></div>
+      <div class="mi"><div style="min-width: 0"><b>Manual</b><span class="s">Asks before every tool it uses, even ones you asked for.</span></div></div>
+      <div class="mi" style="background: var(--muted)"><div style="min-width: 0"><b>Auto</b><span class="s">Asks only before risky actions, like deleting files or sending project data out.</span></div><span style="margin-left: auto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span></div>
+      <div class="mi"><div style="min-width: 0"><b>Free</b><span class="s">Makes routine choices on its own and tells you what it chose. Still asks before risky actions.</span></div></div>
+      <div style="padding: 8px 12px 6px; border-top: 1px solid var(--border); margin-top: 4px; font-size: 12px; color: var(--mfg)">New chats start in Auto.</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isEmptyPicker }}" hint-placeholder-val="{{ false }}">
+    <div role="dialog" aria-label="Models" style="position: absolute; left: 348px; bottom: 68px; width: 383px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 12px; background: var(--card); box-shadow: 0 4px 16px rgba(0,0,0,0.12)">
+      <div style="display: flex; align-items: center; gap: 10px; height: 45px; box-sizing: border-box; padding: 0 14px; border-bottom: 1px solid var(--border); color: var(--mfg)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><span style="font-size: 15px">Search models</span></div>
+      <div style="padding: 24px 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center">
+        <b style="font-size: 14px; font-weight: 600">No models yet</b>
+        <span style="font-size: 13px; line-height: 18px; color: var(--mfg)">Connect a provider with its address and API key to see its models here.</span>
+        <button type="button" class="pb">Connect a provider</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isGroupedPicker }}" hint-placeholder-val="{{ false }}">
+    <div role="listbox" aria-label="Models" style="position: absolute; left: 348px; bottom: 68px; width: 400px; box-sizing: border-box; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--card); box-shadow: 0 4px 16px rgba(0,0,0,0.12)">
+      <div style="display: flex; align-items: center; gap: 10px; height: 45px; box-sizing: border-box; padding: 0 14px; border-bottom: 1px solid var(--border); color: var(--mfg)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><span style="font-size: 15px">Search 481 models</span></div>
+      <div style="padding: 5px">
+        <div class="gh"><span>OpenRouter</span><span style="font-weight: 400; text-transform: none; letter-spacing: 0">476 models</span></div>
+        <div class="mi"><div style="min-width: 0"><b>Claude Sonnet 5.5</b><span class="s">anthropic/claude-sonnet-5.5</span></div><span class="c" style="margin-right: 26px">thinks · tools</span></div>
+        <div class="mi"><div style="min-width: 0"><b>Llama 4 Scout</b><span class="s">meta-llama/llama-4-scout</span></div><span class="c" style="margin-right: 26px">tools</span></div>
+        <div class="gh" style="margin-top: 4px"><span>Local (Ollama)</span><span style="font-weight: 400; text-transform: none; letter-spacing: 0">5 models</span></div>
+        <div class="mi" style="background: var(--muted)"><div style="min-width: 0"><b>Llama 4 Scout</b><span class="s">llama4:scout</span></div><span class="c">tools</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></div>
+        <div class="mi"><div style="min-width: 0"><b>Qwen 3 14B</b><span class="s">qwen3:14b</span></div><span class="c" style="margin-right: 26px">thinks · tools</span></div>
+        <div class="gh" style="margin-top: 4px"><span>Work proxy</span><span style="font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--err)">Unavailable</span></div>
+        <div style="padding: 4px 12px 10px; font-size: 13px; line-height: 18px; color: var(--mfg)">Its key was rejected. Fix it in Settings › Providers.</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showShowTooltip }}" hint-placeholder-val="{{ false }}">
+    <div class="hp" role="tooltip" style="position: absolute; left: 60px; top: 70px; z-index: 3">Show chat history</div>
+  </sc-if>
+
+  <sc-if value="{{ isDeleteDialog }}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.45)"></div>
+    <div role="alertdialog" aria-labelledby="delete-chat-title" style="position: absolute; left: 50%; top: 50%; width: 420px; box-sizing: border-box; transform: translate(-50%, -50%); padding: 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); box-shadow: 0 8px 24px rgba(0,0,0,0.12)">
+      <h2 id="delete-chat-title" style="margin: 0; font-size: 16px; font-weight: 600; line-height: 24px">Delete this chat?</h2>
+      <p style="margin: 6px 0 0; font-size: 14px; line-height: 20px; color: var(--mfg)">This cannot be undone.</p>
+      <div style="margin-top: 4px; font-size: 13.5px; line-height: 20px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">Which hours are the busiest in the Hanoi traffic counts?</div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px">
+        <button type="button" class="ol">Cancel</button>
+        <button type="button" class="pb" style="background: var(--err); color: #fff">Delete</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isRuntimeMenu }}" hint-placeholder-val="{{ false }}">
+    <div role="menu" aria-label="Runtime" style="position: absolute; left: 1084px; top: 160px; width: 340px; box-sizing: border-box; padding: 4px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); box-shadow: 0 8px 24px rgba(0,0,0,0.12)">
+      <div class="gh"><span>Runtime for this project</span></div>
+      <div class="mi"><div style="min-width: 0"><b>This PC</b><span class="s">Runs cells on your computer</span></div></div>
+      <div class="mi" style="background: var(--muted)"><div style="min-width: 0"><b>Google Colab GPU</b><span class="s" style="color: var(--ok)">Connected · T4 GPU</span></div><span style="margin-left: auto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span></div>
+      <div class="mi"><div style="min-width: 0"><b style="color: var(--mfg)">Google Colab A100</b><span class="s" style="color: var(--err)">Unavailable: your Colab plan has no A100 access</span></div></div>
+      <div style="height: 1px; margin: 4px -4px; background: var(--border)"></div>
+      <div class="mi"><b style="font-weight: 400">Disconnect Colab</b></div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","default":"light","options":["light","dark"]},"screen":{"editor":"enum","default":"s03","options":["s01","s02","s03","s04","s05","s06","s07","s08","s09","s10","s11","s12","s13","s14","s15","s16","s17","s18","s19","s20","s21","s22","s23","s24","s25","s26","s27","s28","s29","s30","s31","s32","s33","s34","s35","s36","s37","s38","s40","s41","s42","s43","s44","s45","s46","s47"]},"$preview":{"width":1440,"height":900}}'>
+const TOKENS = {
+  light: { bg: '#ffffff', fg: '#09090b', card: '#ffffff', muted: '#f4f4f5', mfg: '#5d5d65', border: '#e4e4e7', primary: '#1975d2', pfg: '#ffffff', panel: '#fcfcfc', nav: '#fafafa', logo: '#14213D', ok: '#15803d', err: '#b91c1c', tint: 'rgba(25,117,210,0.10)', tintb: 'rgba(25,117,210,0.30)' },
+  dark: { bg: '#09090b', fg: '#fafafa', card: '#0e0e11', muted: '#27272a', mfg: '#a4a4ad', border: '#27272a', primary: '#42a5f5', pfg: '#09090b', panel: '#0d0d10', nav: '#17171a', logo: '#ffffff', ok: '#4ade80', err: '#f87171', tint: 'rgba(66,165,245,0.14)', tintb: 'rgba(66,165,245,0.35)' }
+};
+
+// sample datasets owned by the connected Kaggle account, used by the /kaggle window and the Datasets tab
+const KAGGLE_DATASETS = [
+  { id: 'aq', title: 'Vietnam air quality, daily', ref: 'your-name/vietnam-air-quality-daily', size: '48 MB', licence: 'CC BY 4.0', updated: '12 Nov 2026' },
+  { id: 'traffic', title: 'Hanoi traffic counts 2025', ref: 'your-name/hanoi-traffic-counts-2025', size: '310 MB', licence: 'CC0', updated: '3 Oct 2026' },
+  { id: 'weather', title: 'Weather stations, Red River Delta', ref: 'your-name/red-river-delta-weather', size: '1.2 GB', licence: 'CC BY-SA 4.0', updated: '18 Sep 2026' },
+  { id: 'sensor', title: 'PM2.5 sensor calibration runs', ref: 'your-name/pm25-sensor-calibration', size: '6 MB', licence: 'MIT', updated: '2 Aug 2026' },
+  { id: 'energy', title: 'Household energy survey', ref: 'your-name/household-energy-survey', size: '22 MB', licence: 'CC BY 4.0', updated: '14 Jun 2026' },
+  { id: 'hcmc', title: 'Ho Chi Minh City AQI, hourly', ref: 'your-name/hcmc-aqi-hourly', size: '95 MB', licence: 'CC BY 4.0', updated: '9 Mar 2026' }
+];
+const DOWNLOAD_PCT = 42;
+const KAGGLE_UNREACHABLE = "Couldn't reach Kaggle. Try again.";
+// row state per screen; a dataset not listed can still be downloaded
+const ROW_STATES = {
+  s16: { traffic: 'in' },
+  s21: { aq: 'down', traffic: 'in', sensor: 'fail', energy: 'in' },
+  s22: { traffic: 'in', weather: 'ask' }
+};
+const CARD_ORDER = ['aq', 'energy', 'traffic', 'sensor'];
+const CARD_STATES = { aq: 'down', energy: 'shared', traffic: 'ready', sensor: 'fail' };
+const DOWNLOADED_TEXT = '20 of 48 MB';
+
+const KAGGLE_WINDOW_SCREENS = ['s16', 's17', 's18', 's19', 's20', 's21', 's22'];
+const KAGGLE_LIST_SCREENS = ['s16', 's21', 's22'];
+const ICON_BASE = 'width: 44px; height: 44px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; ';
+const KAGGLE_MESSAGES = {
+  s18: { text: 'Connect your Kaggle account to see your datasets', button: 'Connect', iconStyle: ICON_BASE + 'background: var(--muted); color: var(--mfg);' },
+  s19: { text: 'You have no datasets on Kaggle yet.', button: '', iconStyle: ICON_BASE + 'background: var(--muted); color: var(--mfg);' },
+  s20: { text: KAGGLE_UNREACHABLE, button: 'Try again', iconStyle: ICON_BASE + 'background: var(--tint); color: var(--err);' }
+};
+const SEND_BASE = 'width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: var(--primary); color: var(--pfg); padding: 0; ';
+
+function kaggleRowsFor(screen) {
+  const states = ROW_STATES[screen] ?? {};
+  return KAGGLE_DATASETS.map((d) => {
+    const state = states[d.id] ?? 'avail';
+    const hasNote = state === 'fail' || state === 'ask';
+    return {
+      ...d,
+      pct: DOWNLOAD_PCT,
+      canDownload: state === 'avail' || state === 'fail' || state === 'ask',
+      isDownloading: state === 'down',
+      isInProject: state === 'in',
+      hasError: state === 'fail',
+      error: KAGGLE_UNREACHABLE,
+      isAsking: state === 'ask',
+      rowStyle: hasNote ? 'border-bottom: 0;' : ''
+    };
+  });
+}
+
+function kaggleCards() {
+  return CARD_ORDER.map((id) => {
+    const d = KAGGLE_DATASETS.find((x) => x.id === id);
+    const state = CARD_STATES[id];
+    const isFailed = state === 'fail';
+    const isDownloading = state === 'down';
+    // the shared dataset is shown opened, so its details and full path are visible
+    const isOpen = state === 'shared';
+    return {
+      ...d,
+      pct: DOWNLOAD_PCT,
+      isDownloading,
+      isOpen,
+      sizeText: isDownloading ? DOWNLOADED_TEXT : d.size,
+      hasBadge: isFailed || isDownloading,
+      badge: isFailed ? 'Failed' : DOWNLOAD_PCT + '%',
+      badgeStyle: isFailed ? 'background: var(--tint); color: var(--err);' : 'background: var(--tint); color: var(--primary);',
+      boxStyle: isFailed ? 'border-color: var(--err);' : '',
+      barStyle: 'height: 100%; width: ' + DOWNLOAD_PCT + '%; background: var(--primary);',
+      path: '/work/datasets/' + d.ref + '/',
+      toggleLabel: (isOpen ? 'Hide details of ' : 'Show details of ') + d.title,
+      toggleStyle: isOpen ? 'background: var(--muted); color: var(--fg);' : '',
+      chevron: isOpen ? 'm18 15-6-6-6 6' : 'm6 9 6 6 6-6',
+      hasError: isFailed,
+      error: KAGGLE_UNREACHABLE
+    };
+  });
+}
+
+const NOTEBOOK_SCREENS = ['s01', 's02', 's23', 's35', 's40', 's41'];
+const CHAT_SCREENS = ['s13', 's14'];
+const SETTINGS_SCREENS = ['s08', 's09', 's10', 's11', 's12', 's37'];
+const SETTINGS_TEXT = {
+  s08: ['General', 'How SillyTherin looks on this PC.'],
+  s09: ['Answers', 'How replies are shown in this chat.'],
+  s10: ['Tools', "What the model may use in this chat. Greyed out when the picked model can't use tools."],
+  s11: ['Account', 'Shared by every chat on this PC.'],
+  s12: ['About', 'This copy of SillyTherin.'],
+  s37: ['Providers', 'Where the models in the picker come from. Shared by every chat on this PC.']
+};
+
+// UI prototype screens: the changed chat and notebook flows, for review before they are built
+const PROTO_SCREENS = ['s24', 's25', 's26', 's27', 's28', 's29', 's30', 's31', 's32', 's33', 's34', 's35', 's36', 's37', 's38', 's40', 's41', 's42', 's43', 's44', 's45', 's46', 's47'];
+const PROTO_CHAT_SCREENS = ['s24', 's25', 's26', 's28', 's42', 's29', 's30', 's31', 's32', 's33', 's34', 's35', 's43', 's45', 's46', 's47'];
+const DELIVERY_SCREENS = ['s24', 's25', 's26'];
+const GOAL_SCREENS = ['s32', 's33', 's34'];
+const COLAB_SCREENS = ['s40', 's41'];
+const MODEL_LABELS = { s36: 'Choose a model', s38: 'Llama 4 Scout · Local' };
+const MODE_LABELS = { s29: 'Manual', s42: 'Free' };
+const CHECKLIST_STEPS = ['Load Vietnam air quality, daily', 'Keep Hanoi and Ho Chi Minh City', 'Average PM2.5 by month', 'Write up the worst month'];
+const CHECKLIST_STATES = {
+  s32: ['done', 'active', 'todo', 'todo'],
+  s33: ['done', 'done', 'wait', 'todo'],
+  s34: ['done', 'done', 'done', 'done']
+};
+const CHECKLIST_SUMMARY = { s32: '1 of 4 done', s33: '2 of 4 done · 1 needs you', s34: '4 of 4 done' };
+// chat history side list (stories CH-1 to CH-6): newest first, named from the first question
+const HISTORY_SCREENS = ['s43', 's44', 's45', 's46', 's47'];
+const HISTORY_CHATS = [
+  { id: 'pm25', title: 'Compare PM2.5 in Hanoi and Ho Chi Minh City for 2025', date: 'Today 14:20' },
+  { id: 'traffic', title: 'Which hours are the busiest in the Hanoi traffic counts?', date: 'Yesterday' },
+  { id: 'sensor', title: 'What was the calibration offset of sensor S-14?', date: '18 Nov' },
+  { id: 'aq', title: 'Find a public dataset on air quality in Hanoi.', date: '12 Nov' }
+];
+const OPEN_CHAT = { s43: 'pm25', s45: 'traffic', s46: 'pm25', s47: 'traffic' };
+const ROW_MARKERS = { s47: { pm25: 'replying', sensor: 'waiting' } };
+const HOVERED_ROW = { s43: 'aq', s45: 'traffic' };
+
+function historyRowsFor(screen) {
+  return HISTORY_CHATS.map((chat) => {
+    const isOpen = OPEN_CHAT[screen] === chat.id;
+    const marker = (ROW_MARKERS[screen] ?? {})[chat.id];
+    const isHovered = HOVERED_ROW[screen] === chat.id;
+    return {
+      title: chat.title,
+      titleStyle: isOpen ? 'font-weight: 600;' : 'font-weight: 500;',
+      date: chat.date,
+      current: isOpen ? 'true' : 'false',
+      style: isOpen || isHovered ? 'background: var(--muted);' : '',
+      isReplying: marker === 'replying',
+      isWaiting: marker === 'waiting',
+      showDelete: isHovered || (isOpen && screen === 's45'),
+      deleteStyle: screen === 's45' ? 'background: var(--bg); color: var(--err);' : ''
+    };
+  });
+}
+const CHIP_BASE = 'display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border-radius: 8px; color: var(--fg); font: 500 13px Inter, sans-serif; white-space: nowrap; ';
+
+function checklistFor(screen) {
+  const states = CHECKLIST_STATES[screen] ?? [];
+  return CHECKLIST_STEPS.map((text, i) => {
+    const state = states[i] ?? 'todo';
+    return {
+      text,
+      isDone: state === 'done',
+      isActive: state === 'active',
+      isWaiting: state === 'wait',
+      isTodo: state === 'todo',
+      rowStyle: state === 'wait' ? 'background: var(--tint);' : '',
+      textStyle: state === 'done' ? 'color: var(--mfg);' : (state === 'todo' ? 'color: var(--mfg);' : 'font-weight: 500;')
+    };
+  });
+}
+const TAB_BASE = 'display: inline-flex; align-items: center; gap: 6px; height: 40px; box-sizing: border-box; padding: 0 12px; border: 0; background: transparent; font-family: Inter, sans-serif; font-size: 14px; ';
+const SEGMENT_BASE = 'padding: 5px 14px; border-radius: 8px; font-size: 14px; ';
+
+class Component extends DCLogic {
+  renderVals() {
+    const theme = this.props.theme === 'dark' ? 'dark' : 'light';
+    const screen = this.props.screen ?? 's03';
+    const t = TOKENS[theme];
+    const isNotebookLayout = NOTEBOOK_SCREENS.includes(screen);
+    const isChatView = CHAT_SCREENS.includes(screen);
+    const isSettings = SETTINGS_SCREENS.includes(screen);
+    const settingsText = SETTINGS_TEXT[screen] ?? ['', ''];
+    const isDatasetsTab = screen === 's02' || screen === 's23';
+    const isProto = PROTO_SCREENS.includes(screen);
+    const isProtoChat = PROTO_CHAT_SCREENS.includes(screen);
+    const isGoal = GOAL_SCREENS.includes(screen);
+    const isKnowledgeTab = screen === 's35';
+    const isColabNotebook = COLAB_SCREENS.includes(screen);
+    const isNotebookTabActive = !isDatasetsTab && !isKnowledgeTab;
+    const isDark = theme === 'dark';
+    const isSlashMenu = screen === 's15';
+    const isHistoryScreen = HISTORY_SCREENS.includes(screen);
+    const isHistoryOpen = (this.state ?? {}).historyOpen ?? screen !== 's46';
+    const kaggleMessage = KAGGLE_MESSAGES[screen];
+    const vars = '--bg:' + t.bg + ';--fg:' + t.fg + ';--card:' + t.card + ';--muted:' + t.muted + ';--mfg:' + t.mfg + ';--border:' + t.border + ';--primary:' + t.primary + ';--pfg:' + t.pfg + ';--panel:' + t.panel + ';--nav:' + t.nav + ';--logo:' + t.logo + ';--ok:' + t.ok + ';--err:' + t.err + ';--tint:' + t.tint + ';--tintb:' + t.tintb + ';';
+    return {
+      composerText: isSlashMenu ? '/' : '',
+      sendStyle: SEND_BASE + (isSlashMenu ? 'opacity: 1;' : 'opacity: 0.4;'),
+      isSlashMenu,
+      isKaggleWindow: KAGGLE_WINDOW_SCREENS.includes(screen),
+      kaggleSubtitle: screen === 's18' ? 'Not connected' : 'Connected as your-name',
+      isKaggleList: KAGGLE_LIST_SCREENS.includes(screen),
+      isKaggleLoading: screen === 's17',
+      isKaggleMessage: !!kaggleMessage,
+      kaggleMessage: kaggleMessage ? { ...kaggleMessage, hasButton: !!kaggleMessage.button } : { text: '', button: '', hasButton: false, iconStyle: '' },
+      kaggleRows: kaggleRowsFor(screen),
+      hasKaggleCards: screen === 's23',
+      kaggleCards: kaggleCards(),
+      isDatasetsEmpty: screen === 's02',
+      isProto,
+      isProtoChat,
+      hasDeliveryMessage: DELIVERY_SCREENS.includes(screen),
+      isMsgWaiting: screen === 's24',
+      isMsgAccepted: screen === 's25',
+      isMsgUnsent: screen === 's26',
+      isDescribeImport: screen === 's28',
+      isFreePick: screen === 's42',
+      isManualApproval: screen === 's29',
+      isRiskyApproval: screen === 's30',
+      isSteering: screen === 's31',
+      hasGoalChat: isGoal,
+      hasGoal: isGoal,
+      isGoalWorking: screen === 's32',
+      isGoalWaiting: screen === 's33',
+      isGoalDone: screen === 's34',
+      isChecklistOpen: screen === 's32' || screen === 's33',
+      checklistExpanded: screen === 's34' ? 'false' : 'true',
+      checklistChevron: screen === 's34' ? 'm6 9 6 6 6-6' : 'm18 15-6-6-6 6',
+      checklistSummary: CHECKLIST_SUMMARY[screen] ?? '',
+      checklist: checklistFor(screen),
+      isKnowledgeAnswer: screen === 's35',
+      isReopenedChat: ['s43', 's46'].includes(screen),
+      isTrafficChat: screen === 's45' || screen === 's47',
+      isNotHistory: !isHistoryScreen,
+      historyOffset: !isHistoryScreen ? '0px' : (isHistoryOpen ? '272px' : '52px'),
+      hasHistoryList: isHistoryScreen && isHistoryOpen,
+      hasHistoryRows: screen !== 's44',
+      historyCount: HISTORY_CHATS.length,
+      isHistoryEmpty: screen === 's44',
+      isHistoryCollapsed: isHistoryScreen && !isHistoryOpen,
+      showShowTooltip: screen === 's46' && !isHistoryOpen,
+      toggleHistory: () => this.setState({ historyOpen: !isHistoryOpen }),
+      isDeleteDialog: screen === 's45',
+      historyRows: historyRowsFor(screen),
+      modelLabel: MODEL_LABELS[screen] ?? 'NVIDIA: Nemotron 3 Ultra (fr…',
+      modeLabel: MODE_LABELS[screen] ?? 'Auto',
+      modeButtonStyle: CHIP_BASE + 'border: 1px solid var(--border); background: ' + (screen === 's27' ? 'var(--muted)' : 'var(--bg)') + ';',
+      hasKnowledgeTab: isProto && isNotebookLayout,
+      isKnowledgeTab,
+      tabKnowledgeStyle: TAB_BASE + (isKnowledgeTab ? 'color: var(--fg); font-weight: 500; border-bottom: 2px solid var(--fg); margin-bottom: -1px;' : 'color: var(--mfg); font-weight: 400;'),
+      isColabNotebook,
+      hasCellRun: screen === 's41',
+      firstCellPrompt: screen === 's41' ? '[1]:' : '[ ]:',
+      runtimeButtonStyle: CHIP_BASE + 'border: 1px solid var(--border); background: ' + (screen === 's40' ? 'var(--muted)' : 'var(--bg)') + ';',
+      isRuntimeMenu: screen === 's40',
+      isModeMenu: screen === 's27',
+      isEmptyPicker: screen === 's36',
+      isGroupedPicker: screen === 's38',
+      hasProvidersNav: isProto,
+      isSettingsProviders: screen === 's37',
+      rootStyle: vars + 'position: relative; width: 1440px; height: 900px; overflow: hidden; background: var(--bg); color: var(--fg); font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased;',
+      isDark,
+      isLight: !isDark,
+      workspaceButtonStyle: 'display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px; border: 0; border-radius: 8px; color: var(--fg); font: 500 13px Inter, sans-serif; background: ' + (screen === 's04' || screen === 's05' ? 'var(--muted)' : 'transparent') + ';',
+      notebookPressed: isNotebookLayout ? 'true' : 'false',
+      notebookToggleLabel: isNotebookLayout ? 'Hide notebook' : 'Notebook',
+      notebookToggleStyle: 'width: 156px; height: 36px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; color: var(--fg); font: 500 13px Inter, sans-serif; white-space: nowrap; ' + (isNotebookLayout ? 'border: 1px solid transparent; background: var(--muted);' : 'border: 1px solid var(--border); background: transparent;'),
+      leftColumnStyle: 'display: flex; flex-direction: column; min-width: 0; ' + (isNotebookLayout ? 'width: 400px; flex-shrink: 0; box-sizing: border-box; border-right: 1px solid var(--border);' : 'flex: 1;'),
+      isStartView: !isChatView && !isProtoChat,
+      isChatView,
+      isStepsOpen: screen === 's14',
+      isStepsClosed: screen !== 's14',
+      isNotebookLayout,
+      isNotebookTab: isNotebookTabActive && !isColabNotebook,
+      isDatasetsTab,
+      tabNotebookStyle: TAB_BASE + (!isNotebookTabActive ? 'color: var(--mfg); font-weight: 400;' : 'color: var(--fg); font-weight: 500; border-bottom: 2px solid var(--fg); margin-bottom: -1px;'),
+      tabDatasetsStyle: TAB_BASE + (isDatasetsTab ? 'color: var(--fg); font-weight: 500; border-bottom: 2px solid var(--fg); margin-bottom: -1px;' : 'color: var(--mfg); font-weight: 400;'),
+      isWorkspaceMenu: screen === 's04',
+      isNewWorkspace: screen === 's05',
+      isModelPicker: screen === 's06',
+      isEffortTooltip: screen === 's07',
+      isSettings,
+      settingsTitle: settingsText[0],
+      settingsDetail: settingsText[1],
+      nav: {
+        general: screen === 's08' ? 'on' : '',
+        answers: screen === 's09' ? 'on' : '',
+        tools: screen === 's10' ? 'on' : '',
+        account: screen === 's11' ? 'on' : '',
+        about: screen === 's12' ? 'on' : '',
+        providers: screen === 's37' ? 'on' : ''
+      },
+      isSettingsGeneral: screen === 's08',
+      isSettingsAnswers: screen === 's09',
+      isSettingsTools: screen === 's10',
+      isSettingsAccount: screen === 's11',
+      isSettingsAbout: screen === 's12',
+      themeLightStyle: SEGMENT_BASE + (isDark ? 'color: var(--mfg);' : 'background: #ffffff; color: #09090b; box-shadow: 0 1px 2px rgba(0,0,0,0.1);'),
+      themeDarkStyle: SEGMENT_BASE + (isDark ? 'background: var(--bg); color: var(--fg); box-shadow: 0 1px 2px rgba(0,0,0,0.4);' : 'color: var(--mfg);')
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Agent activity</title>
+<script src="./_runtime/react.js"></script>
+<script src="./_runtime/react-dom.js"></script>
+<script src="./_runtime/support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="./run-activity.css">
+</helmet>
+<details class="run-activity" data-run-state="{{ status }}" open="{{ initiallyOpen }}">
+  <summary class="run-summary">
+    <span class="run-indicator" aria-hidden="true"></span>
+    <span class="run-heading">
+      <strong>{{ headline }}</strong>
+      <span>{{ overview }}</span>
+    </span>
+    <span class="run-status">{{ statusLabel }}</span>
+    <span class="run-chevron" aria-hidden="true"></span>
+  </summary>
+  <ol class="run-timeline" aria-label="Activity timeline">
+    <sc-for list="{{ events }}" as="event" hint-placeholder-count="2">
+      <li class="run-event" data-event-state="{{ event.state }}">
+        <span class="run-event-marker" aria-hidden="true"></span>
+        <sc-if value="{{ event.isTool }}" hint-placeholder-val="{{ true }}">
+          <details class="run-tool">
+            <summary class="run-event-summary">
+              <span class="run-event-title">{{ event.title }}</span>
+              <span class="run-event-status">{{ event.status }}</span>
+              <span class="run-chevron" aria-hidden="true"></span>
+            </summary>
+            <dl class="run-tool-detail">
+              <div><dt>Input</dt><dd>{{ event.input }}</dd></div>
+              <div><dt>{{ event.outcomeLabel }}</dt><dd>{{ event.outcome }}</dd></div>
+            </dl>
+          </details>
+        </sc-if>
+        <sc-if value="{{ event.isNote }}" hint-placeholder-val="{{ false }}">
+          <div class="run-event-summary">
+            <span class="run-event-title">{{ event.title }}</span>
+            <span class="run-event-status">{{ event.status }}</span>
+          </div>
+          <p class="run-event-note">{{ event.outcome }}</p>
+        </sc-if>
+      </li>
+    </sc-for>
+  </ol>
+</details>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"scenario":{"default":"answer"}}'>
+const STATES = {
+  done: 'Done',
+  running: 'Running',
+  waiting: 'Needs you',
+  stopped: 'Stopped'
+};
+
+const ANALYSIS_EVENTS = [
+  ['done', 'Notebook · Load dataset', 'Vietnam air quality, daily', 'Daily PM2.5 readings loaded'],
+  ['done', 'Notebook · Filter by city', 'Hanoi and Ho Chi Minh City · 2025', 'Kept readings for both cities'],
+  ['done', 'Notebook · Average PM2.5 by month', 'Daily readings for both cities', 'Monthly averages calculated'],
+  ['done', 'Notebook · Create chart', 'Monthly PM2.5 averages', 'Comparison chart added to the notebook']
+];
+
+const ANSWER_RUN = {
+  headline: 'Prepared a short answer', elapsed: '1s',
+  events: [['done', 'Response summary', '', 'Summarized the kinds of research and data work SillyTherin can help with.']]
+};
+
+const RUNS = {
+  answer: ANSWER_RUN,
+  'answer-open': { ...ANSWER_RUN, open: true },
+  search: {
+    headline: 'Searching the web', status: 'running', open: true,
+    events: [
+      ['done', 'Search scope', '', 'Look for public datasets with Hanoi air quality readings.'],
+      ['running', 'Web search · Find datasets', 'Hanoi air quality dataset', 'Looking for public sources']
+    ]
+  },
+  describe: {
+    headline: 'Read the Kaggle dataset page',
+    events: [['done', 'Kaggle · Read dataset details', 'Hanoi traffic counts 2025', 'Found the description, file size, and license']]
+  },
+  download: {
+    headline: 'Downloaded the Kaggle dataset',
+    events: [['done', 'Kaggle · Download dataset', 'Hanoi traffic counts 2025 · 310 MB', 'Saved to this project’s Datasets tab']]
+  },
+  'find-and-download': {
+    headline: 'Found and downloaded a dataset',
+    events: [
+      ['done', 'Kaggle · Search datasets', 'Hanoi air quality', 'Selected Vietnam air quality, daily for its 2025 coverage'],
+      ['done', 'Kaggle · Download dataset', 'Vietnam air quality, daily · 48 MB', 'Saved to this project’s Datasets tab']
+    ]
+  },
+  'approve-search': {
+    headline: 'Waiting to search the web', status: 'waiting',
+    events: [['waiting', 'Web search · Find datasets', 'Hanoi air quality dataset', 'Approve the search to continue']]
+  },
+  'approve-cleanup': {
+    headline: 'Waiting to delete three files', status: 'waiting',
+    events: [
+      ['done', 'Project files · Find old runs', 'Sensor readings from 2024', 'Found three matching CSV files'],
+      ['waiting', 'Project files · Delete old runs', '3 CSV files from 2024', 'Approve the deletion to continue']
+    ]
+  },
+  comparison: {
+    headline: 'Loading Ho Chi Minh City readings', status: 'running', open: true,
+    events: [
+      ['done', 'Notebook · Load daily readings', 'hanoi_2025_daily.csv', 'Hanoi daily readings loaded'],
+      ['stopped', 'Notebook · Load hourly readings', 'hanoi_2025_hourly.csv', 'Stopped after the request changed to a city comparison'],
+      ['running', 'Notebook · Load daily readings', 'Ho Chi Minh City · 2025', 'Loading readings for the second city']
+    ]
+  },
+  'analysis-running': {
+    headline: 'Filtering readings for both cities', status: 'running', open: true,
+    events: [ANALYSIS_EVENTS[0], ['running', 'Notebook · Filter by city', 'Hanoi and Ho Chi Minh City · 2025', 'Selecting readings for both cities']]
+  },
+  'analysis-waiting': {
+    headline: 'Waiting for a decision on missing readings', status: 'waiting',
+    events: [
+      ...ANALYSIS_EVENTS.slice(0, 2),
+      ['waiting', 'Notebook · Average PM2.5 by month', '12 missing days in Ho Chi Minh City', 'Choose how to handle missing readings']
+    ]
+  },
+  'analysis-done': {
+    headline: 'Analyzed PM2.5 in both cities', elapsed: '38s', events: ANALYSIS_EVENTS
+  },
+  knowledge: {
+    headline: 'Found a source in project knowledge',
+    events: [['done', 'Knowledge · Find sensor notes', 'Sensor moved in October', 'Matched field-notes-oct.md']]
+  },
+  'knowledge-empty': {
+    headline: 'Searched project knowledge',
+    events: [['done', 'Knowledge · Find calibration notes', 'Sensor S-14 calibration offset', 'No matching note or document found']]
+  }
+};
+
+class Component extends DCLogic {
+  renderVals() {
+    const run = RUNS[this.props.scenario] ?? RUNS.answer;
+    const status = run.status ?? 'done';
+    const events = run.events.map(([state, title, input, outcome]) => ({
+      state,
+      title,
+      input,
+      outcome,
+      isTool: Boolean(input),
+      isNote: !input,
+      outcomeLabel: state === 'running' ? 'Progress' : state === 'waiting' ? 'Next' : 'Result',
+      status: STATES[state]
+    }));
+    const toolCount = events.filter(event => event.isTool).length;
+    const toolLabel = status === 'waiting' ? 'tool step' : 'tool call';
+    const toolSummary = toolCount > 0 ? `${toolCount} ${toolLabel}${toolCount === 1 ? '' : 's'}` : '';
+    const overview = [toolSummary, run.elapsed].filter(Boolean).join(' · ');
+    return { headline: run.headline, status, statusLabel: STATES[status], initiallyOpen: Boolean(run.open), events, overview };
+  }
+}
+</script>
+</body>
+</html>

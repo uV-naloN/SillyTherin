@@ -1,0 +1,426 @@
+{
+  "artboards": [
+    {
+      "file": "Page-01-notebook-open.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 2960,
+      "h": 900,
+      "title": "1 · Start, notebook open (light | dark)"
+    },
+    {
+      "file": "Page-02-datasets-tab.dc.html",
+      "x": 3040,
+      "y": 0,
+      "w": 2960,
+      "h": 900,
+      "title": "2 · Notebook panel, Datasets tab"
+    },
+    {
+      "file": "Page-03-start-closed.dc.html",
+      "x": 0,
+      "y": 1020,
+      "w": 2960,
+      "h": 900,
+      "title": "3 · Start, notebook closed"
+    },
+    {
+      "file": "Page-04-workspace-menu.dc.html",
+      "x": 3040,
+      "y": 1020,
+      "w": 2960,
+      "h": 900,
+      "title": "4 · Workspace menu"
+    },
+    {
+      "file": "Page-05-new-workspace.dc.html",
+      "x": 0,
+      "y": 2040,
+      "w": 2960,
+      "h": 900,
+      "title": "5 · New workspace name field"
+    },
+    {
+      "file": "Page-06-model-picker.dc.html",
+      "x": 3040,
+      "y": 2040,
+      "w": 2960,
+      "h": 900,
+      "title": "6 · Model picker with search"
+    },
+    {
+      "file": "Page-07-effort-tooltip.dc.html",
+      "x": 0,
+      "y": 3060,
+      "w": 2960,
+      "h": 900,
+      "title": "7 · Effort dial tooltip"
+    },
+    {
+      "file": "Page-08-settings-general.dc.html",
+      "x": 3040,
+      "y": 3060,
+      "w": 2960,
+      "h": 900,
+      "title": "8 · Settings · General"
+    },
+    {
+      "file": "Page-09-settings-answers.dc.html",
+      "x": 0,
+      "y": 4080,
+      "w": 2960,
+      "h": 900,
+      "title": "9 · Settings · Answers"
+    },
+    {
+      "file": "Page-10-settings-tools.dc.html",
+      "x": 3040,
+      "y": 4080,
+      "w": 2960,
+      "h": 900,
+      "title": "10 · Settings · Tools"
+    },
+    {
+      "file": "Page-11-settings-account.dc.html",
+      "x": 0,
+      "y": 5100,
+      "w": 2960,
+      "h": 900,
+      "title": "11 · Settings · Account (Kaggle)"
+    },
+    {
+      "file": "Page-12-settings-about.dc.html",
+      "x": 3040,
+      "y": 5100,
+      "w": 2960,
+      "h": 900,
+      "title": "12 · Settings · About"
+    },
+    {
+      "file": "Page-13-chat-answer.dc.html",
+      "x": 0,
+      "y": 6120,
+      "w": 2960,
+      "h": 900,
+      "title": "13 · Finished answer with collapsed activity"
+    },
+    {
+      "file": "Page-14-chat-steps-open.dc.html",
+      "x": 3040,
+      "y": 6120,
+      "w": 2960,
+      "h": 900,
+      "title": "14 · Expanded answer activity"
+    },
+    {
+      "file": "Shell.dc.html",
+      "x": 0,
+      "y": 7140,
+      "w": 1440,
+      "h": 900,
+      "title": "Shared app page (edit here, every screen above updates)"
+    },
+    {
+      "file": "Story-15-slash-menu.dc.html",
+      "x": 0,
+      "y": 8440,
+      "w": 2960,
+      "h": 900,
+      "title": "PCD-11 · Type / in an empty message box: command menu"
+    },
+    {
+      "file": "Story-16-kaggle-list.dc.html",
+      "x": 3040,
+      "y": 8440,
+      "w": 2960,
+      "h": 900,
+      "title": "PCD-12 + PCD-13 · My Kaggle datasets, each with Download"
+    },
+    {
+      "file": "Story-17-kaggle-loading.dc.html",
+      "x": 0,
+      "y": 9460,
+      "w": 2960,
+      "h": 900,
+      "title": "PCD-12 · Loading your Kaggle datasets"
+    },
+    {
+      "file": "Story-18-kaggle-not-connected.dc.html",
+      "x": 3040,
+      "y": 9460,
+      "w": 2960,
+      "h": 900,
+      "title": "PCD-12 · Kaggle account not connected"
+    },
+    {
+      "file": "Story-19-kaggle-empty.dc.html",
+      "x": 0,
+      "y": 10480,
+      "w": 2960,
+      "h": 900,
+      "title": "PCD-12 · No datasets on Kaggle yet"
+    },
+    {
+      "file": "Story-20-kaggle-unreachable.dc.html",
+      "x": 3040,
+      "y": 10480,
+      "w": 2960,
+      "h": 900,
+      "title": "PCD-12 · Couldn't reach Kaggle"
+    },
+    {
+      "file": "Story-21-download-states.dc.html",
+      "x": 0,
+      "y": 11500,
+      "w": 2960,
+      "h": 900,
+      "title": "PCD-13 · Downloading, in this project, failed"
+    },
+    {
+      "file": "Story-22-large-asks-first.dc.html",
+      "x": 3040,
+      "y": 11500,
+      "w": 2960,
+      "h": 900,
+      "title": "PCD-13 · Large dataset asks Download or Skip first"
+    },
+    {
+      "file": "Story-23-datasets-tab-kaggle.dc.html",
+      "x": 0,
+      "y": 12520,
+      "w": 2960,
+      "h": 900,
+      "title": "PCD-13 · Kaggle datasets in the Datasets tab"
+    },
+    {
+      "file": "Proto-24-message-sending.dc.html",
+      "x": 0,
+      "y": 14020,
+      "w": 2960,
+      "h": 900,
+      "title": "SUP-1 · Sent message waits for a reply, shown once"
+    },
+    {
+      "file": "Proto-25-message-received.dc.html",
+      "x": 3040,
+      "y": 14020,
+      "w": 2960,
+      "h": 900,
+      "title": "SUP-1 · Same message marked Received, agent starts"
+    },
+    {
+      "file": "Proto-26-message-not-sent.dc.html",
+      "x": 0,
+      "y": 15040,
+      "w": 2960,
+      "h": 900,
+      "title": "SUP-1 · Message not sent: text kept, Try again or Edit"
+    },
+    {
+      "file": "Proto-27-mode-menu.dc.html",
+      "x": 3040,
+      "y": 15040,
+      "w": 2960,
+      "h": 900,
+      "title": "SUP-1 · Mode menu: Manual, Auto (new chats), Free"
+    },
+    {
+      "file": "Proto-28-describe-then-import.dc.html",
+      "x": 0,
+      "y": 16060,
+      "w": 2960,
+      "h": 900,
+      "title": "SUP-1 · Describing a dataset adds nothing; asking to download imports it"
+    },
+    {
+      "file": "Proto-29-manual-asks-tool.dc.html",
+      "x": 3040,
+      "y": 16060,
+      "w": 2960,
+      "h": 900,
+      "title": "SUP-1 · Manual mode asks Allow or Skip before a tool"
+    },
+    {
+      "file": "Proto-30-risky-asks-first.dc.html",
+      "x": 0,
+      "y": 17080,
+      "w": 2960,
+      "h": 900,
+      "title": "SUP-1 · Auto pauses before deleting project files"
+    },
+    {
+      "file": "Proto-31-steer-reply.dc.html",
+      "x": 3040,
+      "y": 17080,
+      "w": 2960,
+      "h": 900,
+      "title": "SUP-1 · Correction steers the reply, earlier text stays"
+    },
+    {
+      "file": "Proto-32-goal-and-checklist.dc.html",
+      "x": 0,
+      "y": 18100,
+      "w": 2960,
+      "h": 900,
+      "title": "SUP-2 · Chat goal and agent checklist above the message box"
+    },
+    {
+      "file": "Proto-33-checklist-needs-you.dc.html",
+      "x": 3040,
+      "y": 18100,
+      "w": 2960,
+      "h": 900,
+      "title": "SUP-2 · A step waits for your choice"
+    },
+    {
+      "file": "Proto-34-result-for-review.dc.html",
+      "x": 0,
+      "y": 19120,
+      "w": 2960,
+      "h": 900,
+      "title": "SUP-2 · Work finished: result shown for review"
+    },
+    {
+      "file": "Proto-35-knowledge-sources.dc.html",
+      "x": 3040,
+      "y": 19120,
+      "w": 2960,
+      "h": 900,
+      "title": "SUP-2 · Knowledge tab and an answer that names its source"
+    },
+    {
+      "file": "Proto-36-no-provider-yet.dc.html",
+      "x": 0,
+      "y": 20140,
+      "w": 2960,
+      "h": 900,
+      "title": "SUP-3 · First run: Choose a model, Connect a provider"
+    },
+    {
+      "file": "Proto-37-settings-providers.dc.html",
+      "x": 3040,
+      "y": 20140,
+      "w": 2960,
+      "h": 900,
+      "title": "SUP-3 · Settings › Providers: base URL, masked key, rejected key"
+    },
+    {
+      "file": "Proto-38-models-by-provider.dc.html",
+      "x": 0,
+      "y": 21160,
+      "w": 2960,
+      "h": 900,
+      "title": "SUP-3 · Models grouped by provider, one unavailable"
+    },
+    {
+      "file": "Proto-40-pick-colab-runtime.dc.html",
+      "x": 0,
+      "y": 22180,
+      "w": 2960,
+      "h": 900,
+      "title": "SUP-4 · Runtime menu: Colab GPU connected"
+    },
+    {
+      "file": "Proto-41-cell-on-colab.dc.html",
+      "x": 3040,
+      "y": 22180,
+      "w": 2960,
+      "h": 900,
+      "title": "SUP-4 · Cell output from Colab GPU, and a dropped run"
+    },
+    {
+      "file": "Proto-42-free-picks-dataset.dc.html",
+      "x": 0,
+      "y": 23200,
+      "w": 2960,
+      "h": 900,
+      "title": "SUP-1 · Free mode picks a dataset and says what it chose"
+    },
+    {
+      "file": "Proto-43-chat-history-list.dc.html",
+      "x": 0,
+      "y": 24220,
+      "w": 2960,
+      "h": 900,
+      "title": "CH-1 · CH-2 · CH-3 · Side list: this workspace's chats, newest first; click one to reopen and continue",
+      "is_interactive": true
+    },
+    {
+      "file": "Proto-44-chat-history-empty.dc.html",
+      "x": 3040,
+      "y": 24220,
+      "w": 2960,
+      "h": 900,
+      "title": "CH-1 · First use: the list is empty until a message is sent",
+      "is_interactive": true
+    },
+    {
+      "file": "Proto-45-chat-history-delete.dc.html",
+      "x": 0,
+      "y": 25240,
+      "w": 2960,
+      "h": 900,
+      "title": "CH-5 · Delete a chat: confirmation first, deleting is permanent",
+      "is_interactive": true
+    },
+    {
+      "file": "Proto-46-chat-history-hidden.dc.html",
+      "x": 3040,
+      "y": 25240,
+      "w": 2960,
+      "h": 900,
+      "title": "CH-6 · Side list hidden: a show button stays on the left",
+      "is_interactive": true
+    },
+    {
+      "file": "Proto-47-chat-history-replying.dc.html",
+      "x": 0,
+      "y": 26260,
+      "w": 2960,
+      "h": 900,
+      "title": "CH-4 · Another chat is still replying or needs you; switching never stops it",
+      "is_interactive": true
+    }
+  ],
+  "annotations": [
+    {
+      "id": "t1",
+      "x": 0,
+      "y": -300,
+      "w": 240,
+      "maxW": 6000,
+      "text": "App screens · Light on the left, dark on the right",
+      "kind": "title1"
+    },
+    {
+      "id": "t2",
+      "x": 0,
+      "y": 8140,
+      "w": 240,
+      "maxW": 6000,
+      "text": "Leftover stories PCD-11, PCD-12, PCD-13: how they would look",
+      "kind": "title1"
+    },
+    {
+      "id": "t3",
+      "x": 0,
+      "y": 13720,
+      "w": 240,
+      "maxW": 6000,
+      "text": "UI prototype SUP-1 to SUP-4: the changed chat and notebook flows",
+      "kind": "title1"
+    },
+    {
+      "id": "t4",
+      "x": 0,
+      "y": 23920,
+      "w": 240,
+      "maxW": 6000,
+      "text": "Chat history CH-1 to CH-6: side list, reopen, delete, hide, replies in the background",
+      "kind": "title1"
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}
