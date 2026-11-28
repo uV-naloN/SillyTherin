@@ -20,10 +20,7 @@ from core.server.events import AskOpened, ServerEvent
 from core.server.web_chat import OpenPrompts, SocketAsker
 from core.tools import web_search
 from core.tools.shared.approval import RUN_OR_SKIP
-from observability.agent_observer import (
-    NativeStageObserver,
-    observe_answer_wait,
-)
+from observability.agent_observer import NativeStageObserver
 from observability.answer_capture import AnswerCapture
 from observability.dtos.reply_trace import (
     RecordingLoss,
@@ -40,6 +37,7 @@ from observability.reply_trace import (
     ReplyRecorder,
     TraceClock,
 )
+from observability.tool_wait import observe_answer_wait
 from observability.turn_runner import ObservedTurnRunner
 from tests.agent.conftest import ready_chat, run_one_turn
 from tests.chat.fakes import FakeAnswerView, FakeAsker, FakeProgressView, in_chat
@@ -435,7 +433,7 @@ def capture_reply(
 
 
 def test_restart_trace_uses_delivered_restart_reply() -> None:
-    from core.chat.turn import RESTART_REPLY
+    from core.agent.middleware.notebook import RESTART_REPLY
     content, losses, _ = capture_reply(final=RESTART_REPLY)
     assert content.reply == RESTART_REPLY and not losses
 

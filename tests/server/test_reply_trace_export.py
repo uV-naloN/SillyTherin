@@ -17,7 +17,6 @@ from core.server.events import ServerEvent
 from core.server.socket import ChatSessions
 from core.server.web_chat import SocketAnswerView
 from observability import langfuse
-from observability.agent_observer import observe_answer_wait
 from observability.answer_capture import AnswerCapture
 from observability.dtos.langfuse import (
     ExportLoss,
@@ -42,6 +41,7 @@ from observability.langfuse import (
     read_settings,
 )
 from observability.reply_trace import TraceClock
+from observability.tool_wait import observe_answer_wait
 from observability.turn_runner import ObservedTurnRunner
 from tests.conftest import FakeKernels
 from tests.scripted_chat_model import ScriptedChatModel, text_chunk

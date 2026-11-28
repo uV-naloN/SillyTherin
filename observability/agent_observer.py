@@ -2,16 +2,12 @@
 
 import logging
 from asyncio import CancelledError
-from collections.abc import Awaitable, Callable
-from contextlib import AbstractContextManager, nullcontext
-from contextvars import ContextVar
+from collections.abc import Callable
 from typing import Any
 from uuid import UUID
 
-from langchain.agents.middleware import AgentMiddleware, ToolCallRequest
 from langchain_core.callbacks import AsyncCallbackHandler
 from langchain_core.messages import BaseMessage, ToolMessage
-from langgraph.types import Command
 
 from core.shared.best_effort import best_effort
 from core.tools import NOTEBOOK_TOOLS, TOOLS
@@ -32,34 +28,13 @@ from observability.reply_trace import (
     ApprovalWait,
     ReplyRecorder,
 )
+from observability.tool_wait import get_active_approval_wait
 
 TOOL_LABELS = {
     tool.name: f"tool.{tool.name}" for tool in (*TOOLS, *NOTEBOOK_TOOLS)
     if f"tool.{tool.name}" in SAFE_TOOL_LABELS
 }
 log = logging.getLogger(__name__)
-current_wait: ContextVar[ApprovalWait | None] = ContextVar("tool_approval_wait", default=None)
-
-
-class ToolWaitMiddleware(AgentMiddleware):
-    def __init__(self, recorder: ReplyRecorder) -> None:
-        self._recorder = recorder
-
-    async def awrap_tool_call(
-        self,
-        request: ToolCallRequest,
-        handler: Callable[[ToolCallRequest], Awaitable[ToolMessage | Command]],
-    ) -> ToolMessage | Command:
-        token = current_wait.set(ApprovalWait(self._recorder))
-        try:
-            return await handler(request)
-        finally:
-            current_wait.reset(token)
-
-
-def observe_answer_wait() -> AbstractContextManager[None]:
-    wait = current_wait.get()
-    return nullcontext() if wait is None else wait.observe()
 
 
 def failure_outcome(error: BaseException) -> SpanOutcome:
@@ -118,7 +93,7 @@ class NativeStageObserver(AsyncCallbackHandler):
     ) -> None:
         name = (serialized or {}).get("name")
         label = TOOL_LABELS.get(name, OTHER_TOOL_LABEL) if type(name) is str else OTHER_TOOL_LABEL
-        self.start_stage(run_id, SpanKind.TOOL, label, current_wait.get())
+        self.start_stage(run_id, SpanKind.TOOL, label, get_active_approval_wait())
 
     async def on_tool_end(self, output: object, *, run_id: UUID, **kwargs: Any) -> None:
         failed = isinstance(output, ToolMessage) and output.status == "error"

@@ -6,7 +6,7 @@ from langgraph.graph.message import add_messages
 from langgraph.graph.state import CompiledStateGraph
 from langsmith.run_helpers import tracing_context
 
-from core.agent.model import ToolArgumentStream
+from core.agent.middleware.model_tool_calls import ToolArgumentStream
 from core.agent.tool_progress import NativeToolProgress
 from core.chat.ports import AnswerView, ThinkingStep
 from core.chat.progress import Progress

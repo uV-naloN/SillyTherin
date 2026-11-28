@@ -1,6 +1,6 @@
 """At the round limit the model must answer from what it found."""
 
-from core.agent.round_limit import LIMIT_NOTE
+from core.agent.middleware.round_limit import LIMIT_NOTE
 from core.chat import turn
 from tests.agent.conftest import run_one_turn
 from tests.scripted_chat_model import text_chunk, tool_call_chunk

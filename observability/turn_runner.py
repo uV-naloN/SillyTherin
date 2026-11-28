@@ -9,10 +9,7 @@ from core.chat.ports import ChatState
 from core.chat.turn import TurnHooks, TurnOutcome, TurnViews
 from core.contracts.chat import UserMessage
 from core.shared.best_effort import best_effort
-from observability.agent_observer import (
-    NativeStageObserver,
-    ToolWaitMiddleware,
-)
+from observability.agent_observer import NativeStageObserver
 from observability.answer_capture import AnswerCapture
 from observability.dtos.reply_trace import (
     RecordingLoss,
@@ -24,6 +21,7 @@ from observability.reply_trace import (
     ReplyTraceSink,
     TraceClock,
 )
+from observability.tool_wait import ToolWaitMiddleware
 
 
 class HookedTurnRunner(Protocol):

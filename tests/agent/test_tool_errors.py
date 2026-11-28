@@ -7,11 +7,11 @@ import pytest
 from langchain.agents.middleware import ToolCallRequest
 from langgraph.errors import GraphBubbleUp
 
+from core.agent.middleware.tool_error_boundary import ToolErrorBoundary
 from core.agent.tool_errors import (
     INVALID_TOOL_ARGUMENTS,
     MAX_TOOL_ERROR_CHARS,
     TOOL_FAILURE_PREFIX,
-    ToolErrorBoundary,
 )
 from core.chat.chat_start import HISTORY_KEY
 from core.tools import dataset_delete, dataset_download, notebook_run, web_search

@@ -2,28 +2,32 @@
 
 import asyncio
 import logging
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from enum import StrEnum
 
 from langchain.agents import create_agent
-from langchain.agents.middleware import AgentMiddleware, ModelResponse
-from langchain.agents.middleware import ModelRequest as AgentCall
+from langchain.agents.middleware import AgentMiddleware
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 from langgraph.graph.state import CompiledStateGraph
 
 from core.agent.history import from_langchain, to_langchain
 from core.agent.llm import model_params
-from core.agent.model import (
+from core.agent.middleware.model_tool_calls import (
     GuardModelToolCalls,
     ToolArgumentStream,
-    build_chat_model,
-    is_openrouter_relay_failure,
 )
-from core.agent.round_limit import RoundLimit
+from core.agent.middleware.notebook import (
+    RESTART_REPLY,
+    NotebookBatchGuard,
+    StopOnNotebookRestart,
+    notebook_restart_required,
+)
+from core.agent.middleware.round_limit import RoundLimit
+from core.agent.middleware.tool_error_boundary import ToolErrorBoundary
+from core.agent.model import build_chat_model, is_openrouter_relay_failure
 from core.agent.stream import stream_agent
-from core.agent.tool_errors import NotebookBatchGuard, ToolErrorBoundary
 from core.chat.chat_start import (
     HISTORY_KEY,
     PICKS_KEY,
@@ -59,30 +63,10 @@ from core.tools import (
 from core.tools.shared.services import ToolServices
 from core.workspace import actions
 from core.workspace.datasets.links import find_pasted_links
-from core.workspace.service import NotebookRunOutcome
 
 EMPTY_ANSWER = "(The model returned an empty response.)"
 OPENROUTER_RELAY_NOTICE = "OpenRouter couldn’t route this request. Try sending your message again in a moment."
 log = logging.getLogger("uvicorn.error").getChild("turn")
-
-
-RESTART_REPLY = "The notebook was restarted, so earlier results are gone. Press Run all in the notebook, then ask me again."
-
-
-def notebook_restart_required(messages: Sequence[BaseMessage]) -> bool:
-    return any(
-        isinstance(message, ToolMessage) and message.artifact is NotebookRunOutcome.RESTART_REQUIRED
-        for message in messages
-    )
-
-
-class StopOnNotebookRestart(AgentMiddleware):
-    async def awrap_model_call(
-        self, request: AgentCall, handler: Callable[[AgentCall], Awaitable[ModelResponse]]
-    ) -> ModelResponse:
-        if notebook_restart_required(request.messages):
-            return ModelResponse(result=[AIMessage(content=RESTART_REPLY)])
-        return await handler(request)
 
 
 @dataclass(frozen=True)

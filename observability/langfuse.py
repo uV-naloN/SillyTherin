@@ -97,7 +97,7 @@ def configure_observability(environment: Mapping[str, str]) -> ObservabilityLaye
         return None
 
     from core.chat.turn import run_turn
-    from observability.agent_observer import observe_answer_wait
+    from observability.tool_wait import observe_answer_wait
     from observability.turn_runner import ObservedTurnRunner
 
     supervisor = LangfuseSupervisor(settings)
