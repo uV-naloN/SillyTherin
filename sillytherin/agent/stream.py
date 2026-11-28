@@ -6,7 +6,7 @@ from langgraph.graph.message import add_messages
 from langgraph.graph.state import CompiledStateGraph
 from langsmith.run_helpers import tracing_context
 
-from sillytherin.agent.model import ToolArgumentStream
+from sillytherin.agent.middleware.model_tool_calls import ToolArgumentStream
 from sillytherin.agent.tool_progress import NativeToolProgress
 from sillytherin.chat.ports import AnswerView, ThinkingStep
 from sillytherin.progress import Progress

@@ -7,11 +7,11 @@ import pytest
 from langchain.agents.middleware import ToolCallRequest
 from langgraph.errors import GraphBubbleUp
 
+from sillytherin.agent.middleware.tool_error_boundary import ToolErrorBoundary
 from sillytherin.agent.tool_errors import (
     INVALID_TOOL_ARGUMENTS,
     MAX_TOOL_ERROR_CHARS,
     TOOL_FAILURE_PREFIX,
-    ToolErrorBoundary,
 )
 from sillytherin.chat_start import HISTORY_KEY
 from sillytherin.tools import dataset_delete, dataset_download, notebook_run, web_search

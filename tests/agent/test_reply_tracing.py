@@ -435,7 +435,7 @@ def capture_reply(
 
 
 def test_restart_trace_uses_delivered_restart_reply() -> None:
-    from sillytherin.turn import RESTART_REPLY
+    from sillytherin.agent.middleware.notebook import RESTART_REPLY
     content, losses, _ = capture_reply(final=RESTART_REPLY)
     assert content.reply == RESTART_REPLY and not losses
 

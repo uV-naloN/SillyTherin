@@ -8,7 +8,7 @@ from langchain_core.messages import BaseMessage
 from langgraph.graph.state import CompiledStateGraph
 
 from sillytherin import turn
-from sillytherin.agent.model import ToolArgumentStream
+from sillytherin.agent.middleware.model_tool_calls import ToolArgumentStream
 from sillytherin.progress import Progress
 from sillytherin.tools import dataset_list
 from sillytherin.tools.services import ToolServices

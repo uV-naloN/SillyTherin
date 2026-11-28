@@ -1,7 +1,7 @@
 """At the round limit the model must answer from what it found."""
 
 from sillytherin import turn
-from sillytherin.agent.round_limit import LIMIT_NOTE
+from sillytherin.agent.middleware.round_limit import LIMIT_NOTE
 from tests.agent.conftest import run_one_turn
 from tests.scripted_chat_model import text_chunk, tool_call_chunk
 
